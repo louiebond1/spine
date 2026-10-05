@@ -28,6 +28,19 @@ Use the menu at the bottom of the sidebar to view the app as any seeded person. 
 
 Both seeds wipe the database first.
 
+### AI
+
+The AI review and build plan call the Anthropic API with `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL`. If a call fails, the app shows one grey sentence with a retry link and nothing is blocked. For demos and screenshots without a key, set `SPINE_AI_FIXTURES=1` (ignored in production) to use stored responses; the "Supplier Risk Checker" idea gets the exact scores from 05-ai-review.png.
+
+### Daily job
+
+```bash
+npm run job:daily              # auto-approvals, then the Pulse digest if it is due today
+npm run job:daily -- --force   # send the digest now
+```
+
+Without `SLACK_WEBHOOK_URL` the digest is printed to the console. The digest is skipped when Pulse is empty, sent once a day at or after the digest time, and only on weekdays when that setting is on.
+
 ### Checks
 
 ```bash
@@ -43,6 +56,15 @@ node scripts/screenshot.mjs http://localhost:3000 help-desk screenshots/help-des
 
 A gallery of every shared component is at `/dev/components` in development.
 
+Behaviour tests (claims, threads, approvals, joins, plan generation, publishing, returns, permissions, anonymity), run against a freshly seeded database with `SPINE_AI_FIXTURES=1`:
+
+```bash
+npm run seed
+node --env-file=.env scripts/e2e-behaviour.mjs http://localhost:3000
+```
+
+The propose flow screenshots for 04 and 05: `node scripts/flow-propose.mjs http://localhost:3000`.
+
 ## Environment
 
 Every variable is listed and explained in [.env.example](.env.example).
@@ -51,6 +73,7 @@ Every variable is listed and explained in [.env.example](.env.example).
 
 1. Create a Railway project with a Postgres database and a service from this repo.
 2. Set the variables from `.env.example` on the service (`DATABASE_URL` comes from the Postgres plugin; leave `SPINE_TODAY` empty in production).
-3. Build command `npm run build`, start command `npm run db:deploy && npm start`.
+3. Build and start commands are in `railway.json` (migrations run on start).
 4. Attach a volume and point `UPLOAD_DIR` at it so attachments survive redeploys.
-5. Add a cron service running `npm run job:daily` every 15 minutes for auto-approvals and the Slack digest.
+5. Add a second service from the same repo with start command `npm run job:daily` and cron schedule `*/15 * * * *` for auto-approvals and the Slack digest. Give it the same variables.
+6. Optionally run `npm run seed` once from the Railway shell to load the demo data.

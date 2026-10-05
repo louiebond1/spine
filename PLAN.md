@@ -871,3 +871,19 @@ The mockups render about 1.2x the brief's estimates. The visual check compares a
 - No Postgres or Docker on this machine, so `npm run db:local` runs Postgres from the `embedded-postgres` package on port 5433.
 - Port 3000 is used by another app here; the preview server picks a free port.
 - Codex: the repo is at `louiebond1/spine` (private). Connecting it to Codex needs Louie to authorise GitHub in Codex.
+
+### Decisions made while building Phases 2 to 7
+
+- **Pipeline order:** cards are alphabetical within each column (matches 07 in every column and keeps cards still as activity changes). The List view sorts by recent activity, or by stage when the Stage header is clicked.
+- **Cowork-native returned after building:** goes back to Building with the note posted in Chat and a new open step, "Address the approval note", assigned to the owner. Ticking it finishes the build again and sends it back to Approval. (Without the step, a fully ticked plan would sit in Building with nothing left to do.)
+- **No publishing specialists:** a project can still reach Publishing; it is assigned as soon as someone is given the role in People & roles.
+- **Concurrency:** joining and approving take a row lock on the project; publisher assignment takes an advisory lock, so loads are always counted correctly.
+- **Plan edits** are allowed only while Building (checked in `can.editPlan`). Chat and hours saved use `can.onTeam`.
+- **Command palette:** people link to Ideas & Projects filtered to that person, since there are no profile pages.
+- **Admin:** Rules, People & roles and Impact assumptions each have one Save changes. Topics act immediately. At least one admin must remain. Costs are in pounds.
+- **Digest:** links in Slack use `SPINE_APP_URL`. The cron runs every 15 minutes and sends once a day at or after the digest time.
+- **Not-found pages** return HTTP 200 while streaming (because of `loading.tsx`); the content still never shows anything private.
+
+### Collaboration with ChatGPT
+
+ChatGPT reviewed the stage machine, permissions and publisher assignment. All six findings were checked and fixed: the last-place join race, the two-step Cowork-native approval, the stuck Cowork-native return, simultaneous publisher assignment, Publishing with no specialist, and plan edits outside Building. Each now has a test in `scripts/e2e-behaviour.mjs`.

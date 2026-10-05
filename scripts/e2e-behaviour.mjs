@@ -87,8 +87,10 @@ const settle = (page) => page.waitForLoadState("networkidle");
   check("Approve moves App idea to Recruiting with owner on team", p.stage === "RECRUITING" && p.approvedById === "u-alex" && p.team.length === 1);
 
   // Alex can't see someone else's scores.
-  const res = await alex.goto(`${base}/ideas/p-supplier-research/review`);
-  check("Non-owner gets 404 on AI review", res.status() === 404);
+  // With loading.tsx the page streams, so check the content rather than the status code.
+  await go(alex, "/ideas/p-supplier-research/review");
+  const reviewText = await alex.locator("main").innerText();
+  check("Non-owner sees not found, never scores, on AI review", reviewText.includes("nothing here") && !reviewText.includes("/10"));
 
   // Admin can't approve own idea.
   await go(alex, "/ideas/p-supplier-risk/approve");

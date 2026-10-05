@@ -1,4 +1,4 @@
-import { TIMEZONE, startOfDay } from "./tz";
+import { TIMEZONE, startOfDay, zonedParts } from "./tz";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -46,9 +46,12 @@ export function dayMonth(date: Date): string {
   return fmt(date, { day: "numeric", month: "long" });
 }
 
-/** "9 Oct" */
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "9 Oct", "30 Sep" (fixed abbreviations; some ICU builds say "Sept"). */
 export function shortDate(date: Date): string {
-  return fmt(date, { day: "numeric", month: "short" });
+  const p = zonedParts(date);
+  return `${p.day} ${SHORT_MONTHS[p.month - 1]}`;
 }
 
 /** "16:00" */

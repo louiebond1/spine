@@ -73,7 +73,7 @@ export function Composer({ onSend, allowAttach, trailing, placeholder = "Type a 
             />
           </>
         )}
-        <input name="body" placeholder={placeholder} className={controlClass + " w-full"} autoComplete="off" disabled={pending} />
+        <input name="body" placeholder={placeholder} className={controlClass + " h-control w-full"} autoComplete="off" disabled={pending} />
         <Button type="submit" variant="primary" icon={Send} disabled={pending}>
           Send
         </Button>

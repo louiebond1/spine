@@ -5,10 +5,10 @@ import { LiveDot } from "@/components/ui/LiveDot";
 import { EmptyState } from "@/components/ui/States";
 import type { ProjectSummary } from "@/server/projects/queries";
 
-export function NextActionLine({ next }: { next: ProjectSummary["next"] }) {
+export function NextActionLine({ next, strong }: { next: ProjectSummary["next"]; strong?: boolean }) {
   if (!next) return null;
   return (
-    <p className="flex items-center gap-3 text-meta text-text-muted">
+    <p className={`flex items-center gap-3 text-meta ${strong ? "text-text" : "text-text-muted"}`}>
       {next.live && <LiveDot />}
       {next.text}
     </p>

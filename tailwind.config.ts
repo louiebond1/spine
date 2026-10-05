@@ -69,7 +69,12 @@ const config: Config = {
         action: "152px",
         avatar: "48px",
         "avatar-sm": "40px",
-        rail: "300px",
+        rail: "328px",
+        "step-title": "480px",
+      },
+      gridTemplateColumns: {
+        // Propose form RESOURCES row: four selects and a wider target date (04).
+        resources: "repeat(4, minmax(0, 1fr)) 15rem",
       },
       maxWidth: {
         content: "1180px",

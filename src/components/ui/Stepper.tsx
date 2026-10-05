@@ -4,7 +4,7 @@ import { cx } from "@/lib/cx";
 /** Small stage stepper (08). `current` is the index of the active stage. */
 export function Stepper({ steps, current }: { steps: string[]; current: number }) {
   return (
-    <ol className="flex items-start">
+    <ol className="-ml-9 flex items-start">
       {steps.map((label, i) => {
         const done = i < current;
         const active = i === current;

@@ -60,3 +60,39 @@ export async function getYourWork(viewer: User, excludeIds: string[]): Promise<P
   });
   return rows.map((p) => summarise(p, viewer));
 }
+
+export type ProjectFilter = { personId?: string };
+
+/** Ideas & Projects: every submitted project, plus the viewer's own drafts. */
+export async function listProjects(viewer: User, filter: ProjectFilter): Promise<ProjectSummary[]> {
+  const rows = await db.project.findMany({
+    where: {
+      AND: [
+        { OR: [{ stage: { not: "IDEA" } }, { ownerId: viewer.id }] },
+        ...(filter.personId ? [involvesUser(filter.personId)] : []),
+      ],
+    },
+    include: projectSummaryInclude,
+    orderBy: { lastActivityAt: "desc" },
+  });
+  return rows.map((p) => summarise(p, viewer));
+}
+
+export async function getWorkspace(id: string, viewer: User) {
+  const p = await db.project.findUnique({
+    where: { id },
+    include: {
+      ...projectSummaryInclude,
+      approvedBy: true,
+      team: { include: { user: true }, orderBy: { joinedAt: "asc" } },
+      steps: { include: { assignee: true }, orderBy: { order: "asc" } },
+      messages: { include: { author: true }, orderBy: [{ sentAt: "asc" }, { createdAt: "asc" }] },
+      events: { include: { actor: true }, orderBy: [{ at: "desc" }, { createdAt: "desc" }] },
+    },
+  });
+  // Drafts are private to their owner.
+  if (!p || (p.stage === "IDEA" && p.ownerId !== viewer.id)) return null;
+  return { ...p, summary: summarise(p, viewer) };
+}
+
+export type Workspace = NonNullable<Awaited<ReturnType<typeof getWorkspace>>>;

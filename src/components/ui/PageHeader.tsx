@@ -17,7 +17,7 @@ type Props = {
 
 export function PageHeader({ date, title, subtitle, eyebrow, back, breadcrumb, meta, aside }: Props) {
   return (
-    <header className="mb-8">
+    <header className={back ? "mb-5" : "mb-8"}>
       {back && (
         <Link href={back.href} className="mb-3 inline-flex items-center gap-2 text-meta text-brand hover:text-brand-hover">
           <ArrowLeft size={20} strokeWidth={ICON_STROKE} aria-hidden />

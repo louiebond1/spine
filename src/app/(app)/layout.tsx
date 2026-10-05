@@ -4,10 +4,13 @@ import { getCurrentUser } from "@/server/session";
 import { getPulseItems } from "@/server/pulse/pulse";
 import { getNeedsYou } from "@/server/home/needsYou";
 import { rolesLine } from "@/lib/format";
+import { runDueAutoApprovals } from "@/server/projects/autoApprove";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  // CLAUDE.md section 7, rule 7: auto-approve is checked whenever the app is loaded.
+  await runDueAutoApprovals();
   const user = await getCurrentUser();
   const [users, pulse, needsYou, topics] = await Promise.all([
     db.user.findMany({ orderBy: { createdAt: "asc" } }),

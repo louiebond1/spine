@@ -1,0 +1,175 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { Box, Calendar, Flag, Laptop, type LucideIcon } from "lucide-react";
+import { cx } from "@/lib/cx";
+import { Button } from "@/components/ui/Button";
+import { SectionLabel } from "@/components/ui/SectionLabel";
+import { TextField } from "@/components/ui/TextField";
+import { TextArea } from "@/components/ui/TextArea";
+import { Select } from "@/components/ui/Select";
+import { Field, controlClass } from "@/components/ui/Field";
+import { ICON_STROKE } from "@/components/ui/icons";
+import { saveDraft, type ProposeState } from "@/server/projects/actions";
+
+export type IdeaDraft = {
+  id?: string;
+  title: string;
+  problem: string;
+  whoBenefits: string;
+  topicId: string;
+  buildPath: "APP" | "COWORK_NATIVE";
+  teamSize: number;
+  hoursPerWeek: number;
+  lengthWeeks: number;
+  difficulty: "EASY" | "MODERATE" | "HARD";
+  /** yyyy-mm-dd */
+  targetDate: string;
+  returnNote?: string | null;
+};
+
+const range = (from: number, to: number, label: (n: number) => string = String) =>
+  Array.from({ length: to - from + 1 }, (_, i) => ({ value: String(from + i), label: label(from + i) }));
+
+const PATHS: { value: IdeaDraft["buildPath"]; icon: LucideIcon; title: string; lines: string[] }[] = [
+  { value: "APP", icon: Box, title: "App", lines: ["Needs infrastructure, hosting or admin access.", "Leadership approves before recruiting."] },
+  {
+    value: "COWORK_NATIVE",
+    icon: Laptop,
+    title: "Cowork-native",
+    lines: ["Built within approved workplace tools.", "Leadership approves after the build."],
+  },
+];
+
+function formatTarget(value: string) {
+  if (!value) return "Choose a date";
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-container border border-border bg-surface px-6 pb-5 pt-5">
+      <SectionLabel className="mb-3">{label}</SectionLabel>
+      {children}
+    </section>
+  );
+}
+
+export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id: string; name: string }[] }) {
+  const [state, action, pending] = useActionState<ProposeState, FormData>(saveDraft, {});
+  const [path, setPath] = useState(draft.buildPath);
+  const [target, setTarget] = useState(draft.targetDate);
+
+  return (
+    <form action={action} className="space-y-3">
+      {draft.id && <input type="hidden" name="id" value={draft.id} />}
+      {draft.returnNote && (
+        <div className="flex items-start gap-4 rounded-control bg-neutral-soft px-5 py-4">
+          <Flag size={22} strokeWidth={ICON_STROKE} className="mt-0.5 shrink-0 text-text" aria-hidden />
+          <p className="text-meta text-text">{draft.returnNote}</p>
+        </div>
+      )}
+
+      <Section label="The idea">
+        <div className="space-y-4">
+          <TextField id="title" name="title" label="Name your idea" defaultValue={draft.title} required maxLength={120} />
+          <TextArea id="problem" name="problem" label="What problem does it solve?" defaultValue={draft.problem} rows={3} required />
+          <div className="grid grid-cols-2 gap-5">
+            <TextField id="whoBenefits" name="whoBenefits" label="Who benefits?" defaultValue={draft.whoBenefits} required />
+            <Select
+              id="topicId"
+              name="topicId"
+              label="Topic"
+              defaultValue={draft.topicId}
+              options={[{ value: "", label: "Choose a topic" }, ...topics.map((t) => ({ value: t.id, label: t.name }))]}
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section label="How it gets built">
+        <div className="grid grid-cols-2 gap-5" role="radiogroup" aria-label="How it gets built">
+          {PATHS.map((p) => {
+            const selected = path === p.value;
+            const Icon = p.icon;
+            return (
+              <label
+                key={p.value}
+                className={cx(
+                  "flex cursor-pointer items-start gap-5 rounded-control border px-5 py-5",
+                  selected ? "border-brand bg-brand-soft" : "border-border bg-surface hover:border-text-muted",
+                )}
+              >
+                <input type="radio" name="buildPath" value={p.value} checked={selected} onChange={() => setPath(p.value)} className="sr-only" />
+                <span
+                  className={cx("mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2", selected ? "border-brand" : "border-border")}
+                  aria-hidden
+                >
+                  {selected && <span className="h-3 w-3 rounded-full bg-brand" />}
+                </span>
+                <Icon size={30} strokeWidth={ICON_STROKE} className="shrink-0 text-text" aria-hidden />
+                <span>
+                  <span className="block text-row-title font-semibold text-text">{p.title}</span>
+                  {p.lines.map((line) => (
+                    <span key={line} className="block text-label text-text-muted">
+                      {line}
+                    </span>
+                  ))}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section label="Resources">
+        <div className="grid grid-cols-resources gap-5">
+          <Select id="teamSize" name="teamSize" label="Team size" defaultValue={String(draft.teamSize)} options={range(1, 10)} />
+          <Select id="hoursPerWeek" name="hoursPerWeek" label="Hours per week" defaultValue={String(draft.hoursPerWeek)} options={range(1, 10)} />
+          <Select
+            id="lengthWeeks"
+            name="lengthWeeks"
+            label="Length"
+            defaultValue={String(draft.lengthWeeks)}
+            options={range(1, 12, (n) => `${n} ${n === 1 ? "week" : "weeks"}`)}
+          />
+          <Select
+            id="difficulty"
+            name="difficulty"
+            label="Difficulty"
+            defaultValue={draft.difficulty}
+            options={[
+              { value: "EASY", label: "Easy" },
+              { value: "MODERATE", label: "Moderate" },
+              { value: "HARD", label: "Hard" },
+            ]}
+          />
+          <Field label="Target date" htmlFor="targetDate">
+            {/* The native date picker sits invisibly over a field that shows "26 November 2026". */}
+            <div className={cx(controlClass, "relative flex w-full items-center justify-between")}>
+              <span className={target ? "text-text" : "text-text-muted"}>{formatTarget(target)}</span>
+              <Calendar size={22} strokeWidth={ICON_STROKE} className="text-text" aria-hidden />
+              <input
+                id="targetDate"
+                name="targetDate"
+                type="date"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                onClick={(e) => e.currentTarget.showPicker?.()}
+                required
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+            </div>
+          </Field>
+        </div>
+        <div className="mt-5 flex items-center justify-end gap-5">
+          {state.error && <p className="text-label text-text-muted">{state.error}</p>}
+          <Button type="submit" variant="primary" arrow disabled={pending}>
+            Continue to AI review
+          </Button>
+        </div>
+      </Section>
+    </form>
+  );
+}

@@ -166,8 +166,8 @@ export function AskSpine({ open, onClose }: { open: boolean; onClose: () => void
       sentRef.current = true;
       setInput("");
       setBusy(true);
-      const replyId = `a-${Date.now()}`;
-      setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", text: message, actions: [] }, { id: replyId, role: "assistant", text: "", actions: [], activity: "Thinking" }]);
+      const replyId = `a-${crypto.randomUUID()}`;
+      setMessages((m) => [...m, { id: `u-${crypto.randomUUID()}`, role: "user", text: message, actions: [] }, { id: replyId, role: "assistant", text: "", actions: [], activity: "Thinking" }]);
       const update = (fn: (m: Msg) => Msg) => setMessages((all) => all.map((m) => (m.id === replyId ? fn(m) : m)));
 
       try {

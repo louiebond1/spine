@@ -73,7 +73,7 @@ Every variable is listed and explained in [.env.example](.env.example).
 
 1. Create a Railway project with a Postgres database and a service from this repo.
 2. Set the variables from `.env.example` on the service (`DATABASE_URL` comes from the Postgres plugin; leave `SPINE_TODAY` empty in production).
-3. Build and start commands are in `railway.json` (migrations run on start).
+3. Web service: build `npm run build`, start `npm run db:deploy && npm run seed:if-empty && npm start` (migrations run, and demo data loads on an empty database).
 4. Attach a volume and point `UPLOAD_DIR` at it so attachments survive redeploys.
-5. Add a second service from the same repo with start command `npm run job:daily` and cron schedule `*/15 * * * *` for auto-approvals and the Slack digest. Give it the same variables.
+5. Cron service from the same code: build `npm ci && npx prisma generate`, start `npm run job:daily:prod`, schedule `*/15 * * * *`, restart policy never. Its variables reference the web service (for example `${{spine-web.ANTHROPIC_API_KEY}}`).
 6. Optionally run `npm run seed` once from the Railway shell to load the demo data.

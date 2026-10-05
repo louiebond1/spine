@@ -71,7 +71,7 @@ Every variable is listed and explained in [.env.example](.env.example).
 
 ## Deploy (Railway)
 
-1. Create a Railway project with a Postgres database and a service from this repo.
+1. Create a Railway project with a Postgres database and a service from this repo. The live project deploys the `phase-1` branch automatically on every push.
 2. Set the variables from `.env.example` on the service (`DATABASE_URL` comes from the Postgres plugin; leave `SPINE_TODAY` empty in production).
 3. Web service: build `npm run build`, start `npm run db:deploy && npm run seed:if-empty && npm start` (migrations run, and demo data loads on an empty database).
 4. Attach a volume and point `UPLOAD_DIR` at it so attachments survive redeploys.

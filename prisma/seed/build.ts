@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { BuildPath, Difficulty, PrismaClient, ProjectEventType, ProjectStage } from "@prisma/client";
-import { parseZoned, zonedTime } from "../../src/lib/tz";
+import { addMonths, parseZoned, zonedParts, zonedTime } from "../../src/lib/tz";
 import { RESOLVED_TITLES } from "./data/resolved-titles";
 
 // All seed times are written as wall-clock times on the reference "today" in CLAUDE.md
@@ -19,7 +19,19 @@ const DAY = 24 * HOUR;
 const at = (wallClock: string) => new Date(parseZoned(wallClock).getTime() + SHIFT);
 const ago = (ms: number) => new Date(NOW.getTime() - ms);
 /** First day of a month as stored in ImpactLog. */
-const month = (year: number, m: number) => new Date(zonedTime(year, m, 1).getTime() + SHIFT);
+// Month-based data (hours saved, leaderboard periods) moves by whole calendar months, so
+// "this month" in the seed is always the real current month, whatever SPINE_TODAY is.
+const REF = zonedParts(REFERENCE);
+const NOW_PARTS = zonedParts(NOW);
+const MONTH_SHIFT = (NOW_PARTS.year - REF.year) * 12 + (NOW_PARTS.month - REF.month);
+const month = (year: number, m: number) => addMonths(zonedTime(year, m, 1), MONTH_SHIFT);
+/** Days available in a seeded month: the whole month, or only the days before today in the current month. */
+const daysIn = (year: number, m: number, fullDays: number) => {
+  const start = month(year, m);
+  const p = zonedParts(start);
+  const isCurrent = p.year === NOW_PARTS.year && p.month === NOW_PARTS.month;
+  return isCurrent ? Math.max(1, Math.min(fullDays, NOW_PARTS.day - 1)) : Math.min(fullDays, 28);
+};
 
 type Options = { allClear: boolean };
 
@@ -270,9 +282,10 @@ async function seedResolvedQuestions(db: PrismaClient) {
         titleIndex++;
         n++;
         // Spread across the month (1 to 6 Oct for October), at varied times of day.
-        const day = 1 + ((i * 7 + n) % period.days);
+        const day = 1 + ((i * 7 + n) % daysIn(period.year, period.month, period.days));
         const hour = 9 + ((i * 3 + n) % 8);
-        const resolvedAt = new Date(zonedTime(period.year, period.month, day, hour, (n * 13) % 60).getTime() + SHIFT);
+        const start = zonedParts(month(period.year, period.month));
+        const resolvedAt = zonedTime(start.year, start.month, day, hour, (n * 13) % 60);
         const postedAt = new Date(resolvedAt.getTime() - (3 + (n % 20)) * HOUR);
         const claimedAt = new Date(postedAt.getTime() + (20 + (n % 70)) * MIN);
         const askers = USER_IDS.filter((u) => u !== claimer);

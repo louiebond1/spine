@@ -1,0 +1,30 @@
+import { Shell } from "@/components/shell/Shell";
+import { db } from "@/server/db";
+import { getCurrentUser } from "@/server/session";
+import { getPulseItems } from "@/server/pulse/pulse";
+import { getNeedsYou } from "@/server/home/needsYou";
+import { rolesLine } from "@/lib/format";
+
+export const dynamic = "force-dynamic";
+
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
+  const [users, pulse, needsYou] = await Promise.all([
+    db.user.findMany({ orderBy: { createdAt: "asc" } }),
+    getPulseItems(),
+    getNeedsYou(user),
+  ]);
+  const toSwitcher = (u: typeof user) => ({ id: u.id, name: u.name, initials: u.initials, roles: rolesLine(u) });
+
+  return (
+    <Shell
+      user={toSwitcher(user)}
+      users={users.map(toSwitcher)}
+      isAdmin={user.isAdmin}
+      pulseCount={pulse.length}
+      bellItems={needsYou.map((n) => ({ key: n.key, title: n.title, reason: n.reason, href: n.action.href }))}
+    >
+      {children}
+    </Shell>
+  );
+}

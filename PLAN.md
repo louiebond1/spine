@@ -825,3 +825,49 @@ Grouped by how much they matter. **Bold = blocks matching a mockup or a rule.** 
 ---
 
 Once you answer (or say "use the defaults"), I'll update this file with the decisions and start Phase 1.
+
+---
+
+## 9. Decisions log
+
+**5 Oct 2026.** Louie went out and asked me to carry on autonomously, so Phase 1 was built on the `phase-1` branch using **the defaults in section 8 for every question**. Any of them can still be reversed. The ones that shaped Phase 1:
+
+- **Q1, Q2 (all clear seed):** in the all clear seed every open question is claimed, Contract Clause Checker has recent activity, Supplier Research Assistant was auto-approved on 30 Sep, and Knowledge Search Assistant went live on 2 Oct. Contract Clause Checker and Expense Review Assistant were auto-approved in both seeds so they don't count as "approved by Alex".
+- **Q4:** Alex is on the AI Invoice Assistant team (team size 4), so 08 shows an editable plan as Alex.
+- **Q5:** the sidebar role line leaves out Publishing specialist.
+- **Q9:** the logo uses a two-stop gradient; this adds one token, `logo-light`, used only by the logo.
+- **Q22:** the timezone is `SPINE_TIMEZONE` (default Europe/London). `SPINE_TODAY` is read as wall-clock time in that zone.
+- **Q31:** the clock is frozen when `SPINE_TODAY` is set.
+
+### Measured design tokens (Phase 1)
+
+The mockups render about 1.2x the brief's estimates. The visual check compares at 1536px, so the measured values are used.
+
+| Token | Brief estimate | Measured / used |
+| --- | --- | --- |
+| background | #F7F8FA | #FAFBFC |
+| border | #E6E8EE | #E6EAF1 |
+| text | #0F1733 | #0A0B3B (a deeper navy) |
+| text-muted | #6B7387 | #6F70A0 (lavender grey) |
+| brand | #1660FF | #005AFE |
+| brand-hover | #0F4FE0 | #004BE0 |
+| brand-soft | #EEF3FF | #E8F1FD |
+| neutral-soft | #F1F3F7 | #F1F2F5 |
+| live | #22C55E | #0BD46F |
+| logo-light | (none) | #00A2F8 (logo gradient only) |
+| Page date | 15px | 18px |
+| Headline | 40px semibold | 42px bold |
+| Section heading | 20px | 24px |
+| Row title | 17px | 20px |
+| Meta line | 15px | 18px |
+| Small label | 13px | 15px |
+| Uppercase label | 12px | 14px |
+| Button / input height | (not given) | 52px |
+| Sidebar width | about 280px | 284px |
+| Top bar height | (not given) | 82px |
+
+### Local environment notes
+
+- No Postgres or Docker on this machine, so `npm run db:local` runs Postgres from the `embedded-postgres` package on port 5433.
+- Port 3000 is used by another app here; the preview server picks a free port.
+- Codex: the repo is at `louiebond1/spine` (private). Connecting it to Codex needs Louie to authorise GitHub in Codex.

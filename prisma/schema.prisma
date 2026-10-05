@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- People ----------
+
+model User {
+  id                     String   @id @default(cuid())
+  name                   String
+  initials               String
+  isChampion             Boolean  @default(false)
+  isAdmin                Boolean  @default(false)
+  isPublishingSpecialist Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  questionsAsked     Question[]        @relation("QuestionAsker")
+  questionsClaimed   Question[]        @relation("QuestionClaimer")
+  questionMessages   QuestionMessage[]
+  questionEvents     QuestionEvent[]
+  projectsOwned      Project[]         @relation("ProjectOwner")
+  projectsApproved   Project[]         @relation("ProjectApprover")
+  projectsPublishing Project[]         @relation("ProjectPublisher")
+  teamMemberships    TeamMember[]
+  planSteps          PlanStep[]
+  projectMessages    ProjectMessage[]
+  projectEvents      ProjectEvent[]
+}
+
+model Topic {
+  id         String    @id @default(cuid())
+  name       String    @unique
+  archivedAt DateTime? // ADDED: "remove" hides it from pickers without breaking old questions/projects (Q19)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  questions Question[]
+  projects  Project[]
+}
+
+// ---------- Help Desk ----------
+
+enum QuestionStatus {
+  UNCLAIMED
+  IN_PROGRESS
+  RESOLVED
+}
+
+model Question {
+  id          String         @id @default(cuid())
+  title       String
+  body        String         // shown as the asker's first bubble in the thread; not counted as a reply
+  askerId     String         // always stored; never sent to any client when isAnonymous
+  isAnonymous Boolean        @default(false)
+  topicId     String
+  status      QuestionStatus @default(UNCLAIMED)
+  claimerId   String?
+  postedAt    DateTime
+  claimedAt   DateTime?
+  resolvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  asker    User              @relation("QuestionAsker", fields: [askerId], references: [id])
+  claimer  User?             @relation("QuestionClaimer", fields: [claimerId], references: [id])
+  topic    Topic             @relation(fields: [topicId], references: [id])
+  messages QuestionMessage[]
+  events   QuestionEvent[]
+
+  @@index([status, postedAt])
+  @@index([claimerId, resolvedAt])
+}
+
+model QuestionMessage {
+  id         String   @id @default(cuid())
+  questionId String
+  authorId   String
+  body       String
+  sentAt     DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  question    Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  author      User         @relation(fields: [authorId], references: [id])
+  attachments Attachment[]
+
+  @@index([questionId, sentAt])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  messageId  String
+  fileName   String
+  sizeBytes  Int
+  storageKey String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  message QuestionMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+enum QuestionEventType {
+  POSTED
+  CLAIMED
+  REPLIED
+  REPLIED_WITH_FILE
+  RESOLVED
+  REOPENED
+}
+
+model QuestionEvent {
+  id         String            @id @default(cuid())
+  questionId String
+  type       QuestionEventType
+  actorId    String
+  at         DateTime
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  actor    User     @relation(fields: [actorId], references: [id])
+
+  @@index([questionId, at])
+}
+
+// ---------- Ideas & Projects ----------
+
+enum BuildPath {
+  APP
+  COWORK_NATIVE
+}
+
+enum Difficulty {
+  EASY
+  MODERATE
+  HARD
+}
+
+enum ProjectStage {
+  IDEA        // draft, including returned ideas
+  APPROVAL
+  RECRUITING
+  BUILDING
+  PUBLISHING
+  LIVE
+}
+
+enum PlanStatus {   // ADDED: build plan is generated after the response; Plan tab needs to know (Q23)
+  NONE
+  GENERATING
+  READY
+  FAILED
+}
+
+model Project {
+  id                   String       @id @default(cuid())
+  title                String
+  problem              String
+  whoBenefits          String
+  topicId              String
+  buildPath            BuildPath
+  teamSize             Int
+  hoursPerWeek         Int
+  lengthWeeks          Int
+  difficulty           Difficulty
+  targetDate           DateTime
+  ownerId              String
+  stage                ProjectStage @default(IDEA)
+  submittedAt          DateTime?
+  autoApproveAt        DateTime?
+  approvedAt           DateTime?
+  approvedById         String?      // null + approvedAt set = auto-approved
+  returnNote           String?
+  publisherId          String?
+  publishingAssignedAt DateTime?    // ADDED: tie-break "assigned least recently" (rule I-11)
+  buildCompletedAt     DateTime?    // ADDED: Cowork-native needs to know it already built when in Approval
+  liveAt               DateTime?
+  lastActivityAt       DateTime
+  planStatus           PlanStatus   @default(NONE) // ADDED
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  topic      Topic            @relation(fields: [topicId], references: [id])
+  owner      User             @relation("ProjectOwner", fields: [ownerId], references: [id])
+  approvedBy User?            @relation("ProjectApprover", fields: [approvedById], references: [id])
+  publisher  User?            @relation("ProjectPublisher", fields: [publisherId], references: [id])
+  aiReview   AiReview?        @relation("ReviewOf")
+  relatedIn  AiReview[]       @relation("ReviewRelated")
+  team       TeamMember[]
+  steps      PlanStep[]
+  messages   ProjectMessage[]
+  events     ProjectEvent[]
+  impact     ImpactLog[]
+
+  @@index([stage, autoApproveAt])
+  @@index([stage, lastActivityAt])
+}
+
+model AiReview {
+  id                         String   @id @default(cuid())
+  projectId                  String   @unique // one current review per project; re-running replaces it
+  feasibility                Int
+  feasibilityReason          String
+  businessValue              Int
+  businessValueReason        String
+  resourcingConfidence       Int
+  resourcingConfidenceReason String
+  originality                Int
+  originalityReason          String
+  relatedProjectId           String?
+  raisedConcerns             Boolean  // true when any score <= 5; computed on the server, never by the model
+  completedAt                DateTime
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  project        Project  @relation("ReviewOf", fields: [projectId], references: [id], onDelete: Cascade)
+  relatedProject Project? @relation("ReviewRelated", fields: [relatedProjectId], references: [id], onDelete: SetNull)
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  joinedAt  DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+}
+
+model PlanStep {
+  id                 String    @id @default(cuid())
+  projectId          String
+  title              String
+  activePhrase       String    // e.g. "testing supplier cases"; written by Claude, or derived for manual steps (Q24)
+  assigneeId         String
+  dueDate            DateTime
+  done               Boolean   @default(false)
+  doneAt             DateTime?
+  order              Int
+  generatedFromBrief Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User    @relation(fields: [assigneeId], references: [id])
+
+  @@index([projectId, order])
+}
+
+model ProjectMessage {
+  id        String   @id @default(cuid())
+  projectId String
+  authorId  String?  // null for system messages
+  body      String
+  sentAt    DateTime
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User?   @relation(fields: [authorId], references: [id])
+
+  @@index([projectId, sentAt])
+}
+
+enum ProjectEventType {
+  CREATED
+  AI_REVIEWED
+  SUBMITTED
+  RETURNED
+  APPROVED
+  AUTO_APPROVED
+  JOINED
+  RECRUITED          // team full, moved to Building
+  PLAN_GENERATED
+  STEP_ADDED
+  STEP_EDITED
+  STEP_COMPLETED
+  STEP_REOPENED
+  BUILD_COMPLETED
+  PUBLISHER_ASSIGNED
+  WENT_LIVE
+  HOURS_LOGGED
+}
+
+model ProjectEvent {
+  id        String           @id @default(cuid())
+  projectId String
+  type      ProjectEventType
+  actorId   String?          // null for automatic events (auto-approve, publisher assignment)
+  detail    String?          // e.g. step title, return note summary
+  at        DateTime
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorId], references: [id])
+
+  @@index([projectId, at])
+}
+
+model ImpactLog {
+  id         String   @id @default(cuid())
+  projectId  String
+  month      DateTime // first day of the month, 00:00
+  hoursSaved Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, month])
+}
+
+// ---------- Settings (single row) ----------
+
+model Settings {
+  id                     String    @id @default("singleton")
+  approvalTimeoutDays    Int       @default(7)
+  stalledBuildDays       Int       @default(10)
+  unclaimedQuestionHours Int       @default(2)
+  digestChannel          String    @default("Slack")
+  digestTime             String    @default("09:00") // HH:mm
+  digestWeekdaysOnly     Boolean   @default(true)
+  hourlyCost             Decimal?  @db.Decimal(10, 2)
+  programmeCost          Decimal?  @db.Decimal(12, 2)
+  lastDigestSentOn       DateTime? // ADDED: stops the cron sending twice in one day
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+}

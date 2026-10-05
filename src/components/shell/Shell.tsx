@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { AskQuestionModal } from "@/features/help-desk/AskQuestionModal";
 import { Sidebar } from "./Sidebar";
 import { TopBar, type BellItem } from "./TopBar";
 import type { SwitcherUser } from "./UserMenu";
@@ -8,17 +10,21 @@ type Props = {
   isAdmin: boolean;
   pulseCount: number;
   bellItems: BellItem[];
+  topics: { id: string; name: string }[];
   children: React.ReactNode;
 };
 
 /** Sidebar, top bar and the centred content column used by every page. */
-export function Shell({ user, users, isAdmin, pulseCount, bellItems, children }: Props) {
+export function Shell({ user, users, isAdmin, pulseCount, bellItems, topics, children }: Props) {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar user={user} users={users} isAdmin={isAdmin} pulseCount={pulseCount} />
       <div className="pl-sidebar">
         <TopBar bellItems={bellItems} />
         <main className="px-10 pb-16 pt-6">{children}</main>
+        <Suspense>
+          <AskQuestionModal topics={topics} />
+        </Suspense>
       </div>
     </div>
   );

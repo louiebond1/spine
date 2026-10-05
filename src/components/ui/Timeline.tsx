@@ -11,8 +11,8 @@ export function Timeline({ items, tone = "muted" }: { items: TimelineItem[]; ton
           {i < items.length - 1 && <span className="absolute left-1 top-3 h-full w-px bg-border" aria-hidden />}
           <span className={cx("relative mt-2 h-3 w-3 shrink-0 rounded-full", tone === "brand" ? "bg-brand" : "bg-text-muted")} aria-hidden />
           <div>
-            <p className={cx("text-meta", tone === "brand" ? "text-text-muted" : "text-text")}>{item.text}</p>
-            {item.time && <p className="text-meta text-text-muted">{item.time}</p>}
+            <p className={cx(tone === "brand" ? "text-label text-text-muted" : "text-meta text-text")}>{item.text}</p>
+            {item.time && <p className={cx("text-text-muted", tone === "brand" ? "text-label" : "text-meta")}>{item.time}</p>}
           </div>
         </li>
       ))}

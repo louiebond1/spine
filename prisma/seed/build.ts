@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { BuildPath, Difficulty, PrismaClient, ProjectEventType, ProjectStage } from "@prisma/client";
 import { parseZoned, zonedTime } from "../../src/lib/tz";
 import { RESOLVED_TITLES } from "./data/resolved-titles";
@@ -46,6 +48,7 @@ export async function seed(db: PrismaClient, { allClear }: Options) {
   await db.settings.create({ data: { id: "singleton" } });
 
   await seedOpenQuestions(db, allClear);
+  await writeSeedAttachment();
   await seedResolvedQuestions(db);
   await seedProjects(db, allClear);
 }
@@ -239,6 +242,14 @@ async function seedOpenQuestions(db: PrismaClient, allClear: boolean) {
       { author: "u-louie", body: "Yes. Paste your notes and one email you've written before, and ask Claude to match its tone.", at: ago(21 * HOUR) },
     ],
   });
+}
+
+/** A small sample spreadsheet (CSV content) behind the seeded Sales_Data_Sample.xlsx attachment. */
+async function writeSeedAttachment() {
+  const dir = join(process.env.UPLOAD_DIR || "./uploads", "seed");
+  await mkdir(dir, { recursive: true });
+  const rows = ["Region,Month,Sales", "North,September,48200", "South,September,51900", "East,September,39750", "West,September,44100"];
+  await writeFile(join(dir, "Sales_Data_Sample.xlsx"), rows.join("\n"));
 }
 
 async function seedResolvedQuestions(db: PrismaClient) {

@@ -51,6 +51,19 @@ async function lockProject(tx: Tx, projectId: string) {
   await tx.$queryRaw`SELECT id FROM "Project" WHERE id = ${projectId} FOR UPDATE`;
 }
 
+/** People who accepted a "Start with Spine" invite join as soon as recruiting starts. */
+async function addAcceptedInvitees(tx: Tx, projectId: string, teamSize: number) {
+  const invites = await tx.projectInvite.findMany({ where: { projectId, status: "ACCEPTED" }, orderBy: { updatedAt: "asc" } });
+  for (const inv of invites) {
+    const count = await tx.teamMember.count({ where: { projectId } });
+    if (count >= teamSize) break;
+    const exists = await tx.teamMember.findUnique({ where: { projectId_userId: { projectId, userId: inv.userId } } });
+    if (exists) continue;
+    await tx.teamMember.create({ data: { projectId, userId: inv.userId, joinedAt: now() } });
+    await logEvent(tx, projectId, "JOINED", inv.userId, "Accepted invite");
+  }
+}
+
 async function ensureOwnerOnTeam(tx: Tx, projectId: string, ownerId: string) {
   await tx.teamMember.upsert({
     where: { projectId_userId: { projectId, userId: ownerId } },
@@ -76,6 +89,7 @@ export async function submit(projectId: string, actorId: string) {
     } else {
       await move(tx, p.id, "IDEA", { stage: "RECRUITING", submittedAt: t, returnNote: null });
       await ensureOwnerOnTeam(tx, p.id, p.ownerId);
+      await addAcceptedInvitees(tx, p.id, p.teamSize);
       startBuild = (await tx.teamMember.count({ where: { projectId } })) >= p.teamSize;
     }
     await logEvent(tx, p.id, "SUBMITTED", actorId);
@@ -101,6 +115,7 @@ export async function approve(projectId: string, approverId: string | null) {
       await move(tx, p.id, "APPROVAL", { stage: "RECRUITING", ...approval });
       await logEvent(tx, p.id, approverId ? "APPROVED" : "AUTO_APPROVED", approverId);
       await ensureOwnerOnTeam(tx, p.id, p.ownerId);
+      await addAcceptedInvitees(tx, p.id, p.teamSize);
       startBuild = (await tx.teamMember.count({ where: { projectId } })) >= p.teamSize;
     }
   });

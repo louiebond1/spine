@@ -203,6 +203,13 @@ model Project {
   impact     ImpactLog[]
   draftSteps DraftStep[]
   recommendations Recommendation[]
+  invites    ProjectInvite[]
+  /// From "Shape it with Spine": concrete use cases, success measure, MVP scope, estimated hours saved a month.
+  useCases       Json?
+  successMetric  String?
+  mvpScope       String?
+  laterScope     String?
+  hoursSavedEstimate Int?
   recommendationsAt DateTime?
   assistantThreads AssistantThread[]
 
@@ -451,4 +458,27 @@ model Recommendation {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, status])
+}
+
+// ---------- Invites (from "Start with Spine") ----------
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model ProjectInvite {
+  id          String       @id @default(cuid())
+  projectId   String
+  userId      String
+  invitedById String
+  status      InviteStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId, status])
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Page } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -58,6 +59,15 @@ export default async function ProposeIdeaPage({ searchParams }: { searchParams: 
   return (
     <Page>
       <PageHeader back={{ href: "/ideas", label: "Back to Ideas & Projects" }} title="Propose an idea" />
+      {!from && !opportunity && (
+        <p className="-mt-3 mb-5 text-meta text-text-muted">
+          Rather talk it through?{" "}
+          <Link href="/ideas/start" className="text-brand hover:text-brand-hover">
+            Start with Spine
+          </Link>{" "}
+          and it fills this in for you.
+        </p>
+      )}
       <ProposeForm draft={draft} topics={topics} />
     </Page>
   );

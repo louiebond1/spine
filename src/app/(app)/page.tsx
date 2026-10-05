@@ -1,4 +1,4 @@
-import { Box, FileText, MessageCircle } from "lucide-react";
+import { Box, FileText, MessageCircle, UserPlus } from "lucide-react";
 import { Page } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ActionList } from "@/features/home/ActionList";
@@ -9,7 +9,7 @@ import { getNeedsYou, type NeedsYouItem } from "@/server/home/needsYou";
 import { getYourWork } from "@/server/projects/queries";
 import { getCurrentUser } from "@/server/session";
 
-const ICONS = { approval: FileText, question: MessageCircle, publishing: Box } as const;
+const ICONS = { approval: FileText, question: MessageCircle, publishing: Box, invite: UserPlus } as const;
 
 function Reason({ reason }: { reason: NeedsYouItem["reason"] }) {
   return (
@@ -24,7 +24,7 @@ function Reason({ reason }: { reason: NeedsYouItem["reason"] }) {
 export default async function HomePage() {
   const user = await getCurrentUser();
   const needsYou = await getNeedsYou(user);
-  const work = await getYourWork(user, needsYou.filter((n) => n.kind !== "question").map((n) => n.targetId));
+  const work = await getYourWork(user, needsYou.filter((n) => n.kind !== "question" && n.kind !== "invite").map((n) => n.targetId));
   const n = needsYou.length;
 
   return (

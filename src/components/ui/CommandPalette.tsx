@@ -13,6 +13,7 @@ export type PaletteResults = { questions: PaletteItem[]; projects: PaletteItem[]
 const ACTIONS: PaletteItem[] = [
   { id: "action-ask", label: "Ask a question", href: "?ask=1" },
   { id: "action-propose", label: "Propose an idea", href: "/ideas/new" },
+  { id: "action-start", label: "Start with Spine", href: "/ideas/start" },
 ];
 
 const EMPTY: PaletteResults = { questions: [], projects: [], people: [] };

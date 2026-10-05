@@ -91,8 +91,12 @@ export async function getWorkspace(id: string, viewer: User) {
       draftSteps: { orderBy: { order: "asc" }, select: { id: true, title: true } },
     },
   });
-  // Drafts are private to their owner.
-  if (!p || (p.stage === "IDEA" && p.ownerId !== viewer.id)) return null;
+  // Drafts are private to their owner and the people they invited.
+  if (!p) return null;
+  if (p.stage === "IDEA" && p.ownerId !== viewer.id) {
+    const invited = await db.projectInvite.findFirst({ where: { projectId: id, userId: viewer.id, status: { not: "DECLINED" } } });
+    if (!invited) return null;
+  }
   return { ...p, summary: summarise(p, viewer) };
 }
 

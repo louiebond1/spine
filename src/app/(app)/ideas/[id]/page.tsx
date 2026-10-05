@@ -13,11 +13,12 @@ import { EmptyState } from "@/components/ui/States";
 import { NextActionLine } from "@/features/home/YourWork";
 import { PlanTab } from "@/features/ideas/PlanTab";
 import { DraftPlan } from "@/features/ideas/DraftPlan";
+import { ProjectBrief } from "@/features/ideas/ProjectBrief";
 import { SpineRecommends, type RecommendationView } from "@/features/ideas/SpineRecommends";
 import { db } from "@/server/db";
 import { canApply, type ActionKind } from "@/server/autopilot/engine";
 import { forecast, loadAutopilotProject } from "@/server/autopilot/signals";
-import { JoinButton, MarkLiveButton, ProjectComposer } from "@/features/ideas/WorkspaceTabs";
+import { InviteAnswer, JoinButton, MarkLiveButton, ProjectComposer } from "@/features/ideas/WorkspaceTabs";
 import { clockTime, dayMonth, longDate, shortDate, timeAgo } from "@/lib/format";
 import { startOfDay, zonedParts } from "@/lib/tz";
 import { now } from "@/server/clock";
@@ -80,7 +81,7 @@ function TimelineTab({ p, viewerId }: { p: Workspace; viewerId: string }) {
   );
 }
 
-function TeamTab({ p, canJoin }: { p: Workspace; canJoin: boolean }) {
+function TeamTab({ p, canJoin, invited }: { p: Workspace; canJoin: boolean; invited: { name: string; status: string }[] }) {
   const recruiting = p.stage === "RECRUITING" || (p.stage === "BUILDING" && p.team.length < p.teamSize);
   return (
     <Container
@@ -100,6 +101,15 @@ function TeamTab({ p, canJoin }: { p: Workspace; canJoin: boolean }) {
           />
         ))
       )}
+      {invited.map((i) => (
+        <Row
+          key={i.name}
+          density="compact"
+          leading={<Avatar initials={i.name.split(" ").map((w) => w[0]).join("")} />}
+          title={i.name}
+          trailing={<span className="text-meta text-text-muted">{i.status === "ACCEPTED" ? "Accepted, joins when recruiting starts" : "Invited"}</span>}
+        />
+      ))}
     </Container>
   );
 }
@@ -145,6 +155,12 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const canJoin = can.joinProject(user, p, p.team, p.teamSize);
   const canPublish = can.publish(user, p);
   const t = now();
+  const inviteRows = await db.projectInvite.findMany({ where: { projectId: p.id, status: { in: ["PENDING", "ACCEPTED"] } } });
+  const inviteUsers = await db.user.findMany({ where: { id: { in: inviteRows.map((i) => i.userId) } }, select: { id: true, name: true } });
+  const myInvite = inviteRows.find((i) => i.userId === user.id && i.status === "PENDING") ?? null;
+  const invitedPeople = inviteRows
+    .filter((i) => !p.team.some((m) => m.userId === i.userId))
+    .map((i) => ({ name: inviteUsers.find((u) => u.id === i.userId)?.name ?? "Someone", status: i.status }));
   // Spine Autopilot: forecast plus open and recently applied recommendations.
   const autopilot = await loadAutopilotProject(p.id);
   const fc = autopilot ? forecast(autopilot) : null;
@@ -204,6 +220,9 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         active={tab}
         tabs={TABS.map((key) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), href: `/ideas/${p.id}?tab=${key}` }))}
       />
+      {tab === "plan" && (
+        <ProjectBrief useCases={p.useCases} successMetric={p.successMetric} mvpScope={p.mvpScope} laterScope={p.laterScope} hoursSavedEstimate={p.hoursSavedEstimate} />
+      )}
       {tab === "plan" && ["IDEA", "APPROVAL", "RECRUITING"].includes(p.stage) && (
         <DraftPlan projectId={p.id} steps={p.draftSteps} canGenerate={p.ownerId === user.id} />
       )}
@@ -229,7 +248,8 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         />
       )}
       {tab === "chat" && <ChatTab p={p} viewerId={user.id} canPost={isTeam} />}
-      {tab === "team" && <TeamTab p={p} canJoin={canJoin} />}
+      {tab === "team" && myInvite && <InviteAnswer projectId={p.id} inviter={p.owner.name} />}
+      {tab === "team" && <TeamTab p={p} canJoin={canJoin && !myInvite} invited={invitedPeople} />}
       {tab === "timeline" && <TimelineTab p={p} viewerId={user.id} />}
     </Page>
   );

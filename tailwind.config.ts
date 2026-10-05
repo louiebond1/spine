@@ -79,6 +79,10 @@ const config: Config = {
         // Ideas & Projects List view: title, owner, stage, build path, next action.
         projects: "minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 2fr)",
       },
+      maxHeight: {
+        // Start with Spine coaching conversation.
+        coach: "60vh",
+      },
       maxWidth: {
         content: "1180px",
         narrow: "900px",

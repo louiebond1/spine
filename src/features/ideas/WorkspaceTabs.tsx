@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Composer } from "@/components/ui/Composer";
 import { joinProject, markLive, sendProjectMessage } from "@/server/projects/actions";
+import { respondToInvite } from "@/server/ideas/start-actions";
 
 export function ProjectComposer({ projectId }: { projectId: string }) {
   return <Composer onSend={(data) => sendProjectMessage(projectId, data)} />;
@@ -40,5 +41,32 @@ export function MarkLiveButton({ projectId }: { projectId: string }) {
     <Button variant="primary" arrow disabled={pending} onClick={() => start(() => markLive(projectId))}>
       Mark Live
     </Button>
+  );
+}
+
+export function InviteAnswer({ projectId, inviter }: { projectId: string; inviter: string }) {
+  const [pending, start] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const answer = (accept: boolean) =>
+    start(async () => {
+      const r = await respondToInvite(projectId, accept);
+      setMessage(r.message);
+      router.refresh();
+    });
+  return (
+    <div className="mb-5 flex items-center justify-between gap-6 rounded-container border border-brand-soft bg-surface px-6 py-4">
+      <p className="text-meta text-text">{message ?? `${inviter} invited you to join this project.`}</p>
+      {!message && (
+        <div className="flex items-center gap-4">
+          <Button variant="text" disabled={pending} onClick={() => answer(false)}>
+            Decline
+          </Button>
+          <Button disabled={pending} onClick={() => answer(true)}>
+            Accept
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -48,6 +48,7 @@ function NewMenu() {
       {open && (
         <div className="absolute right-0 top-full z-40 mt-2 w-60 rounded-container border border-border bg-surface py-2" role="menu">
           {[
+            { label: "Start with Spine", href: "/ideas/start" },
             { label: "Ask a question", href: "?ask=1" },
             { label: "Propose an idea", href: "/ideas/new" },
           ].map((item) => (

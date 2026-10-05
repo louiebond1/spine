@@ -12,6 +12,7 @@ import { NumberField } from "@/components/ui/NumberField";
 import { ErrorState, SkeletonRows, EmptyState } from "@/components/ui/States";
 import { controlClass } from "@/components/ui/Field";
 import { ICON_STROKE } from "@/components/ui/icons";
+import { MeetingNotes } from "./MeetingNotes";
 import { addStep, editStep, logHoursSaved, moveStep, retryBuildPlan, toggleStep } from "@/server/projects/actions";
 
 export type PlanStepView = {
@@ -209,9 +210,12 @@ export function PlanTab({ projectId, steps, team, canEdit, planStatus, stage, ho
               onCancel={() => setAdding(false)}
             />
           ) : (
-            <button type="button" onClick={() => setAdding(true)} className="py-3 text-meta font-medium text-brand hover:text-brand-hover">
-              + Add step
-            </button>
+            <div className="flex items-center gap-8">
+              <button type="button" onClick={() => setAdding(true)} className="py-3 text-meta font-medium text-brand hover:text-brand-hover">
+                + Add step
+              </button>
+              <MeetingNotes projectId={projectId} />
+            </div>
           )}
         </div>
       )}

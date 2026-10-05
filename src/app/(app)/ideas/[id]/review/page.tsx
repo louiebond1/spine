@@ -7,6 +7,7 @@ import { MetaLine } from "@/components/ui/MetaLine";
 import { Button } from "@/components/ui/Button";
 import { ReviewRunner } from "@/features/ideas/ReviewRunner";
 import { DraftPlan } from "@/features/ideas/DraftPlan";
+import { ProjectBrief } from "@/features/ideas/ProjectBrief";
 import { longDate, plural } from "@/lib/format";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
@@ -87,6 +88,10 @@ export default async function AiReviewPage({ params }: { params: Promise<{ id: s
       )}
 
       <p className="mt-6 text-label text-text-muted">These scores are advisory. They don&apos;t decide whether your idea is approved.</p>
+
+      <div className="mt-6">
+        <ProjectBrief useCases={p.useCases} successMetric={p.successMetric} mvpScope={p.mvpScope} laterScope={p.laterScope} hoursSavedEstimate={p.hoursSavedEstimate} />
+      </div>
 
       {r && (
         <div className="mt-6">

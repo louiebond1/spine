@@ -10,7 +10,7 @@ import { lastSpeakerIsAsker } from "../questions/waiting";
 
 export type NeedsYouItem = {
   key: string;
-  kind: "approval" | "question" | "publishing";
+  kind: "approval" | "question" | "publishing" | "invite";
   /** Project or question id, used to keep these out of "Your work". */
   targetId: string;
   title: string;
@@ -47,6 +47,14 @@ export const getNeedsYou = cache(async (user: User): Promise<NeedsYouItem[]> => 
     select: { id: true, title: true },
   });
 
+  // 4. Invites to join a project (from "Start with Spine").
+  const invites = await db.projectInvite.findMany({
+    where: { userId: user.id, status: "PENDING", project: { stage: { not: "LIVE" } } },
+    include: { project: { select: { id: true, title: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const inviters = await db.user.findMany({ where: { id: { in: invites.map((i) => i.invitedById) } }, select: { id: true, name: true } });
+
   return [
     ...approvals.map((p) => ({
       key: `approval-${p.id}`,
@@ -73,6 +81,14 @@ export const getNeedsYou = cache(async (user: User): Promise<NeedsYouItem[]> => 
       title: p.title,
       reason: { before: "Ready for you to publish" },
       action: { label: "Open", href: `/ideas/${p.id}` },
+    })),
+    ...invites.map((i) => ({
+      key: `invite-${i.id}`,
+      kind: "invite" as const,
+      targetId: i.project.id,
+      title: i.project.title,
+      reason: { before: `${inviters.find((u) => u.id === i.invitedById)?.name ?? "Someone"} invited you to join the team` },
+      action: { label: "Open", href: `/ideas/${i.project.id}?tab=team` },
     })),
   ];
 });

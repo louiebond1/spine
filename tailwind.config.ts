@@ -75,6 +75,8 @@ const config: Config = {
       gridTemplateColumns: {
         // Propose form RESOURCES row: four selects and a wider target date (04).
         resources: "repeat(4, minmax(0, 1fr)) 15rem",
+        // Ideas & Projects List view: title, owner, stage, build path, next action.
+        projects: "minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 2fr)",
       },
       maxWidth: {
         content: "1180px",

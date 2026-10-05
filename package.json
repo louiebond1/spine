@@ -13,7 +13,7 @@
     "db:deploy": "prisma migrate deploy",
     "seed": "tsx --env-file=.env prisma/seed/index.ts",
     "seed:all-clear": "tsx --env-file=.env prisma/seed/all-clear.ts",
-    "job:daily": "tsx --env-file=.env scripts/daily-job.ts"
+    "job:daily": "tsx --conditions=react-server --env-file=.env scripts/daily-job.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

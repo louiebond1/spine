@@ -26,7 +26,16 @@ export const briefSchema = z.object({
   difficulty: L.oneOf(["EASY", "MODERATE", "HARD"], "MODERATE"),
   targetDate: L.date(),
   people: z.array(L.text(60)).default([]).transform((a) => a.filter(Boolean).slice(0, 9)),
-  useCases: z.array(z.object({ who: L.text(80), scenario: L.text(400), outcome: L.text(200) })).default([]).transform((a) => a.slice(0, 4)),
+  useCases: z
+    .array(
+      z.preprocess(
+        (u) => {
+          const o = (u ?? {}) as Record<string, unknown>;
+          return { who: o.who ?? o.persona ?? o.role, scenario: o.scenario ?? o.moment ?? o.situation ?? o.story ?? o.description, outcome: o.outcome ?? o.result };
+        },
+        z.object({ who: L.text(80), scenario: L.text(400), outcome: L.text(200) }),
+      ),
+    ).default([]).transform((a) => a.slice(0, 4)),
   successMetric: L.text(240).default(""),
   mvpScope: L.text(400).default(""),
   laterScope: L.text(400).default(""),
@@ -48,7 +57,7 @@ const BRIEF_RULES = `Field rules:
 - teamSize, hoursPerWeek, lengthWeeks, difficulty: realistic for a small internal team. teamSize must be at least 1 plus the number of people named.
 - targetDate: yyyy-mm-dd in the future; use the date they gave, otherwise today plus lengthWeeks plus a week.
 - people: full names of colleagues they mentioned, matched to the people list (never the speaker). Empty if none.
-- useCases: 2 to 3 concrete scenarios, each with who, a specific moment ("Every Monday, a procurement analyst opens..."), and the outcome. Grounded in what they said.
+- useCases: 2 to 3 objects {"who","scenario","outcome"}: who is the person, scenario is the specific moment ("Every Monday, a procurement analyst opens..."), outcome is what changes for them. Grounded in what they said.
 - successMetric: one measurable sentence. mvpScope: the smallest useful first version. laterScope: what can wait. hoursSavedEstimate: honest hours saved per month across everyone once live.
 No em dashes. Never invent company facts beyond what they said; keep estimates modest.`;
 

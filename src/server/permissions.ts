@@ -42,7 +42,7 @@ export const can = {
   seeScores: (user: User, p: Pick<Project, "ownerId">) => p.ownerId === user.id,
 
   joinProject: (user: User, p: ProjectLike, team: { userId: string }[], teamSize: number) =>
-    p.stage === "RECRUITING" && team.length < teamSize && !team.some((m) => m.userId === user.id),
+    (p.stage === "RECRUITING" || p.stage === "BUILDING") && team.length < teamSize && !team.some((m) => m.userId === user.id),
 
   onTeam: (user: User, team: { userId: string }[]) => team.some((m) => m.userId === user.id),
 

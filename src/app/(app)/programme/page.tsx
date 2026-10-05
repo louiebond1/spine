@@ -10,6 +10,9 @@ import { PeriodSelect } from "@/components/ui/PeriodSelect";
 import { SegmentedToggle } from "@/components/ui/SegmentedToggle";
 import { EmptyState } from "@/components/ui/States";
 import { ValueChart } from "@/features/programme/ValueChart";
+import { PortfolioBrief, type PortfolioItem } from "@/features/programme/PortfolioBrief";
+import { db } from "@/server/db";
+import { canApply, type ActionKind } from "@/server/autopilot/engine";
 import { daysBetween, dayMonth, monthName, pageDate, plural } from "@/lib/format";
 import { PROGRAMME_PERIODS, programmeRange, type ProgrammePeriod } from "@/lib/periods";
 import { now } from "@/server/clock";
@@ -43,6 +46,27 @@ export default async function ProgrammePage({ searchParams }: { searchParams: Pr
   const range = programmeRange(period, t);
   const [wins, flags, series, settings] = await Promise.all([recentWins(range), bigFlags(), valueSeries(range), getSettings()]);
 
+  const recRows = await db.recommendation.findMany({
+    where: { status: "OPEN", project: { stage: { in: ["RECRUITING", "BUILDING"] } } },
+    include: { project: { include: { team: true, steps: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  // One per project (its top fix), at most five, so the brief stays a brief.
+  const seenProjects = new Set<string>();
+  const brief: PortfolioItem[] = recRows
+    .filter((r) => (seenProjects.has(r.projectId) ? false : (seenProjects.add(r.projectId), true)))
+    .slice(0, 5)
+    .map((r) => ({
+      id: r.id,
+      headline: r.headline,
+      reason: r.reason,
+      status: "OPEN",
+      canApply: canApply(user, r.project, r.kind as ActionKind),
+      canUndo: false,
+      appliedBy: null,
+      projectId: r.projectId,
+      projectTitle: r.project.title,
+    }));
   const hourlyCost = settings.hourlyCost ? Number(settings.hourlyCost) : null;
   const money = (n: number) => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(n);
   const showValue = mode === "value";
@@ -63,6 +87,7 @@ export default async function ProgrammePage({ searchParams }: { searchParams: Pr
         }
       />
       <div className="space-y-5">
+        <PortfolioBrief items={brief} />
         <Section label="Recent wins">
           {wins.length === 0 ? (
             <EmptyState className="py-3">Nothing went Live in this period.</EmptyState>

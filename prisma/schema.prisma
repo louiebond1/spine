@@ -202,6 +202,8 @@ model Project {
   events     ProjectEvent[]
   impact     ImpactLog[]
   draftSteps DraftStep[]
+  recommendations Recommendation[]
+  recommendationsAt DateTime?
   assistantThreads AssistantThread[]
 
   @@index([stage, autoApproveAt])
@@ -418,4 +420,35 @@ model Opportunity {
   projectId    String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+}
+
+// ---------- Spine Autopilot: actionable recommendations with undo ----------
+
+enum RecommendationStatus {
+  OPEN
+  APPLIED
+  DISMISSED
+  UNDONE
+}
+
+model Recommendation {
+  id          String               @id @default(cuid())
+  projectId   String
+  /// extend_target | add_team_spot | start_with_current_team | reassign_step | reschedule_overdue | nudge_team
+  kind        String
+  headline    String
+  reason      String
+  /// Parameters for the action, validated again when applied.
+  payload     Json
+  status      RecommendationStatus @default(OPEN)
+  appliedById String?
+  appliedAt   DateTime?
+  /// What to restore on undo.
+  undo        Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
 }

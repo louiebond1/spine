@@ -28,6 +28,9 @@ const TOOL_LABELS: Record<string, string> = {
   propose_add_step: "Preparing a plan step",
   propose_post_update: "Drafting an update",
   propose_ask_question: "Drafting a Help Desk question",
+  get_recommendations: "Checking Autopilot",
+  propose_recommendation: "Preparing a change",
+  propose_change: "Preparing a change",
 };
 
 const MAX_TURNS = 8;
@@ -50,6 +53,7 @@ async function systemPrompt(viewer: User, projectId: string | null) {
     `- For "how do I" questions about using AI at work, call search_knowledge first and build on what Champions already answered, linking the question (as a markdown link with its link path). If nothing relevant exists, answer from general knowledge and offer to post it to the Help Desk.`,
     `- You can't change anything yourself. To add a step, post an update or ask the Help Desk, call the matching propose_ tool; the user confirms with a button. Say so in one short sentence.`,
     `- Act like a calm, sharp project manager: lead with what to do next, flag risks (overdue steps, quiet builds, approvals about to auto-approve), keep it short.`,
+    `- You are also Spine Autopilot. For any project question, check get_recommendations and the forecast in get_project. When a fix would help, say it plainly as a question (for example: "It's forecast 6 days late. Do you want me to move the target to 2 Dec and re-space the steps?") and call propose_recommendation (or propose_change for a specific change the user asks for) in the same turn, so they can just say yes. Mention that it can be undone.`,
     `- When asked to nudge or unstick a team: read the project, name the overdue or next steps and who owns them, and propose_post_update a short, warm message that asks one clear question. Never guilt-trip.`,
     `- Plain English, short paragraphs or a few bullets. Markdown links to app paths like /ideas/<id> are fine. No headings, no tables, no em dashes, no emoji.`,
     `- Never reveal who asked an anonymous question, and never mention AI scores except the user's own ideas' scores when they ask.`,
@@ -69,7 +73,11 @@ async function fixtureReply(viewer: User, projectId: string | null, message: str
       await runTool("propose_add_step", { projectId, title: title.charAt(0).toUpperCase() + title.slice(1) }, viewer, propose);
       text = `I've drafted that step. Confirm it below and I'll add it to the plan.`;
     } else {
-      text = `${data.title} is in ${data.stage}. ${data.next ?? ""}\n\n${open.length ? `${open.length} steps are still open${overdue.length ? `, and ${overdue.length} ${overdue.length === 1 ? "is" : "are"} overdue: ${overdue.map((s) => s.title).join(", ")}` : ""}.` : "Every step is done."}`;
+      emit({ type: "tool", label: TOOL_LABELS.get_recommendations! });
+      const recs = JSON.parse(await runTool("get_recommendations", { projectId }, viewer, propose)) as { id: string; headline: string; reason: string; userCanApply: boolean }[];
+      const top = recs.find((r) => r.userCanApply);
+      if (top) await runTool("propose_recommendation", { recommendationId: top.id }, viewer, propose);
+      text = `${data.title} is in ${data.stage}. ${data.next ?? ""}\n\n${open.length ? `${open.length} steps are still open${overdue.length ? `, and ${overdue.length} ${overdue.length === 1 ? "is" : "are"} overdue: ${overdue.map((s) => s.title).join(", ")}` : ""}.` : "Every step is done."}${top ? `\n\n${top.reason} Do you want me to ${top.headline.charAt(0).toLowerCase()}${top.headline.slice(1)}? You can undo it.` : ""}`;
     }
   } else {
     emit({ type: "tool", label: TOOL_LABELS.get_my_overview! });

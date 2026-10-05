@@ -146,13 +146,14 @@ export async function join(projectId: string, userId: string) {
     // Lock first so two people can't both take the last place.
     await lockProject(tx, projectId);
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId }, include: { team: true } });
-    if (p.stage !== "RECRUITING") throw new Error("This project isn't recruiting.");
+    if (p.stage !== "RECRUITING" && p.stage !== "BUILDING") throw new Error("This project isn't taking new members.");
     if (p.team.length >= p.teamSize) throw new Error("This team is full.");
     if (p.team.some((m) => m.userId === userId)) return;
     await tx.teamMember.create({ data: { projectId, userId, joinedAt: now() } });
     await logEvent(tx, projectId, "JOINED", userId);
     await touch(tx, projectId);
-    full = p.team.length + 1 >= p.teamSize;
+    // Joining an open spot during Building just adds the person; the plan is already running.
+    full = p.stage === "RECRUITING" && p.team.length + 1 >= p.teamSize;
   });
   if (full) await startBuilding(projectId);
 }

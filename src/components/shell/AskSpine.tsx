@@ -64,7 +64,9 @@ function RichText({ text }: { text: string }) {
 function describe(a: ProposedAction) {
   if (a.kind === "add_step") return { title: `Add a step to ${a.projectTitle}`, body: `${a.title} · ${a.assigneeName} · due ${new Date(a.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` };
   if (a.kind === "post_update") return { title: `Post in ${a.projectTitle} chat`, body: a.message };
-  return { title: `Ask the Help Desk (${a.topicName})`, body: `${a.title}\n\n${a.details}` };
+  if (a.kind === "ask_question") return { title: `Ask the Help Desk (${a.topicName})`, body: `${a.title}\n\n${a.details}` };
+  if (a.kind === "recommendation") return { title: `${a.headline}`, body: `${a.projectTitle} · ${a.reason}` };
+  return { title: a.headline, body: `${a.projectTitle} · Spine can undo this from the project page.` };
 }
 
 function ActionCard({ action, state, onDone }: { action: ProposedAction; state?: ActionState[string]; onDone: (s: ActionState[string]) => void }) {
@@ -159,15 +161,33 @@ export function AskSpine({ open, onClose }: { open: boolean; onClose: () => void
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  const pendingAction = () => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]!;
+      if (m.role === "user") return null;
+      const open = [...m.actions].reverse().find((a) => !actionState[a.id]);
+      if (open) return open;
+    }
+    return null;
+  };
+
   const send = useCallback(
     async (text: string) => {
-      const message = text.trim();
+      let message = text.trim();
+      const shown = message;
       if (!message || busy) return;
+      const pending = /^(yes|yep|yeah|yup|do it|go ahead|sure|ok|okay|please do|confirm|go for it)\b/i.test(message) ? pendingAction() : null;
+      if (pending) {
+        const r = await confirmAssistantAction(pending);
+        setActionState((all) => ({ ...all, [pending.id]: { status: r.ok ? "done" : "failed", message: r.message, href: r.href } }));
+        // Tell Spine what happened so the conversation carries on naturally.
+        message = `${message}\n\n(Spine applied it: ${r.message})`;
+      }
       sentRef.current = true;
       setInput("");
       setBusy(true);
       const replyId = `a-${crypto.randomUUID()}`;
-      setMessages((m) => [...m, { id: `u-${crypto.randomUUID()}`, role: "user", text: message, actions: [] }, { id: replyId, role: "assistant", text: "", actions: [], activity: "Thinking" }]);
+      setMessages((m) => [...m, { id: `u-${crypto.randomUUID()}`, role: "user", text: shown, actions: [] }, { id: replyId, role: "assistant", text: "", actions: [], activity: "Thinking" }]);
       const update = (fn: (m: Msg) => Msg) => setMessages((all) => all.map((m) => (m.id === replyId ? fn(m) : m)));
 
       try {
@@ -210,7 +230,8 @@ export function AskSpine({ open, onClose }: { open: boolean; onClose: () => void
         router.refresh();
       }
     },
-    [busy, threadId, projectId, router],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [busy, threadId, projectId, router, messages, actionState],
   );
 
   if (!open) return null;

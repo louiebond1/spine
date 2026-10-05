@@ -13,6 +13,10 @@ import { EmptyState } from "@/components/ui/States";
 import { NextActionLine } from "@/features/home/YourWork";
 import { PlanTab } from "@/features/ideas/PlanTab";
 import { DraftPlan } from "@/features/ideas/DraftPlan";
+import { SpineRecommends, type RecommendationView } from "@/features/ideas/SpineRecommends";
+import { db } from "@/server/db";
+import { canApply, type ActionKind } from "@/server/autopilot/engine";
+import { forecast, loadAutopilotProject } from "@/server/autopilot/signals";
 import { JoinButton, MarkLiveButton, ProjectComposer } from "@/features/ideas/WorkspaceTabs";
 import { clockTime, dayMonth, longDate, shortDate, timeAgo } from "@/lib/format";
 import { startOfDay, zonedParts } from "@/lib/tz";
@@ -77,7 +81,7 @@ function TimelineTab({ p, viewerId }: { p: Workspace; viewerId: string }) {
 }
 
 function TeamTab({ p, canJoin }: { p: Workspace; canJoin: boolean }) {
-  const recruiting = p.stage === "RECRUITING";
+  const recruiting = p.stage === "RECRUITING" || (p.stage === "BUILDING" && p.team.length < p.teamSize);
   return (
     <Container
       heading={recruiting ? `${p.team.length} of ${p.teamSize} people` : undefined}
@@ -141,6 +145,25 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const canJoin = can.joinProject(user, p, p.team, p.teamSize);
   const canPublish = can.publish(user, p);
   const t = now();
+  // Spine Autopilot: forecast plus open and recently applied recommendations.
+  const autopilot = await loadAutopilotProject(p.id);
+  const fc = autopilot ? forecast(autopilot) : null;
+  const recRows = await db.recommendation.findMany({
+    where: { projectId: p.id, OR: [{ status: "OPEN" }, { status: "APPLIED", appliedAt: { gte: new Date(t.getTime() - 24 * 3_600_000) } }] },
+    orderBy: [{ status: "asc" }, { createdAt: "asc" }],
+    take: 5,
+  });
+  const appliers = await db.user.findMany({ where: { id: { in: recRows.map((r) => r.appliedById).filter((x): x is string => !!x) } }, select: { id: true, name: true } });
+  const steerable = { ...p, team: p.team.map((m) => ({ ...m })), steps: p.steps };
+  const recs: RecommendationView[] = recRows.map((r) => ({
+    id: r.id,
+    headline: r.headline,
+    reason: r.reason,
+    status: r.status === "APPLIED" ? "APPLIED" : "OPEN",
+    canApply: canApply(user, steerable, r.kind as ActionKind),
+    canUndo: r.status === "APPLIED" && !!r.undo && canApply(user, steerable, r.kind as ActionKind),
+    appliedBy: appliers.find((a) => a.id === r.appliedById)?.name ?? null,
+  }));
   const defaultDue = iso(new Date(Math.min(p.targetDate.getTime(), t.getTime() + 7 * 86_400_000)));
 
   return (
@@ -157,9 +180,24 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         <Stepper steps={order.map((s) => STAGE_LABEL[s])} current={p.stage === "LIVE" ? order.length : order.indexOf(p.stage)} />
       </div>
       <div className="mb-7 flex min-h-control items-center justify-between gap-6">
-        <NextActionLine next={p.summary.next} strong />
+        <div>
+          <NextActionLine next={p.summary.next} strong />
+          {fc && (
+            <p className="mt-1 text-label text-text-muted">
+              Forecast at the current pace:{" "}
+              {fc.daysLate > 0 ? (
+                <>
+                  <strong className="font-semibold text-text">about {fc.daysLate} {fc.daysLate === 1 ? "day" : "days"} late</strong> ({shortDate(fc.finishDate)})
+                </>
+              ) : (
+                <>on track, finishing around {shortDate(fc.finishDate)}</>
+              )}
+            </p>
+          )}
+        </div>
         {canPublish && <MarkLiveButton projectId={p.id} />}
       </div>
+      {["RECRUITING", "BUILDING"].includes(p.stage) && <SpineRecommends projectId={p.id} recs={recs} />}
       <Tabs
         bordered
         className="mb-5"

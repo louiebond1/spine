@@ -27,8 +27,10 @@ export const can = {
   postInThread: (user: User, q: QuestionLike) =>
     q.status !== "RESOLVED" && (q.askerId === user.id || (q.claimerId !== null && q.claimerId === user.id)),
 
+  // The asker can also close an unclaimed question when Spine's instant answer solved it.
   resolveQuestion: (user: User, q: QuestionLike) =>
-    q.status === "IN_PROGRESS" && (q.askerId === user.id || q.claimerId === user.id),
+    (q.status === "IN_PROGRESS" && (q.askerId === user.id || q.claimerId === user.id)) ||
+    (q.status === "UNCLAIMED" && q.askerId === user.id),
 
   readThread: (user: User, q: QuestionLike) =>
     q.status !== "IN_PROGRESS" || q.askerId === user.id || q.claimerId === user.id,

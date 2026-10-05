@@ -112,9 +112,15 @@ export async function getThread(id: string, viewer: User) {
   const dto = toQuestionDTO({ ...q, messages: q.messages.slice(-1) }, viewer);
   const displayAuthor = (u: User): Person => (q.isAnonymous && u.id === q.askerId ? ANONYMOUS : person(u));
 
+  const sources = q.aiAnswerSources.length
+    ? await db.question.findMany({ where: { id: { in: q.aiAnswerSources } }, select: { id: true, title: true } })
+    : [];
+
   return {
     question: dto,
     body: q.body,
+    suggested: q.aiAnswer ? { text: q.aiAnswer, sources: sources.map((s) => ({ id: s.id, title: s.title, href: `/help-desk/${s.id}` })) } : null,
+    askerCanAccept: q.status === "UNCLAIMED" && q.askerId === viewer.id,
     readable: can.readThread(viewer, q),
     canPost: can.postInThread(viewer, q),
     canResolve: can.resolveQuestion(viewer, q),

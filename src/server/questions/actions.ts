@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { generateSuggestedAnswer } from "../ai/answer";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { now } from "../clock";
@@ -41,8 +42,23 @@ export async function askQuestion(input: z.input<typeof askSchema>): Promise<Ask
       events: { create: { type: "POSTED", actorId: user.id, at: t } },
     },
   });
+  // Spine's instant answer is drafted when the asker lands on the thread (runSuggestedAnswer).
   revalidatePath("/", "layout");
   return { ok: true, id: q.id };
+}
+
+/** Lazy instant answer for questions that don't have one yet (for example seeded ones). */
+export async function runSuggestedAnswer(questionId: string): Promise<{ ok: boolean }> {
+  const user = await getCurrentUser();
+  const q = await db.question.findUnique({ where: { id: questionId } });
+  assert(!!q && can.readThread(user, q));
+  if (q.aiAnswer || q.status === "RESOLVED") return { ok: true };
+  try {
+    await generateSuggestedAnswer(questionId);
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
 }
 
 /**

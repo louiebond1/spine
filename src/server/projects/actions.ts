@@ -6,7 +6,7 @@ import { z } from "zod";
 import { parseZoned, startOfMonth } from "@/lib/tz";
 import { firstName } from "@/lib/format";
 import { runAiReview } from "../ai/review";
-import { generateBuildPlan, phraseForStep } from "../ai/buildPlan";
+import { generateBuildPlan, generateDraftPlan, phraseForStep } from "../ai/buildPlan";
 import { now } from "../clock";
 import { db } from "../db";
 import { assert, can } from "../permissions";
@@ -55,6 +55,7 @@ export async function saveDraft(_prev: ProposeState, form: FormData): Promise<Pr
       db.project.update({ where: { id }, data: { ...rest, topicId: topic.id, targetDate: target, lastActivityAt: now() } }),
       // Edited ideas get a fresh review.
       db.aiReview.deleteMany({ where: { projectId: id } }),
+      db.draftStep.deleteMany({ where: { projectId: id } }),
     ]);
   } else {
     const p = await db.project.create({
@@ -267,4 +268,17 @@ export async function logHoursSaved(projectId: string, hours: number): Promise<{
   });
   refresh();
   return {};
+}
+
+/** Draft plan shown at proposal time (owner only, and only before building starts). */
+export async function runDraftPlan(projectId: string): Promise<{ ok: boolean }> {
+  const user = await getCurrentUser();
+  const p = await db.project.findUnique({ where: { id: projectId } });
+  assert(!!p && p.ownerId === user.id && ["IDEA", "APPROVAL", "RECRUITING"].includes(p.stage));
+  try {
+    await generateDraftPlan(projectId);
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
 }

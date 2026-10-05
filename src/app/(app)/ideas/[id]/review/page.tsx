@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/Container";
 import { MetaLine } from "@/components/ui/MetaLine";
 import { Button } from "@/components/ui/Button";
 import { ReviewRunner } from "@/features/ideas/ReviewRunner";
+import { DraftPlan } from "@/features/ideas/DraftPlan";
 import { longDate, plural } from "@/lib/format";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
@@ -40,7 +41,11 @@ export default async function AiReviewPage({ params }: { params: Promise<{ id: s
   const user = await getCurrentUser();
   const p = await db.project.findUnique({
     where: { id },
-    include: { topic: true, aiReview: { include: { relatedProject: { select: { id: true, title: true } } } } },
+    include: {
+      topic: true,
+      aiReview: { include: { relatedProject: { select: { id: true, title: true } } } },
+      draftSteps: { orderBy: { order: "asc" }, select: { id: true, title: true } },
+    },
   });
   // Not found for anyone else, so the page doesn't reveal that scores exist.
   if (!p || !can.seeScores(user, p)) notFound();
@@ -82,6 +87,12 @@ export default async function AiReviewPage({ params }: { params: Promise<{ id: s
       )}
 
       <p className="mt-6 text-label text-text-muted">These scores are advisory. They don&apos;t decide whether your idea is approved.</p>
+
+      {r && (
+        <div className="mt-6">
+          <DraftPlan projectId={p.id} steps={p.draftSteps} canGenerate={["IDEA", "APPROVAL", "RECRUITING"].includes(p.stage)} />
+        </div>
+      )}
 
       {isDraft && (
         <div className="mt-5 flex justify-end gap-5">

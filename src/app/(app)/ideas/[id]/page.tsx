@@ -12,6 +12,7 @@ import { ChatMessage } from "@/components/ui/ChatMessage";
 import { EmptyState } from "@/components/ui/States";
 import { NextActionLine } from "@/features/home/YourWork";
 import { PlanTab } from "@/features/ideas/PlanTab";
+import { DraftPlan } from "@/features/ideas/DraftPlan";
 import { JoinButton, MarkLiveButton, ProjectComposer } from "@/features/ideas/WorkspaceTabs";
 import { clockTime, dayMonth, longDate, shortDate, timeAgo } from "@/lib/format";
 import { startOfDay, zonedParts } from "@/lib/tz";
@@ -165,7 +166,10 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
         active={tab}
         tabs={TABS.map((key) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), href: `/ideas/${p.id}?tab=${key}` }))}
       />
-      {tab === "plan" && (
+      {tab === "plan" && ["IDEA", "APPROVAL", "RECRUITING"].includes(p.stage) && (
+        <DraftPlan projectId={p.id} steps={p.draftSteps} canGenerate={p.ownerId === user.id} />
+      )}
+      {tab === "plan" && !["IDEA", "APPROVAL", "RECRUITING"].includes(p.stage) && (
         <PlanTab
           projectId={p.id}
           stage={p.stage}

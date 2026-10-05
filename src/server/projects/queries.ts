@@ -88,6 +88,7 @@ export async function getWorkspace(id: string, viewer: User) {
       steps: { include: { assignee: true }, orderBy: { order: "asc" } },
       messages: { include: { author: true }, orderBy: [{ sentAt: "asc" }, { createdAt: "asc" }] },
       events: { include: { actor: true }, orderBy: [{ at: "desc" }, { createdAt: "desc" }] },
+      draftSteps: { orderBy: { order: "asc" }, select: { id: true, title: true } },
     },
   });
   // Drafts are private to their owner.

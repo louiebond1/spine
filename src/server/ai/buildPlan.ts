@@ -53,7 +53,10 @@ export async function generateBuildPlan(projectId: string) {
   if (team.length === 0) return;
 
   try {
-    const plan = fixturesEnabled()
+    const drafts = await db.draftStep.findMany({ where: { projectId }, orderBy: { order: "asc" } });
+    const plan: Plan = drafts.length
+      ? { steps: drafts.map((d, i) => ({ title: d.title, activePhrase: d.activePhrase, assigneeId: team[i % team.length]!.id })) }
+      : fixturesEnabled()
       ? fixture(team)
       : await askClaudeForJson({
           system: SYSTEM,
@@ -114,4 +117,52 @@ export async function phraseForStep(title: string): Promise<string> {
   } catch {
     return fallback;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Draft plan at proposal time: steps without people or dates, so the owner can see
+// how the idea would be built straight away. Assigned when the team is complete.
+// ---------------------------------------------------------------------------
+
+const draftSchema = z.object({
+  steps: z
+    .array(z.object({ title: z.string().min(3).max(120), activePhrase: z.string().min(3).max(60) }))
+    .min(6)
+    .max(10),
+});
+
+const DRAFT_SYSTEM = `You write build plans for small internal AI projects. Write 6 to 10 concrete steps in order, from understanding the problem to preparing for publishing, specific to this idea (not generic).
+Each step has:
+- title: a short imperative task, under 8 words, sentence case
+- activePhrase: the same task as a short present-tense phrase that completes "Jamie is ...", lower case, under 6 words
+No em dashes. JSON shape: {"steps":[{"title":"","activePhrase":""}]}`;
+
+export async function generateDraftPlan(projectId: string) {
+  const p = await db.project.findUniqueOrThrow({ where: { id: projectId }, include: { topic: true } });
+  const plan = fixturesEnabled()
+    ? { steps: fixture([{ id: "x" }]).steps.map(({ title, activePhrase }) => ({ title, activePhrase })) }
+    : await askClaudeForJson({
+        system: DRAFT_SYSTEM,
+        schema: draftSchema,
+        prompt: [
+          `Project: ${p.title}`,
+          `Problem: ${p.problem}`,
+          `Who benefits: ${p.whoBenefits}`,
+          `Topic: ${p.topic.name}`,
+          `Build path: ${p.buildPath === "APP" ? "App (needs infrastructure, hosting or admin access)" : "Cowork-native (built within approved workplace tools)"}`,
+          `Team: ${p.teamSize} people, ${p.hoursPerWeek} hours a week each, ${p.lengthWeeks} weeks, difficulty ${p.difficulty.toLowerCase()}`,
+        ].join("\n"),
+      });
+  const clean = (t: string) => t.replace(new RegExp(String.fromCharCode(0x2014), "g"), ",");
+  await db.$transaction([
+    db.draftStep.deleteMany({ where: { projectId } }),
+    db.draftStep.createMany({
+      data: plan.steps.map((st, i) => ({
+        projectId,
+        title: clean(st.title),
+        activePhrase: clean(st.activePhrase).replace(/\.$/, "").toLowerCase(),
+        order: i,
+      })),
+    }),
+  ]);
 }

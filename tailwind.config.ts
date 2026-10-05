@@ -70,6 +70,7 @@ const config: Config = {
         avatar: "40px",
         "avatar-sm": "32px",
         rail: "296px",
+        panel: "420px",
         "step-title": "420px",
       },
       gridTemplateColumns: {

@@ -6,6 +6,7 @@ import { Timeline } from "@/components/ui/Timeline";
 import { EmptyState } from "@/components/ui/States";
 import { ClaimButton } from "@/features/help-desk/ClaimButton";
 import { ThreadComposer } from "@/features/help-desk/ThreadActions";
+import { SuggestedAnswer } from "@/features/help-desk/SuggestedAnswer";
 import { plural, shortDate, timeAgo } from "@/lib/format";
 import { now } from "@/server/clock";
 import { getThread } from "@/server/questions/queries";
@@ -47,6 +48,12 @@ export default async function QuestionThreadPage({ params }: { params: Promise<{
                 time={timeAgo(q.postedAt, t)}
                 body={thread.body}
                 mine={q.askedByViewer}
+              />
+              <SuggestedAnswer
+                questionId={q.id}
+                suggested={thread.suggested}
+                askerCanAccept={thread.askerCanAccept}
+                generate={q.status !== "RESOLVED"}
               />
               {thread.messages.map((m) => (
                 <ChatMessage

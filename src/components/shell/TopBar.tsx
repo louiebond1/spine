@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronDown, Plus, Search } from "lucide-react";
+import { Bell, ChevronDown, Plus, Search, Sparkles } from "lucide-react";
+import { AskSpine } from "./AskSpine";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { ICON_STROKE } from "@/components/ui/icons";
 
@@ -97,6 +98,7 @@ function BellMenu({ items }: { items: BellItem[] }) {
 
 export function TopBar({ bellItems }: { bellItems: BellItem[] }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [spineOpen, setSpineOpen] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -125,11 +127,21 @@ export function TopBar({ bellItems }: { bellItems: BellItem[] }) {
           </span>
         </button>
       </div>
-      <div className="ml-auto flex items-center gap-11 pl-8">
+      <div className="ml-auto flex items-center gap-8 pl-8">
+        <button
+          type="button"
+          onClick={() => setSpineOpen(!spineOpen)}
+          aria-expanded={spineOpen}
+          className="inline-flex h-10 items-center gap-2 rounded-control px-3 text-meta font-medium text-brand hover:bg-brand-soft"
+        >
+          <Sparkles size={18} strokeWidth={ICON_STROKE} aria-hidden />
+          Ask Spine
+        </button>
         <NewMenu />
         <BellMenu items={bellItems} />
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <AskSpine open={spineOpen} onClose={() => setSpineOpen(false)} />
     </header>
   );
 }

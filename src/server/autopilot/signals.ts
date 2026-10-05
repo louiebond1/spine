@@ -23,7 +23,7 @@ export async function loadAutopilotProject(projectId: string) {
       owner: true,
       team: { include: { user: true }, orderBy: { joinedAt: "asc" } },
       steps: { include: { assignee: true }, orderBy: { order: "asc" } },
-      events: { where: { type: { in: ["RECRUITED", "APPROVED", "AUTO_APPROVED", "JOINED", "SUBMITTED"] } }, orderBy: { at: "asc" } },
+      events: { where: { type: { in: ["RECRUITED", "APPROVED", "AUTO_APPROVED", "FAST_TRACKED", "JOINED", "SUBMITTED"] } }, orderBy: { at: "asc" } },
     },
   });
 }
@@ -59,7 +59,7 @@ export function signals(p: AutopilotProject, stalledBuildDays: number) {
   const ranked = [...load.entries()].sort((a, b) => b[1] - a[1]);
   const busiest = ranked[0];
   const idlest = ranked[ranked.length - 1];
-  const lastJoin = [...p.events].reverse().find((e) => e.type === "JOINED" || e.type === "SUBMITTED" || e.type === "APPROVED" || e.type === "AUTO_APPROVED");
+  const lastJoin = [...p.events].reverse().find((e) => e.type === "JOINED" || e.type === "SUBMITTED" || e.type === "APPROVED" || e.type === "AUTO_APPROVED" || e.type === "FAST_TRACKED");
 
   return {
     forecast: forecast(p),

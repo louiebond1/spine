@@ -57,8 +57,9 @@ await mia.goto(base, { waitUntil: "networkidle" });
 check((await mia.locator("main").innerText()).includes("invited you to join the team"), "Mia's Home lists the invite");
 await mia.goto(`${ideaUrl}?tab=team`, { waitUntil: "networkidle" });
 await mia.getByRole("button", { name: "Accept" }).click();
-await mia.getByText(/You're in|You've joined/).waitFor({ timeout: 10000 });
-check(true, "Mia accepted the invite");
+await mia.getByRole("button", { name: "Accept" }).waitFor({ state: "detached", timeout: 10000 });
+await mia.reload({ waitUntil: "networkidle" });
+check((await mia.locator("main").innerText()).includes("Accepted, joins when recruiting starts"), "Mia accepted the invite");
 
 // 3. Meeting notes on AI Invoice Assistant as Jamie.
 const jamie = await as("u-jamie");

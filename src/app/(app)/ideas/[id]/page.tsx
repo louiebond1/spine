@@ -42,6 +42,8 @@ const EVENT_TEXT: Record<ProjectEventType, (actor: string, detail: string | null
   RETURNED: (a) => `${a} returned it with a note`,
   APPROVED: (a) => `${a} approved it`,
   AUTO_APPROVED: () => "Auto-approved",
+  PARTIALLY_APPROVED: (a, d) => `${a} approved${d ? ` (${d})` : ""}`,
+  FAST_TRACKED: (_a, d) => d ?? "Fast-tracked",
   JOINED: (a) => `${a} joined the team`,
   RECRUITED: () => "Team complete, building started",
   PLAN_GENERATED: () => "Build plan generated from the project brief",

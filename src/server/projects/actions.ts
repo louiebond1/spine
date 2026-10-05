@@ -107,16 +107,17 @@ export async function submitIdea(projectId: string) {
 export async function approveIdea(projectId: string) {
   const user = await getCurrentUser();
   const p = await db.project.findUnique({ where: { id: projectId } });
-  assert(!!p && can.approve(user, p), "Only an admin can approve this.");
-  await lifecycle.approve(projectId, user.id);
+  const already = p ? await db.projectApproval.findUnique({ where: { projectId_userId: { projectId, userId: user.id } } }) : null;
+  assert(!!p && can.approve(user, p) && !already, "You can't approve this.");
+  const r = await lifecycle.recordApproval(projectId, user.id);
   refresh();
-  redirect(`/ideas/${projectId}`);
+  redirect(r.complete ? `/ideas/${projectId}` : "/");
 }
 
 export async function returnIdea(projectId: string, note: string): Promise<{ error?: string }> {
   const user = await getCurrentUser();
   const p = await db.project.findUnique({ where: { id: projectId } });
-  assert(!!p && can.approve(user, p), "Only an admin can return this.");
+  assert(!!p && can.approve(user, p), "Only an approver can return this.");
   const text = note.trim().slice(0, 2000);
   if (!text) return { error: "Add a note for the owner." };
   await lifecycle.returnToOwner(projectId, user.id, text);

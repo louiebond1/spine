@@ -58,6 +58,23 @@ export async function seed(db: PrismaClient, { allClear }: Options) {
   }
   await db.topic.createMany({ data: TOPICS.map((name) => ({ id: topicId(name), name })) });
   await db.settings.create({ data: { id: "singleton" } });
+  // Example approval rules (Admin > Approvals). They only route ideas submitted from now on,
+  // so the seeded Approval items still match the mockups.
+  await db.approvalRule.createMany({
+    data: [
+      {
+        id: "r-leadership",
+        name: "Leadership sign-off for Legal and Finance apps",
+        position: 0,
+        topicIds: [topicId("Legal"), topicId("Finance")],
+        buildPaths: ["APP"],
+        approverIds: ["u-alex", "u-louie"],
+        requireAll: true,
+        autoApproveDays: null,
+      },
+      { id: "r-fast-track", name: "Fast track small Cowork-native builds", position: 1, active: false, buildPaths: ["COWORK_NATIVE"], difficulties: ["EASY"], maxTotalHours: 40, fastTrack: true },
+    ],
+  });
 
   await seedOpenQuestions(db, allClear);
   await writeSeedAttachment();
@@ -67,6 +84,7 @@ export async function seed(db: PrismaClient, { allClear }: Options) {
 
 async function wipe(db: PrismaClient) {
   await db.opportunity.deleteMany();
+  await db.approvalRule.deleteMany();
   await db.attachment.deleteMany();
   await db.questionMessage.deleteMany();
   await db.questionEvent.deleteMany();

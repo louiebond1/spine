@@ -210,6 +210,13 @@ model Project {
   mvpScope       String?
   laterScope     String?
   hoursSavedEstimate Int?
+
+  // Approval routing (snapshotted from the matching ApprovalRule when the idea enters Approval)
+  approvalRuleId    String?
+  approverIds       String[]          @default([]) // empty means any admin
+  approvalsNeeded   Int               @default(1)
+  approvalBrief     Json?             // Spine approval brief for approvers (never contains scores)
+  approvals         ProjectApproval[]
   recommendationsAt DateTime?
   assistantThreads AssistantThread[]
 
@@ -295,6 +302,8 @@ enum ProjectEventType {
   RETURNED
   APPROVED
   AUTO_APPROVED
+  PARTIALLY_APPROVED // one approver of several signed off
+  FAST_TRACKED       // an approval rule skipped review
   JOINED
   RECRUITED          // team full, moved to Building
   PLAN_GENERATED
@@ -481,4 +490,39 @@ model ProjectInvite {
 
   @@unique([projectId, userId])
   @@index([userId, status])
+}
+
+// ---------- Approval rules (Admin > Approvals) ----------
+
+model ApprovalRule {
+  id               String   @id @default(cuid())
+  name             String
+  position         Int      @default(0)
+  active           Boolean  @default(true)
+  // Conditions: an empty list or null means "any".
+  topicIds         String[] @default([])
+  buildPaths       String[] @default([]) // APP, COWORK_NATIVE
+  difficulties     String[] @default([]) // EASY, MODERATE, HARD
+  minTotalHours    Int?     // team size x hours per week x weeks, at least
+  maxTotalHours    Int?     // at most
+  onlyWithConcerns Boolean  @default(false)
+  // Outcome
+  approverIds      String[] @default([]) // empty means any admin
+  requireAll       Boolean  @default(false)
+  autoApproveDays  Int?     // null means never auto-approve
+  fastTrack        Boolean  @default(false) // approve immediately, no review
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ProjectApproval {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  at        DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId])
 }

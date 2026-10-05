@@ -53,7 +53,9 @@ export const can = {
   publish: (user: User, p: ProjectLike) =>
     user.isPublishingSpecialist && p.stage === "PUBLISHING" && p.publisherId === user.id,
 
-  approve: (user: User, p: ProjectLike) => user.isAdmin && p.stage === "APPROVAL" && p.ownerId !== user.id,
+  /** Approvers come from the matching approval rule; with none named, any admin approves. */
+  approve: (user: User, p: ProjectLike & Pick<Project, "approverIds">) =>
+    p.stage === "APPROVAL" && p.ownerId !== user.id && (p.approverIds.length > 0 ? p.approverIds.includes(user.id) : user.isAdmin),
 
   manage: (user: User) => user.isAdmin,
 };

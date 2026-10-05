@@ -5,6 +5,8 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/States";
 import { ImpactTab, PeopleTab, RulesTab, TopicsTab } from "@/features/admin/AdminTabs";
+import { ApprovalRules } from "@/features/admin/ApprovalRules";
+import { describeRule } from "@/server/approvals/rules";
 import { pageDate, plural } from "@/lib/format";
 import { now } from "@/server/clock";
 import { db } from "@/server/db";
@@ -17,6 +19,7 @@ const TABS = [
   { key: "people", label: "People & roles" },
   { key: "topics", label: "Topics" },
   { key: "rules", label: "Rules" },
+  { key: "approvals", label: "Approvals" },
   { key: "publishers", label: "Publishing specialists" },
   { key: "impact", label: "Impact assumptions" },
 ] as const;
@@ -46,6 +49,42 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           }}
         />
       )}
+
+      {tab === "approvals" &&
+        (async () => {
+          const [rules, topics, people] = await Promise.all([
+            db.approvalRule.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+            db.topic.findMany({ where: { archivedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+            db.user.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+          ]);
+          const names = { topics: new Map(topics.map((x) => [x.id, x.name])), users: new Map(people.map((u) => [u.id, u.name])) };
+          return (
+            <ApprovalRules
+              topics={topics}
+              people={people}
+              defaultDays={settings.approvalTimeoutDays}
+              rules={rules.map((r) => ({
+                id: r.id,
+                name: r.name,
+                active: r.active,
+                sentence: describeRule(r, names),
+                input: {
+                  name: r.name,
+                  topicIds: r.topicIds,
+                  buildPaths: r.buildPaths as ("APP" | "COWORK_NATIVE")[],
+                  difficulties: r.difficulties as ("EASY" | "MODERATE" | "HARD")[],
+                  minTotalHours: r.minTotalHours,
+                  maxTotalHours: r.maxTotalHours,
+                  onlyWithConcerns: r.onlyWithConcerns,
+                  approverIds: r.approverIds,
+                  requireAll: r.requireAll,
+                  autoApproveDays: r.autoApproveDays,
+                  fastTrack: r.fastTrack,
+                },
+              }))}
+            />
+          );
+        })()}
 
       {tab === "people" && (
         <PeopleTab

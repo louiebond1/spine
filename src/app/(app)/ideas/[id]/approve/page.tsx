@@ -5,6 +5,10 @@ import { MetaLine } from "@/components/ui/MetaLine";
 import { Timeline } from "@/components/ui/Timeline";
 import { ICON_STROKE } from "@/components/ui/icons";
 import { ApprovalActions } from "@/features/ideas/ApprovalActions";
+import { ApprovalBriefPanel } from "@/features/ideas/ApprovalBriefPanel";
+import { SectionLabel } from "@/components/ui/SectionLabel";
+import { Avatar } from "@/components/ui/Avatar";
+import { describeRule, totalHours } from "@/server/approvals/rules";
 import { dayAtTime, hoursUntil, longDate, plural } from "@/lib/format";
 import { now } from "@/server/clock";
 import { db } from "@/server/db";
@@ -18,7 +22,6 @@ const DIFFICULTY = { EASY: "Easy", MODERATE: "Moderate", HARD: "Hard" } as const
 export default async function ApprovalPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  if (!user.isAdmin) notFound();
   await runDueAutoApprovals();
 
   const p = await db.project.findUnique({
@@ -28,12 +31,18 @@ export default async function ApprovalPage({ params }: { params: Promise<{ id: s
       topic: true,
       // Only the neutral flag and completion time are read; scores never leave the database here.
       aiReview: { select: { raisedConcerns: true, completedAt: true } },
+      approvals: { orderBy: { at: "asc" } },
     },
   });
   if (!p) notFound();
   if (!can.approve(user, p)) redirect(`/ideas/${p.id}`);
 
   const t = now();
+  const mine = p.approvals.find((a) => a.userId === user.id);
+  const rule = p.approvalRuleId ? await db.approvalRule.findUnique({ where: { id: p.approvalRuleId } }) : null;
+  const [topics, users] = await Promise.all([db.topic.findMany({ select: { id: true, name: true } }), db.user.findMany({ select: { id: true, name: true, initials: true } })]);
+  const ruleSentence = rule ? describeRule(rule, { topics: new Map(topics.map((x) => [x.id, x.name])), users: new Map(users.map((u) => [u.id, u.name])) }) : null;
+  const named = p.approverIds.map((id) => users.find((u) => u.id === id)).filter((u): u is NonNullable<typeof u> => !!u);
   const path = p.buildPath === "APP" ? "App" : "Cowork-native";
   const details: [string, string][] = [
     ["Problem", p.problem],
@@ -42,6 +51,7 @@ export default async function ApprovalPage({ params }: { params: Promise<{ id: s
     ["Team size", plural(p.teamSize, "person", "people")],
     ["Hours per week", `${p.hoursPerWeek} per person`],
     ["Length", plural(p.lengthWeeks, "week")],
+    ["Total effort", `About ${totalHours(p)} hours`],
     ["Difficulty", DIFFICULTY[p.difficulty]],
     ["Target date", longDate(p.targetDate)],
   ];
@@ -81,13 +91,40 @@ export default async function ApprovalPage({ params }: { params: Promise<{ id: s
             ))}
           </dl>
         </section>
+        <ApprovalBriefPanel projectId={p.id} />
       </div>
       <aside className="mt-6 w-rail shrink-0 rounded-container border border-border bg-surface px-6 py-6">
-        {p.autoApproveAt && <h2 className="mb-7 text-section font-semibold text-text">Auto-approves in {hoursUntil(p.autoApproveAt, t)}h</h2>}
+        {p.autoApproveAt ? (
+          <h2 className="mb-7 text-section font-semibold text-text">Auto-approves in {hoursUntil(p.autoApproveAt, t)}h</h2>
+        ) : (
+          <h2 className="mb-7 text-section font-semibold text-text">Waiting for sign-off</h2>
+        )}
+        {(named.length > 0 || p.approvalsNeeded > 1) && (
+          <div className="mb-7">
+            <SectionLabel>{p.approvalsNeeded > 1 ? `${p.approvals.length} of ${p.approvalsNeeded} approvals` : "Approvers"}</SectionLabel>
+            <ul className="mt-3 space-y-3">
+              {named.map((u) => {
+                const done = p.approvals.find((a) => a.userId === u.id);
+                return (
+                  <li key={u.id} className="flex items-center gap-3">
+                    <Avatar initials={u.initials} size="sm" />
+                    <span className="flex-1 text-meta text-text">{u.id === user.id ? "You" : u.name}</span>
+                    <span className={done ? "text-label font-semibold text-text" : "text-label text-text-muted"}>{done ? "Approved" : "Waiting"}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {ruleSentence && (
+          <p className="mb-7 text-label text-text-muted">
+            Rule &ldquo;{rule!.name}&rdquo;: {ruleSentence}
+          </p>
+        )}
         <div className="mb-8">
           <Timeline items={timeline.map((i) => ({ key: i.key, text: i.text, time: i.time || undefined }))} />
         </div>
-        <ApprovalActions projectId={p.id} />
+        {mine ? <p className="text-meta text-text-muted">You approved this. It moves on once the others sign off.</p> : <ApprovalActions projectId={p.id} />}
       </aside>
     </div>
   );

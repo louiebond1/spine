@@ -22,14 +22,18 @@ export type NeedsYouItem = {
 export const getNeedsYou = cache(async (user: User): Promise<NeedsYouItem[]> => {
   const t = now();
 
-  // 1. Approvals waiting on them (admins only, never their own ideas), soonest auto-approve first.
-  const approvals = user.isAdmin
-    ? await db.project.findMany({
-        where: { stage: "APPROVAL", ownerId: { not: user.id } },
-        orderBy: { autoApproveAt: "asc" },
-        select: { id: true, title: true, autoApproveAt: true },
-      })
-    : [];
+  // 1. Approvals waiting on them (never their own ideas), soonest auto-approve first. The approval
+  // rule names the approvers; with none named, any admin approves. Skip ones they already signed.
+  const approvals = await db.project.findMany({
+    where: {
+      stage: "APPROVAL",
+      ownerId: { not: user.id },
+      approvals: { none: { userId: user.id } },
+      OR: [{ approverIds: { has: user.id } }, ...(user.isAdmin ? [{ approverIds: { isEmpty: true } }] : [])],
+    },
+    orderBy: [{ autoApproveAt: { sort: "asc", nulls: "last" } }, { submittedAt: "asc" }],
+    select: { id: true, title: true, autoApproveAt: true, approvalsNeeded: true, _count: { select: { approvals: true } } },
+  });
 
   // 2. Questions they've claimed that are waiting on them.
   const claimed = await db.question.findMany({
@@ -63,7 +67,9 @@ export const getNeedsYou = cache(async (user: User): Promise<NeedsYouItem[]> => 
       title: p.title,
       reason: p.autoApproveAt
         ? { before: "Auto-approves in ", emphasis: `${hoursUntil(p.autoApproveAt, t)}h`, after: " unless you review it" }
-        : { before: "Waiting for your review" },
+        : p.approvalsNeeded > 1
+          ? { before: "Needs your approval, ", emphasis: `${p._count.approvals} of ${p.approvalsNeeded}`, after: " approvals in" }
+          : { before: "Waiting for your review" },
       action: { label: "Review", href: `/ideas/${p.id}/approve` },
     })),
     ...waiting.map((q) => ({

@@ -4,8 +4,8 @@ import type { BuildPath, Prisma, ProjectEventType, ProjectStage } from "@prisma/
 import { firstName } from "@/lib/format";
 import { now } from "../clock";
 import { db } from "../db";
-import { getSettings } from "../settings";
 import { assignPublisher } from "./publishing";
+import { enterApproval } from "../approvals/rules";
 
 // The only module that changes Project.stage. CLAUDE.md section 7, Ideas & Projects rules 1 to 11.
 
@@ -74,18 +74,15 @@ async function ensureOwnerOnTeam(tx: Tx, projectId: string, ownerId: string) {
 
 /** Rule 5: App ideas go to Approval with an auto-approve deadline; Cowork-native ideas go straight to Recruiting. */
 export async function submit(projectId: string, actorId: string) {
-  const settings = await getSettings();
   let startBuild = false;
+  let fastTrack: string | null = null;
   await db.$transaction(async (tx) => {
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
     const t = now();
     if (p.buildPath === "APP") {
-      await move(tx, p.id, "IDEA", {
-        stage: "APPROVAL",
-        submittedAt: t,
-        autoApproveAt: new Date(t.getTime() + settings.approvalTimeoutDays * DAY),
-        returnNote: null,
-      });
+      const { route, data } = await enterApproval(tx, p, t);
+      await move(tx, p.id, "IDEA", { stage: "APPROVAL", submittedAt: t, returnNote: null, ...data });
+      if (route.fastTrack) fastTrack = route.ruleName;
     } else {
       await move(tx, p.id, "IDEA", { stage: "RECRUITING", submittedAt: t, returnNote: null });
       await ensureOwnerOnTeam(tx, p.id, p.ownerId);
@@ -94,6 +91,7 @@ export async function submit(projectId: string, actorId: string) {
     }
     await logEvent(tx, p.id, "SUBMITTED", actorId);
   });
+  if (fastTrack !== null) return approve(projectId, null, `Fast-tracked by the rule "${fastTrack}"`);
   if (startBuild) await startBuilding(projectId);
 }
 
@@ -101,25 +99,54 @@ export async function submit(projectId: string, actorId: string) {
  * Rules 6, 7 and 10. Approving an App idea opens Recruiting. Approving a Cowork-native build
  * (already built) moves it to Publishing. `approverId` null means auto-approved.
  */
-export async function approve(projectId: string, approverId: string | null) {
+export async function approve(projectId: string, approverId: string | null, fastTrackedBy?: string) {
   let startBuild = false;
   await db.$transaction(async (tx) => {
     await lockProject(tx, projectId);
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
     const approval = { approvedAt: now(), approvedById: approverId, autoApproveAt: null };
+    await tx.projectApproval.deleteMany({ where: { projectId } });
     if (p.buildCompletedAt) {
       // Cowork-native, already built: approval and publisher assignment happen together.
-      await logEvent(tx, p.id, approverId ? "APPROVED" : "AUTO_APPROVED", approverId);
+      await logEvent(tx, p.id, approverId ? "APPROVED" : fastTrackedBy ? "FAST_TRACKED" : "AUTO_APPROVED", approverId, fastTrackedBy);
       await publishWithin(tx, p.id, "APPROVAL", approval);
     } else {
       await move(tx, p.id, "APPROVAL", { stage: "RECRUITING", ...approval });
-      await logEvent(tx, p.id, approverId ? "APPROVED" : "AUTO_APPROVED", approverId);
+      await logEvent(tx, p.id, approverId ? "APPROVED" : fastTrackedBy ? "FAST_TRACKED" : "AUTO_APPROVED", approverId, fastTrackedBy);
       await ensureOwnerOnTeam(tx, p.id, p.ownerId);
       await addAcceptedInvitees(tx, p.id, p.teamSize);
       startBuild = (await tx.teamMember.count({ where: { projectId } })) >= p.teamSize;
     }
   });
   if (startBuild) await startBuilding(projectId);
+}
+
+/**
+ * Records one approver's sign-off. When a rule needs several approvers, the idea stays in
+ * Approval until enough have approved; the last one moves it on. Returns how many are in.
+ */
+export async function recordApproval(projectId: string, userId: string): Promise<{ complete: boolean; count: number; needed: number }> {
+  const result = await db.$transaction(async (tx) => {
+    await lockProject(tx, projectId);
+    const p = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
+    if (p.stage !== "APPROVAL") throw new Error("This idea isn't waiting for approval any more.");
+    await tx.projectApproval.upsert({
+      where: { projectId_userId: { projectId, userId } },
+      update: {},
+      create: { projectId, userId, at: now() },
+    });
+    const count = await tx.projectApproval.count({ where: { projectId } });
+    const needed = Math.max(1, p.approvalsNeeded);
+    if (count < needed) {
+      const actor = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+      await logEvent(tx, projectId, "PARTIALLY_APPROVED", userId, `${count} of ${needed}`);
+      await systemMessage(tx, projectId, `${firstName(actor.name)} approved this (${count} of ${needed} approvals)`);
+      await touch(tx, projectId);
+    }
+    return { complete: count >= needed, count, needed };
+  });
+  if (result.complete) await approve(projectId, userId);
+  return result;
 }
 
 /**
@@ -197,7 +224,6 @@ export async function onStepsChanged(projectId: string) {
 }
 
 async function completeBuild(projectId: string) {
-  const settings = await getSettings();
   const p = await db.project.findUniqueOrThrow({ where: { id: projectId } });
   if (p.buildPath === "APP") {
     await db.$transaction(async (tx) => {
@@ -206,15 +232,15 @@ async function completeBuild(projectId: string) {
     });
     return;
   }
+  let fastTrack: string | null = null;
   await db.$transaction(async (tx) => {
     const t = now();
-    await move(tx, projectId, "BUILDING", {
-      stage: "APPROVAL",
-      buildCompletedAt: t,
-      autoApproveAt: new Date(t.getTime() + settings.approvalTimeoutDays * DAY),
-    });
+    const { route, data } = await enterApproval(tx, p, t);
+    await move(tx, projectId, "BUILDING", { stage: "APPROVAL", buildCompletedAt: t, ...data });
     await logEvent(tx, projectId, "BUILD_COMPLETED", null);
+    if (route.fastTrack) fastTrack = route.ruleName;
   });
+  if (fastTrack !== null) await approve(projectId, null, `Fast-tracked by the rule "${fastTrack}"`);
 }
 
 /** Serialises publisher choice so two projects can't both see the same lightest load. */

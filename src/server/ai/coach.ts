@@ -4,7 +4,7 @@ import { longDate } from "@/lib/format";
 import { zonedParts } from "@/lib/tz";
 import { now } from "../clock";
 import { db } from "../db";
-import { askClaudeForJson, fixturesEnabled } from "./client";
+import { askClaudeForJson, fixturesEnabled, lenient as L } from "./client";
 
 // "Start with Spine": turn one sentence into a full idea, or coach someone through it with a
 // short interview that ends in a brief with real use cases, a success measure and an MVP.
@@ -15,22 +15,22 @@ const isoDay = (d: Date) => {
 };
 
 export const briefSchema = z.object({
-  title: z.string().min(3).max(60),
-  problem: z.string().min(10).max(800),
-  whoBenefits: z.string().min(2).max(120),
-  topic: z.string().max(40),
-  buildPath: z.enum(["APP", "COWORK_NATIVE"]),
-  teamSize: z.number().int().min(1).max(10),
-  hoursPerWeek: z.number().int().min(1).max(10),
-  lengthWeeks: z.number().int().min(1).max(12),
-  difficulty: z.enum(["EASY", "MODERATE", "HARD"]),
-  targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  people: z.array(z.string().max(60)).max(9).default([]),
-  useCases: z.array(z.object({ who: z.string().max(80), scenario: z.string().max(400), outcome: z.string().max(200) })).max(4).default([]),
-  successMetric: z.string().max(240).default(""),
-  mvpScope: z.string().max(400).default(""),
-  laterScope: z.string().max(400).default(""),
-  hoursSavedEstimate: z.number().int().min(0).max(5000).default(0),
+  title: L.text(60).pipe(z.string().min(3)),
+  problem: L.text(800).pipe(z.string().min(10)),
+  whoBenefits: L.text(120).pipe(z.string().min(2)),
+  topic: L.text(40),
+  buildPath: L.oneOf(["APP", "COWORK_NATIVE"], "COWORK_NATIVE"),
+  teamSize: L.int(1, 10, 2),
+  hoursPerWeek: L.int(1, 10, 2),
+  lengthWeeks: L.int(1, 12, 4),
+  difficulty: L.oneOf(["EASY", "MODERATE", "HARD"], "MODERATE"),
+  targetDate: L.date(),
+  people: z.array(L.text(60)).default([]).transform((a) => a.filter(Boolean).slice(0, 9)),
+  useCases: z.array(z.object({ who: L.text(80), scenario: L.text(400), outcome: L.text(200) })).default([]).transform((a) => a.slice(0, 4)),
+  successMetric: L.text(240).default(""),
+  mvpScope: L.text(400).default(""),
+  laterScope: L.text(400).default(""),
+  hoursSavedEstimate: L.int(0, 5000, 0).default(0),
 });
 export type IdeaBrief = z.infer<typeof briefSchema>;
 
@@ -65,8 +65,8 @@ export async function kickoffFromSentence(sentence: string): Promise<IdeaBrief> 
 
 const turnSchema = z.object({
   done: z.boolean(),
-  question: z.string().max(300).default(""),
-  suggestions: z.array(z.string().max(100)).max(4).default([]),
+  question: L.text(300).default(""),
+  suggestions: z.array(L.text(100)).default([]).transform((a) => a.slice(0, 4)),
   brief: briefSchema.optional(),
 });
 export type CoachTurn = z.infer<typeof turnSchema>;

@@ -15,7 +15,8 @@ export async function previewKickoff(sentence: string): Promise<{ ok: true; brie
   if (text.length < 12) return { ok: false, error: "Tell Spine a little more: what you want to build, and for whom." };
   try {
     return { ok: true, brief: await kickoffFromSentence(text) };
-  } catch {
+  } catch (error) {
+    console.error("[start] kickoff failed", error);
     return { ok: false, error: "Spine couldn't read that just now. Try again." };
   }
 }
@@ -25,7 +26,8 @@ export async function nextCoachTurn(transcript: { role: "spine" | "user"; text: 
   const clean = transcript.slice(-20).map((t) => ({ role: t.role, text: String(t.text).slice(0, 1500) }));
   try {
     return { ok: true, turn: await coachTurn(clean) };
-  } catch {
+  } catch (error) {
+    console.error("[start] coach turn failed", error);
     return { ok: false, error: "Spine lost its train of thought. Try sending that again." };
   }
 }
@@ -34,6 +36,7 @@ export async function nextCoachTurn(transcript: { role: "spine" | "user"; text: 
 export async function createFromBrief(raw: unknown): Promise<{ ok: true; id: string; invited: string[] } | { ok: false; error: string }> {
   const user = await getCurrentUser();
   const parsed = briefSchema.safeParse(raw);
+  if (!parsed.success) console.error("[start] invalid brief", parsed.error.issues);
   if (!parsed.success) return { ok: false, error: "Something in the brief wasn't valid. Try again." };
   const b = parsed.data;
   let target = parseZoned(b.targetDate);

@@ -1,11 +1,28 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import type { z } from "zod";
+import { z } from "zod";
 
 // Anthropic API wrapper: asks Claude for JSON only and validates it with zod.
 // Key and model come from the environment and are never hard-coded.
 
 export class AiUnavailableError extends Error {}
+
+/** Lenient schema helpers for model output: trim long text, clamp numbers, normalise enums. */
+export const lenient = {
+  text: (max: number) => z.preprocess((v) => (v == null ? "" : String(v)), z.string()).transform((s) => s.trim().slice(0, max)),
+  int: (min: number, max: number, fallback: number) =>
+    z.preprocess((v) => {
+      const n = Math.round(Number(v));
+      return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+    }, z.number().int()),
+  oneOf: <T extends string>(values: readonly [T, ...T[]], fallback: T) =>
+    z.preprocess((v) => {
+      const s = String(v ?? "").toUpperCase().replace(/[\s-]+/g, "_");
+      return (values as readonly string[]).includes(s) ? s : fallback;
+    }, z.enum(values)),
+  // An unreadable date becomes a past one, which callers replace with a sensible default.
+  date: () => z.preprocess((v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v ?? "")) ? String(v).slice(0, 10) : "1970-01-01"), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+};
 
 let client: Anthropic | null = null;
 
@@ -42,6 +59,7 @@ export async function askClaudeForJson<T>(opts: { system: string; prompt: string
       return opts.schema.parse(extractJson(text));
     } catch (error) {
       lastError = error;
+      console.error("[ai] JSON call failed", attempt, error instanceof Error ? error.message.slice(0, 500) : error);
     }
   }
   throw lastError;

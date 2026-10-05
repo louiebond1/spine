@@ -9,7 +9,7 @@ import { db } from "../db";
 import { assert, can } from "../permissions";
 import { getCurrentUser } from "../session";
 import { logEvent, onStepsChanged, systemMessage, touch } from "../projects/lifecycle";
-import { askClaudeForJson, fixturesEnabled } from "./client";
+import { askClaudeForJson, fixturesEnabled, lenient as L } from "./client";
 
 // Meeting notes to plan: Spine reads pasted notes against the live plan and proposes the
 // exact updates (finished steps, new actions with owners, reassignments, new dates). The
@@ -21,19 +21,20 @@ const iso = (d: Date) => {
 };
 
 const parsedSchema = z.object({
-  summary: z.string().max(800),
+  summary: L.text(800),
   changes: z
     .array(
       z.object({
         type: z.enum(["complete", "add", "reassign", "due"]),
-        stepTitle: z.string().max(160).optional(),
-        title: z.string().max(120).optional(),
-        person: z.string().max(80).optional(),
-        due: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-        evidence: z.string().max(200).default(""),
+        stepTitle: L.text(160).optional(),
+        title: L.text(120).optional(),
+        person: L.text(80).optional(),
+        due: z.preprocess((v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : undefined), z.string().optional()),
+        evidence: L.text(200).default(""),
       }),
     )
-    .max(15),
+    .default([])
+    .transform((a) => a.slice(0, 15)),
 });
 
 export type MeetingChange =
@@ -93,7 +94,8 @@ export async function readMeetingNotes(projectId: string, notes: string): Promis
             text,
           ].join("\n"),
         });
-  } catch {
+  } catch (error) {
+    console.error("[meeting] read failed", error);
     return { ok: false, error: "Spine couldn't read those notes just now. Try again." };
   }
 

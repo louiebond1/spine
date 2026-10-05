@@ -34,7 +34,7 @@ export const getNeedsYou = cache(async (user: User): Promise<NeedsYouItem[]> => 
   // 2. Questions they've claimed that are waiting on them.
   const claimed = await db.question.findMany({
     where: { status: "IN_PROGRESS", claimerId: user.id },
-    include: { asker: true, messages: { orderBy: { sentAt: "desc" }, take: 1, select: { authorId: true, sentAt: true } } },
+    include: { asker: true, messages: { orderBy: [{ sentAt: "desc" }, { createdAt: "desc" }], take: 1, select: { authorId: true, sentAt: true } } },
   });
   const waiting = claimed
     .filter((q) => lastSpeakerIsAsker(q))

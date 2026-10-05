@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { Avatar } from "@/components/ui/Avatar";
@@ -84,6 +84,7 @@ function StepForm({
 function StepRow({ step, team, canEdit, first, last }: { step: PlanStepView; team: Props["team"]; canEdit: boolean; first: boolean; last: boolean }) {
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
+  const [done, setDone] = useOptimistic(step.done);
 
   if (editing)
     return (
@@ -102,10 +103,16 @@ function StepRow({ step, team, canEdit, first, last }: { step: PlanStepView; tea
   return (
     <div className="group flex items-center gap-6 py-4">
       <Checkbox
-        aria-label={step.done ? `Reopen ${step.title}` : `Complete ${step.title}`}
-        checked={step.done}
+        aria-label={done ? `Reopen ${step.title}` : `Complete ${step.title}`}
+        checked={done}
         disabled={!canEdit || pending}
-        onChange={(e) => start(() => toggleStep(step.id, e.target.checked))}
+        onChange={(e) => {
+          const next = e.target.checked;
+          start(async () => {
+            setDone(next);
+            await toggleStep(step.id, next);
+          });
+        }}
       />
       {canEdit ? (
         <button type="button" onClick={() => setEditing(true)} className="w-step-title truncate text-left text-meta text-text hover:text-brand">

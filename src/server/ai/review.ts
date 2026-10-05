@@ -76,7 +76,7 @@ export async function runAiReview(projectId: string) {
 
   const relatedProjectId = others.some((o) => o.id === review.originality.closestProjectId) ? review.originality.closestProjectId : null;
   const scores = [review.feasibility.score, review.businessValue.score, review.resourcingConfidence.score, review.originality.score];
-  const clean = (s: string) => s.replace(/2014/g, ",");
+  const clean = (s: string) => s.replace(new RegExp(String.fromCharCode(0x2014), "g"), ",");
   const data = {
     feasibility: review.feasibility.score,
     feasibilityReason: clean(review.feasibility.reason),

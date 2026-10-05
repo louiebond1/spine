@@ -75,7 +75,7 @@ export async function generateBuildPlan(projectId: string) {
     const start = now().getTime();
     const end = Math.max(p.targetDate.getTime(), start + plan.steps.length * 86_400_000);
     const ids = new Set(team.map((m) => m.id));
-    const clean = (s: string) => s.replace(/2014/g, ",");
+    const clean = (s: string) => s.replace(new RegExp(String.fromCharCode(0x2014), "g"), ",");
 
     await db.$transaction([
       db.planStep.deleteMany({ where: { projectId, generatedFromBrief: true, done: false } }),

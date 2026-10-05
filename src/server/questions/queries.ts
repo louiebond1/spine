@@ -12,7 +12,7 @@ const questionInclude = {
   claimer: true,
   topic: true,
   _count: { select: { messages: true } },
-  messages: { orderBy: { sentAt: "desc" }, take: 1, select: { authorId: true, sentAt: true } },
+  messages: { orderBy: [{ sentAt: "desc" }, { createdAt: "desc" }], take: 1, select: { authorId: true, sentAt: true } },
 } satisfies Prisma.QuestionInclude;
 
 type QuestionRow = Prisma.QuestionGetPayload<{ include: typeof questionInclude }>;
@@ -103,8 +103,8 @@ export async function getThread(id: string, viewer: User) {
     where: { id },
     include: {
       ...questionInclude,
-      messages: { orderBy: { sentAt: "asc" }, include: { author: true, attachments: true } },
-      events: { orderBy: { at: "asc" }, include: { actor: true } },
+      messages: { orderBy: [{ sentAt: "asc" }, { createdAt: "asc" }], include: { author: true, attachments: true } },
+      events: { orderBy: [{ at: "asc" }, { createdAt: "asc" }], include: { actor: true } },
     },
   });
   if (!q) return null;

@@ -19,11 +19,11 @@ type ButtonProps = CommonProps &
 type LinkProps = CommonProps & { href: string; prefetch?: boolean };
 
 const base =
-  "inline-flex items-center justify-center gap-3 whitespace-nowrap text-meta font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-meta font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed";
 
 const variants: Record<Variant, string> = {
-  primary: "h-control rounded-control bg-brand px-7 text-surface hover:bg-brand-hover",
-  secondary: "h-control rounded-control border border-brand bg-surface px-7 text-brand hover:border-brand-hover hover:text-brand-hover",
+  primary: "h-control rounded-control bg-brand px-5 text-surface hover:bg-brand-hover",
+  secondary: "h-control rounded-control border border-brand bg-surface px-5 text-brand hover:border-brand-hover hover:text-brand-hover",
   text: "text-brand hover:text-brand-hover",
 };
 
@@ -32,9 +32,9 @@ export function Button(props: ButtonProps | LinkProps) {
   const classes = cx(base, variants[variant], fullWidth && "w-full", className);
   const content = (
     <>
-      {Icon && <Icon size={22} strokeWidth={ICON_STROKE} aria-hidden />}
+      {Icon && <Icon size={18} strokeWidth={ICON_STROKE} aria-hidden />}
       <span>{children}</span>
-      {arrow && <ArrowRight size={22} strokeWidth={ICON_STROKE} aria-hidden />}
+      {arrow && <ArrowRight size={18} strokeWidth={ICON_STROKE} aria-hidden />}
     </>
   );
 

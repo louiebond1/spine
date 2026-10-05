@@ -24,7 +24,7 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
                 !done && !active && "border-border bg-surface",
               )}
             >
-              {done && <Check size={14} strokeWidth={3} aria-hidden />}
+              {done && <Check size={12} strokeWidth={3} aria-hidden />}
               {active && <span className="h-3 w-3 rounded-full bg-brand" aria-hidden />}
             </span>
             <span className={cx("mt-2 text-tiny", active ? "font-semibold text-text" : "text-text-muted")}>{label}</span>

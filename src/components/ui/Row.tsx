@@ -27,8 +27,8 @@ export function Row({ leading, title, meta, trailing, href, highlighted, density
     <div
       className={cx(
         "flex items-center",
-        gap === "wide" ? "gap-9" : "gap-8",
-        density === "comfortable" ? "py-6" : "py-3",
+        gap === "wide" ? "gap-6" : "gap-5",
+        density === "comfortable" ? "py-5" : "py-3",
         highlighted && "-mx-3 rounded-control bg-brand-soft px-3",
         className,
       )}

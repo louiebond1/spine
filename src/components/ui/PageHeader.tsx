@@ -17,10 +17,10 @@ type Props = {
 
 export function PageHeader({ date, title, subtitle, eyebrow, back, breadcrumb, meta, aside }: Props) {
   return (
-    <header className={back ? "mb-5" : "mb-8"}>
+    <header className={back ? "mb-5" : "mb-7"}>
       {back && (
         <Link href={back.href} className="mb-3 inline-flex items-center gap-2 text-meta text-brand hover:text-brand-hover">
-          <ArrowLeft size={20} strokeWidth={ICON_STROKE} aria-hidden />
+          <ArrowLeft size={16} strokeWidth={ICON_STROKE} aria-hidden />
           {back.label}
         </Link>
       )}
@@ -28,7 +28,7 @@ export function PageHeader({ date, title, subtitle, eyebrow, back, breadcrumb, m
         <nav className="mb-3 flex items-center gap-2 text-meta text-text-muted" aria-label="Breadcrumb">
           {breadcrumb.map((c, i) => (
             <span key={c.href} className="flex items-center gap-2">
-              {i > 0 && <ChevronRight size={16} strokeWidth={ICON_STROKE} aria-hidden />}
+              {i > 0 && <ChevronRight size={14} strokeWidth={ICON_STROKE} aria-hidden />}
               <Link href={c.href} className="hover:text-text">{c.label}</Link>
             </span>
           ))}

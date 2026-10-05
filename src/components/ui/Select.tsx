@@ -17,7 +17,7 @@ export const Select = forwardRef<HTMLSelectElement, Props>(function Select({ lab
           </option>
         ))}
       </select>
-      <ChevronDown size={22} strokeWidth={ICON_STROKE} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text" aria-hidden />
+      <ChevronDown size={18} strokeWidth={ICON_STROKE} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text" aria-hidden />
     </div>
   );
   return label ? <Field label={label} htmlFor={id}>{select}</Field> : select;

@@ -32,7 +32,7 @@ export function ChatMessage({ author, initials, time, body, mine, attachments = 
             const Icon = /\.(xlsx?|csv)$/i.test(a.fileName) ? FileSpreadsheet : FileText;
             return (
               <a key={a.id} href={a.href} className="mt-4 flex w-96 max-w-full items-center gap-4 rounded-control bg-surface px-4 py-3 hover:text-brand">
-                <Icon size={30} strokeWidth={ICON_STROKE} className="shrink-0 text-text" aria-hidden />
+                <Icon size={24} strokeWidth={ICON_STROKE} className="shrink-0 text-text" aria-hidden />
                 <span className="min-w-0">
                   <span className="block truncate text-label text-text">{a.fileName}</span>
                   <span className="block text-label text-text-muted">{a.size}</span>

@@ -10,7 +10,7 @@ export const TextField = forwardRef<HTMLInputElement, Props>(function TextField(
   const input = (
     <div className="relative h-fit w-full">
       {search && (
-        <Search size={20} strokeWidth={ICON_STROKE} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden />
+        <Search size={16} strokeWidth={ICON_STROKE} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden />
       )}
       <input ref={ref} id={id} className={cx(controlClass, "w-full", search && "pl-12", className)} {...rest} />
     </div>

@@ -126,10 +126,10 @@ function StepRow({ step, team, canEdit, first, last }: { step: PlanStepView; tea
       {canEdit && !step.done && (
         <span className="flex gap-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
           <button type="button" aria-label="Move up" disabled={first || pending} onClick={() => start(() => moveStep(step.id, "up"))} className="text-text-muted hover:text-brand disabled:opacity-30">
-            <ArrowUp size={18} strokeWidth={ICON_STROKE} />
+            <ArrowUp size={16} strokeWidth={ICON_STROKE} />
           </button>
           <button type="button" aria-label="Move down" disabled={last || pending} onClick={() => start(() => moveStep(step.id, "down"))} className="text-text-muted hover:text-brand disabled:opacity-30">
-            <ArrowDown size={18} strokeWidth={ICON_STROKE} />
+            <ArrowDown size={16} strokeWidth={ICON_STROKE} />
           </button>
         </span>
       )}
@@ -219,7 +219,7 @@ export function PlanTab({ projectId, steps, team, canEdit, planStatus, stage, ho
       {done.length > 0 && (
         <div className="mt-3 rounded-control bg-neutral-soft">
           <button type="button" onClick={() => setShowDone(!showDone)} aria-expanded={showDone} className="flex w-full items-center gap-4 px-5 py-4 text-left text-meta font-medium text-text-muted">
-            <ChevronRight size={20} strokeWidth={ICON_STROKE} className={cx("transition-transform", showDone && "rotate-90")} aria-hidden />
+            <ChevronRight size={16} strokeWidth={ICON_STROKE} className={cx("transition-transform", showDone && "rotate-90")} aria-hidden />
             {done.length} completed {done.length === 1 ? "step" : "steps"}
           </button>
           {showDone && (

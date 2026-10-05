@@ -34,7 +34,7 @@ export function UserMenu({ user, users }: { user: SwitcherUser; users: SwitcherU
     });
 
   return (
-    <div ref={ref} className="relative px-6 pb-12">
+    <div ref={ref} className="relative px-5 pb-6">
       {open && (
         <div className="absolute bottom-full left-4 right-4 mb-2 rounded-container border border-border bg-surface py-2" role="menu">
           <p className="px-4 py-2 text-label text-text-muted">View as</p>
@@ -52,7 +52,7 @@ export function UserMenu({ user, users }: { user: SwitcherUser; users: SwitcherU
                 <span className={cx("block truncate text-label", u.id === user.id ? "font-semibold text-brand" : "text-text")}>{u.name}</span>
                 <span className="block truncate text-tiny text-text-muted">{u.roles}</span>
               </span>
-              {u.id === user.id && <Check size={18} strokeWidth={ICON_STROKE} className="text-brand" aria-hidden />}
+              {u.id === user.id && <Check size={16} strokeWidth={ICON_STROKE} className="text-brand" aria-hidden />}
             </button>
           ))}
         </div>
@@ -69,7 +69,7 @@ export function UserMenu({ user, users }: { user: SwitcherUser; users: SwitcherU
           <span className="block truncate text-meta text-text">{user.name}</span>
           <span className="block truncate text-label text-text-muted">{user.roles}</span>
         </span>
-        <ChevronRight size={22} strokeWidth={ICON_STROKE} className="text-text-muted" aria-hidden />
+        <ChevronRight size={18} strokeWidth={ICON_STROKE} className="text-text-muted" aria-hidden />
       </button>
     </div>
   );

@@ -22,14 +22,14 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cx(
-        "flex h-12 items-center gap-6 rounded-control px-5 text-meta",
+        "flex h-10 items-center gap-4 rounded-control px-4 text-meta",
         active ? "bg-brand-soft text-brand" : "text-text hover:bg-neutral-soft",
       )}
     >
-      <Icon size={28} strokeWidth={ICON_STROKE} aria-hidden />
+      <Icon size={22} strokeWidth={ICON_STROKE} aria-hidden />
       <span className="flex-1">{item.label}</span>
       {item.count ? (
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft text-label font-semibold text-brand">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-soft text-tiny font-semibold text-brand">
           {item.count}
         </span>
       ) : null}
@@ -60,7 +60,7 @@ export function Sidebar({ user, users, isAdmin, pulseCount }: Props) {
 
   return (
     <aside className="fixed inset-y-0 left-0 flex w-sidebar flex-col border-r border-border bg-surface">
-      <div className="flex h-topbar shrink-0 items-center border-b border-border px-8">
+      <div className="flex h-topbar shrink-0 items-center border-b border-border px-6">
         <Link href="/" aria-label="Spine home">
           <Logo />
         </Link>

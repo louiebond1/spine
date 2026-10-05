@@ -23,8 +23,8 @@ export function ProjectList({ projects, sort, sortHref }: { projects: ProjectSum
         <span>Owner</span>
         <Link href={sortHref} className="inline-flex items-center gap-1 hover:text-text">
           Stage
-          {sort === "stage" && <ChevronUp size={16} strokeWidth={ICON_STROKE} aria-label="ascending" />}
-          {sort === "stage-desc" && <ChevronDown size={16} strokeWidth={ICON_STROKE} aria-label="descending" />}
+          {sort === "stage" && <ChevronUp size={14} strokeWidth={ICON_STROKE} aria-label="ascending" />}
+          {sort === "stage-desc" && <ChevronDown size={14} strokeWidth={ICON_STROKE} aria-label="descending" />}
         </Link>
         <span>Build path</span>
         <span>Next action</span>

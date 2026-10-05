@@ -15,4 +15,4 @@ export function Field({ label, htmlFor, children, className }: { label?: string;
 }
 
 export const controlClass =
-  "h-12 rounded-control border border-border bg-surface px-4 text-meta text-text placeholder:text-text-muted focus:border-brand focus:outline-none disabled:bg-neutral-soft";
+  "h-10 rounded-control border border-border bg-surface px-4 text-meta text-text placeholder:text-text-muted focus:border-brand focus:outline-none disabled:bg-neutral-soft";

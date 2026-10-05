@@ -67,7 +67,7 @@ export default async function ApprovalPage({ params }: { params: Promise<{ id: s
         />
         {p.aiReview?.raisedConcerns && (
           <div className="mb-5 flex items-center gap-4 rounded-control bg-neutral-soft px-6 py-4">
-            <Flag size={22} strokeWidth={ICON_STROKE} className="text-text" aria-hidden />
+            <Flag size={18} strokeWidth={ICON_STROKE} className="text-text" aria-hidden />
             <p className="text-meta text-text">AI review raised concerns</p>
           </div>
         )}

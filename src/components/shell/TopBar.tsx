@@ -38,11 +38,11 @@ function NewMenu() {
         onClick={() => setOpen(!open)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex h-12 w-new-button items-center gap-3 rounded-control border border-brand bg-surface px-5 text-meta text-brand hover:text-brand-hover"
+        className="inline-flex h-10 w-new-button items-center gap-2 rounded-control border border-brand bg-surface px-5 text-meta text-brand hover:text-brand-hover"
       >
-        <Plus size={22} strokeWidth={ICON_STROKE} aria-hidden />
+        <Plus size={18} strokeWidth={ICON_STROKE} aria-hidden />
         <span>New</span>
-        <ChevronDown size={22} strokeWidth={ICON_STROKE} className="ml-auto" aria-hidden />
+        <ChevronDown size={18} strokeWidth={ICON_STROKE} className="ml-auto" aria-hidden />
       </button>
       {open && (
         <div className="absolute right-0 top-full z-40 mt-2 w-60 rounded-container border border-border bg-surface py-2" role="menu">
@@ -70,9 +70,9 @@ function BellMenu({ items }: { items: BellItem[] }) {
         onClick={() => setOpen(!open)}
         aria-label={items.length ? `${items.length} things need you` : "Nothing needs you right now"}
         aria-expanded={open}
-        className="relative flex h-12 w-12 items-center justify-center text-text hover:text-brand"
+        className="relative flex h-10 w-10 items-center justify-center text-text hover:text-brand"
       >
-        <Bell size={28} strokeWidth={ICON_STROKE} aria-hidden />
+        <Bell size={22} strokeWidth={ICON_STROKE} aria-hidden />
         {items.length > 0 && <span className="absolute right-2 top-1 h-3 w-3 rounded-full bg-brand" aria-hidden />}
       </button>
       {open && (
@@ -115,9 +115,9 @@ export function TopBar({ bellItems }: { bellItems: BellItem[] }) {
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
-          className="flex h-12 w-full max-w-search items-center gap-4 rounded-control border border-border bg-surface px-5 text-left text-meta text-text-muted hover:border-text-muted"
+          className="flex h-10 w-full max-w-search items-center gap-3 rounded-control border border-border bg-surface px-5 text-left text-meta text-text-muted hover:border-text-muted"
         >
-          <Search size={22} strokeWidth={ICON_STROKE} aria-hidden />
+          <Search size={18} strokeWidth={ICON_STROKE} aria-hidden />
           <span className="flex-1">Search Spine...</span>
           <span className="flex gap-1" aria-hidden>
             <kbd className="rounded-sm bg-neutral-soft px-2 font-sans text-label text-text-muted">⌘</kbd>

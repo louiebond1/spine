@@ -2,7 +2,7 @@
 export function Logo() {
   return (
     <span className="flex items-center gap-4">
-      <svg width="36" height="50" viewBox="0 0 36 50" aria-hidden>
+      <svg width="28" height="39" viewBox="0 0 36 50" aria-hidden>
         <defs>
           <linearGradient id="spine-logo" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" className="text-logo-light" stopColor="currentColor" />

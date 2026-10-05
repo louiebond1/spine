@@ -88,7 +88,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   return (
     <Modal open={open} onClose={onClose} bare title="Search Spine">
       <div className="relative border-b border-border">
-        <Search size={22} strokeWidth={ICON_STROKE} className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden />
+        <Search size={18} strokeWidth={ICON_STROKE} className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

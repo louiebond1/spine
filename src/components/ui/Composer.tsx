@@ -47,7 +47,7 @@ export function Composer({ onSend, allowAttach, trailing, placeholder = "Type a 
             <li key={i} className="flex items-center gap-2 rounded-control bg-neutral-soft px-3 py-1 text-label text-text">
               {f.name}
               <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles(files.filter((_, j) => j !== i))}>
-                <X size={16} strokeWidth={ICON_STROKE} />
+                <X size={14} strokeWidth={ICON_STROKE} />
               </button>
             </li>
           ))}
@@ -62,7 +62,7 @@ export function Composer({ onSend, allowAttach, trailing, placeholder = "Type a 
               className="flex h-control w-control shrink-0 items-center justify-center rounded-control border border-border text-text hover:text-brand"
               aria-label="Attach a file"
             >
-              <Paperclip size={22} strokeWidth={ICON_STROKE} />
+              <Paperclip size={18} strokeWidth={ICON_STROKE} />
             </button>
             <input
               ref={fileInput}

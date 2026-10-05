@@ -66,7 +66,7 @@ export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id:
       {draft.id && <input type="hidden" name="id" value={draft.id} />}
       {draft.returnNote && (
         <div className="flex items-start gap-4 rounded-control bg-neutral-soft px-5 py-4">
-          <Flag size={22} strokeWidth={ICON_STROKE} className="mt-0.5 shrink-0 text-text" aria-hidden />
+          <Flag size={18} strokeWidth={ICON_STROKE} className="mt-0.5 shrink-0 text-text" aria-hidden />
           <p className="text-meta text-text">{draft.returnNote}</p>
         </div>
       )}
@@ -108,7 +108,7 @@ export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id:
                 >
                   {selected && <span className="h-3 w-3 rounded-full bg-brand" />}
                 </span>
-                <Icon size={30} strokeWidth={ICON_STROKE} className="shrink-0 text-text" aria-hidden />
+                <Icon size={24} strokeWidth={ICON_STROKE} className="shrink-0 text-text" aria-hidden />
                 <span>
                   <span className="block text-row-title font-semibold text-text">{p.title}</span>
                   {p.lines.map((line) => (
@@ -149,7 +149,7 @@ export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id:
             {/* The native date picker sits invisibly over a field that shows "26 November 2026". */}
             <div className={cx(controlClass, "relative flex w-full items-center justify-between")}>
               <span className={target ? "text-text" : "text-text-muted"}>{formatTarget(target)}</span>
-              <Calendar size={22} strokeWidth={ICON_STROKE} className="text-text" aria-hidden />
+              <Calendar size={18} strokeWidth={ICON_STROKE} className="text-text" aria-hidden />
               <input
                 id="targetDate"
                 name="targetDate"

@@ -42,7 +42,7 @@ export function Modal({ open, onClose, title, bare, children, footer }: Props) {
           <div className="flex items-center justify-between px-6 pt-6">
             <h2 className="text-section font-semibold text-text">{title}</h2>
             <button type="button" onClick={onClose} className="text-text-muted hover:text-text" aria-label="Close">
-              <X size={22} strokeWidth={ICON_STROKE} />
+              <X size={18} strokeWidth={ICON_STROKE} />
             </button>
           </div>
         )}

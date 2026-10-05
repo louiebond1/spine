@@ -21,7 +21,7 @@ export function Shell({ user, users, isAdmin, pulseCount, bellItems, topics, chi
       <Sidebar user={user} users={users} isAdmin={isAdmin} pulseCount={pulseCount} />
       <div className="pl-sidebar">
         <TopBar bellItems={bellItems} />
-        <main className="px-10 pb-16 pt-6">{children}</main>
+        <main className="px-10 pb-16 pt-8">{children}</main>
         <Suspense>
           <AskQuestionModal topics={topics} />
         </Suspense>

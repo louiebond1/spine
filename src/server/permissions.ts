@@ -42,7 +42,11 @@ export const can = {
   joinProject: (user: User, p: ProjectLike, team: { userId: string }[], teamSize: number) =>
     p.stage === "RECRUITING" && team.length < teamSize && !team.some((m) => m.userId === user.id),
 
-  editPlan: (user: User, team: { userId: string }[]) => team.some((m) => m.userId === user.id),
+  onTeam: (user: User, team: { userId: string }[]) => team.some((m) => m.userId === user.id),
+
+  /** Rule 9: the team edits the plan while Building. */
+  editPlan: (user: User, p: Pick<Project, "stage">, team: { userId: string }[]) =>
+    p.stage === "BUILDING" && team.some((m) => m.userId === user.id),
 
   publish: (user: User, p: ProjectLike) =>
     user.isPublishingSpecialist && p.stage === "PUBLISHING" && p.publisherId === user.id,

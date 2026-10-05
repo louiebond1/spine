@@ -46,6 +46,11 @@ async function move(tx: Tx, projectId: string, from: ProjectStage, data: Prisma.
   if (count !== 1) throw new Error("This project has already moved on.");
 }
 
+/** Row lock so concurrent joins and approvals on one project run one at a time. */
+async function lockProject(tx: Tx, projectId: string) {
+  await tx.$queryRaw`SELECT id FROM "Project" WHERE id = ${projectId} FOR UPDATE`;
+}
+
 async function ensureOwnerOnTeam(tx: Tx, projectId: string, ownerId: string) {
   await tx.teamMember.upsert({
     where: { projectId_userId: { projectId, userId: ownerId } },
@@ -83,25 +88,22 @@ export async function submit(projectId: string, actorId: string) {
  * (already built) moves it to Publishing. `approverId` null means auto-approved.
  */
 export async function approve(projectId: string, approverId: string | null) {
-  let next = "recruit" as "recruit" | "publish";
   let startBuild = false;
   await db.$transaction(async (tx) => {
+    await lockProject(tx, projectId);
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
-    const t = now();
-    next = p.buildCompletedAt ? "publish" : "recruit";
-    await move(tx, p.id, "APPROVAL", {
-      stage: next === "publish" ? "APPROVAL" : "RECRUITING",
-      approvedAt: t,
-      approvedById: approverId,
-      autoApproveAt: null,
-    });
-    await logEvent(tx, p.id, approverId ? "APPROVED" : "AUTO_APPROVED", approverId);
-    if (next === "recruit") {
+    const approval = { approvedAt: now(), approvedById: approverId, autoApproveAt: null };
+    if (p.buildCompletedAt) {
+      // Cowork-native, already built: approval and publisher assignment happen together.
+      await logEvent(tx, p.id, approverId ? "APPROVED" : "AUTO_APPROVED", approverId);
+      await publishWithin(tx, p.id, "APPROVAL", approval);
+    } else {
+      await move(tx, p.id, "APPROVAL", { stage: "RECRUITING", ...approval });
+      await logEvent(tx, p.id, approverId ? "APPROVED" : "AUTO_APPROVED", approverId);
       await ensureOwnerOnTeam(tx, p.id, p.ownerId);
       startBuild = (await tx.teamMember.count({ where: { projectId } })) >= p.teamSize;
     }
   });
-  if (next === "publish") await toPublishing(projectId, "APPROVAL");
   if (startBuild) await startBuilding(projectId);
 }
 
@@ -117,6 +119,19 @@ export async function returnToOwner(projectId: string, actorId: string, note: st
       await move(tx, p.id, "APPROVAL", { stage: "BUILDING", autoApproveAt: null, buildCompletedAt: null, returnNote: note });
       const actor = await tx.user.findUniqueOrThrow({ where: { id: actorId } });
       await systemMessage(tx, p.id, `${firstName(actor.name)} returned this with a note: ${note}`);
+      // Every step is already done, so add one open step for the note. Ticking it finishes the
+      // build again and sends it back to Approval.
+      const last = await tx.planStep.findFirst({ where: { projectId: p.id }, orderBy: { order: "desc" } });
+      await tx.planStep.create({
+        data: {
+          projectId: p.id,
+          title: "Address the approval note",
+          activePhrase: "addressing the approval note",
+          assigneeId: p.ownerId,
+          dueDate: new Date(now().getTime() + 3 * DAY),
+          order: (last?.order ?? -1) + 1,
+        },
+      });
     } else {
       await move(tx, p.id, "APPROVAL", { stage: "IDEA", autoApproveAt: null, submittedAt: null, returnNote: note });
     }
@@ -128,6 +143,8 @@ export async function returnToOwner(projectId: string, actorId: string, note: st
 export async function join(projectId: string, userId: string) {
   let full = false;
   await db.$transaction(async (tx) => {
+    // Lock first so two people can't both take the last place.
+    await lockProject(tx, projectId);
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId }, include: { team: true } });
     if (p.stage !== "RECRUITING") throw new Error("This project isn't recruiting.");
     if (p.team.length >= p.teamSize) throw new Error("This team is full.");
@@ -168,10 +185,9 @@ async function completeBuild(projectId: string) {
   const p = await db.project.findUniqueOrThrow({ where: { id: projectId } });
   if (p.buildPath === "APP") {
     await db.$transaction(async (tx) => {
-      await tx.project.update({ where: { id: projectId }, data: { buildCompletedAt: now() } });
       await logEvent(tx, projectId, "BUILD_COMPLETED", null);
+      await publishWithin(tx, projectId, "BUILDING", { buildCompletedAt: now() });
     });
-    await toPublishing(projectId, "BUILDING");
     return;
   }
   await db.$transaction(async (tx) => {
@@ -185,17 +201,46 @@ async function completeBuild(projectId: string) {
   });
 }
 
-/** Rule 11: publishing goes to the specialist with the lightest load. */
-async function toPublishing(projectId: string, from: ProjectStage) {
-  await db.$transaction(async (tx) => {
-    const publisher = await assignPublisher(tx);
-    await move(tx, projectId, from, {
-      stage: "PUBLISHING",
-      publisherId: publisher?.id ?? null,
-      publishingAssignedAt: publisher ? now() : null,
-    });
-    if (publisher) await logEvent(tx, projectId, "PUBLISHER_ASSIGNED", null, publisher.name);
+/** Serialises publisher choice so two projects can't both see the same lightest load. */
+async function lockPublishing(tx: Tx) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7311)`;
+}
+
+/** Rule 11: publishing goes to the specialist with the lightest load, inside the caller's transaction. */
+async function publishWithin(tx: Tx, projectId: string, from: ProjectStage, extra: Prisma.ProjectUncheckedUpdateManyInput = {}) {
+  await lockPublishing(tx);
+  const publisher = await assignPublisher(tx);
+  await move(tx, projectId, from, {
+    ...extra,
+    stage: "PUBLISHING",
+    publisherId: publisher?.id ?? null,
+    publishingAssignedAt: publisher ? now() : null,
   });
+  if (publisher) await logEvent(tx, projectId, "PUBLISHER_ASSIGNED", null, publisher.name);
+}
+
+/**
+ * Projects that reached Publishing while nobody was a publishing specialist wait unassigned;
+ * this hands them out as soon as someone is given the role.
+ */
+export async function assignUnassignedPublishing() {
+  const waiting = await db.project.findMany({
+    where: { stage: "PUBLISHING", publisherId: null },
+    orderBy: { lastActivityAt: "asc" },
+    select: { id: true },
+  });
+  for (const p of waiting) {
+    await db.$transaction(async (tx) => {
+      await lockPublishing(tx);
+      const publisher = await assignPublisher(tx);
+      if (!publisher) return;
+      const { count } = await tx.project.updateMany({
+        where: { id: p.id, stage: "PUBLISHING", publisherId: null },
+        data: { publisherId: publisher.id, publishingAssignedAt: now() },
+      });
+      if (count === 1) await logEvent(tx, p.id, "PUBLISHER_ASSIGNED", null, publisher.name);
+    });
+  }
 }
 
 /** Rule 11: the assigned specialist marks it Live. */

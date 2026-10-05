@@ -138,7 +138,7 @@ export async function joinProject(projectId: string) {
 
 export async function retryBuildPlan(projectId: string) {
   const { user, p } = await loadForTeam(projectId);
-  assert(can.editPlan(user, p.team) && p.stage === "BUILDING");
+  assert(can.editPlan(user, p, p.team));
   await db.project.update({ where: { id: projectId }, data: { planStatus: "GENERATING" } });
   await generateBuildPlan(projectId);
   refresh();
@@ -146,7 +146,7 @@ export async function retryBuildPlan(projectId: string) {
 
 async function assertPlanEditor(projectId: string) {
   const { user, p } = await loadForTeam(projectId);
-  assert(can.editPlan(user, p.team) && p.stage === "BUILDING", "Only the team can change the plan while building.");
+  assert(can.editPlan(user, p, p.team), "Only the team can change the plan while building.");
   return { user, p };
 }
 
@@ -233,7 +233,7 @@ export async function toggleStep(stepId: string, done: boolean) {
 
 export async function sendProjectMessage(projectId: string, data: FormData) {
   const { user, p } = await loadForTeam(projectId);
-  assert(can.editPlan(user, p.team), "Only the team can post in this chat.");
+  assert(can.onTeam(user, p.team), "Only the team can post in this chat.");
   const body = String(data.get("body") ?? "").trim().slice(0, 5000);
   if (!body) return;
   await db.$transaction(async (tx) => {
@@ -253,7 +253,7 @@ export async function markLive(projectId: string) {
 
 export async function logHoursSaved(projectId: string, hours: number): Promise<{ error?: string }> {
   const { user, p } = await loadForTeam(projectId);
-  assert(p.stage === "LIVE" && can.editPlan(user, p.team), "Only the team can log hours saved.");
+  assert(p.stage === "LIVE" && can.onTeam(user, p.team), "Only the team can log hours saved.");
   if (!Number.isInteger(hours) || hours < 0 || hours > 10000) return { error: "Enter a whole number of hours." };
   const month = startOfMonth(now());
   await db.$transaction(async (tx) => {

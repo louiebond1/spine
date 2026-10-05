@@ -165,6 +165,47 @@ const settle = (page) => page.waitForLoadState("networkidle");
   check("Return note shown at the top of the form", (await priya.locator("text=Please say which policies it covers first.").count()) === 1);
 }
 
+// --- Cowork-native: join race, build, approval after build, return, re-approve -------
+{
+  // Meeting Summary Bot is 1 of 3. Three people race for the last two places.
+  const racers = await Promise.all(["u-louie", "u-mia", "u-ben"].map((u) => as(u)));
+  await Promise.all(racers.map((pg) => go(pg, "/ideas/p-meeting-summary?tab=team")));
+  await Promise.all(racers.map((pg) => pg.click("button:has-text('Join project')").catch(() => {})));
+  await new Promise((r) => setTimeout(r, 4000));
+  let p = await db.project.findUnique({ where: { id: "p-meeting-summary" }, include: { team: true, steps: true } });
+  check("Concurrent joins never overfill the team", p.team.length === 3, `${p.team.length} members`);
+  check("Cowork-native team full moves to Building with a plan", p.stage === "BUILDING" && p.steps.length >= 6);
+
+  // The team ticks every step: Cowork-native goes to Approval after the build.
+  const memberId = p.team[0].userId;
+  const member = await as(memberId);
+  await db.planStep.updateMany({ where: { projectId: p.id, order: { gt: 0 } }, data: { done: true } });
+  await go(member, "/ideas/p-meeting-summary");
+  await member.locator("input[type=checkbox]:not(:checked)").first().check();
+  await member.waitForTimeout(1500);
+  p = await db.project.findUnique({ where: { id: "p-meeting-summary" } });
+  check("Finished Cowork-native build goes to Approval", p.stage === "APPROVAL" && p.buildCompletedAt !== null && p.autoApproveAt !== null);
+
+  const alex = await as("u-alex");
+  await go(alex, "/ideas/p-meeting-summary/approve");
+  await alex.click("button:has-text('Return with note')");
+  await alex.fill("#return-note", "Add a summary template first.");
+  await alex.click("button:has-text('Return to owner')");
+  await alex.waitForURL(`${base}/`);
+  p = await db.project.findUnique({ where: { id: "p-meeting-summary" }, include: { steps: true } });
+  check("Cowork-native returned after build goes back to Building with an open step", p.stage === "BUILDING" && p.steps.some((s) => !s.done && s.title === "Address the approval note"));
+
+  const owner = await as(p.ownerId);
+  await go(owner, "/ideas/p-meeting-summary");
+  await owner.locator("input[type=checkbox]:not(:checked)").first().check();
+  await owner.waitForTimeout(1500);
+  await go(alex, "/ideas/p-meeting-summary/approve");
+  await alex.click("button:has-text('Approve')");
+  await alex.waitForTimeout(1500);
+  p = await db.project.findUnique({ where: { id: "p-meeting-summary" } });
+  check("Approving a built Cowork-native project moves it straight to Publishing with a publisher", p.stage === "PUBLISHING" && p.publisherId !== null);
+}
+
 await browser.close();
 await db.$disconnect();
 const failed = results.filter((r) => !r.ok).length;

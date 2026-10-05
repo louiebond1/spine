@@ -136,7 +136,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "plan";
 
   const order = STAGE_ORDER[p.buildPath];
-  const isTeam = can.editPlan(user, p.team);
+  const isTeam = can.onTeam(user, p.team);
   const canJoin = can.joinProject(user, p, p.team, p.teamSize);
   const canPublish = can.publish(user, p);
   const t = now();

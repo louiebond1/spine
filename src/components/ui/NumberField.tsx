@@ -9,7 +9,7 @@ export const NumberField = forwardRef<HTMLInputElement, Props>(function NumberFi
   return (
     <span className="inline-flex items-center gap-4">
       <input ref={ref} type="number" inputMode="numeric" className={cx(controlClass, "w-24", className)} {...rest} />
-      {suffix && <span className="text-meta text-text-muted">{suffix}</span>}
+      {suffix && <span className="min-w-12 text-meta text-text-muted">{suffix}</span>}
     </span>
   );
 });

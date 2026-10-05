@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Composer } from "@/components/ui/Composer";
 import { joinProject, markLive, sendProjectMessage } from "@/server/projects/actions";
@@ -11,8 +12,23 @@ export function ProjectComposer({ projectId }: { projectId: string }) {
 
 export function JoinButton({ projectId }: { projectId: string }) {
   const [pending, start] = useTransition();
+  const [missed, setMissed] = useState(false);
+  const router = useRouter();
+  if (missed) return <p className="text-label text-text-muted">The team filled up just before you joined.</p>;
   return (
-    <Button disabled={pending} onClick={() => start(() => joinProject(projectId))}>
+    <Button
+      disabled={pending}
+      onClick={() =>
+        start(async () => {
+          try {
+            await joinProject(projectId);
+          } catch {
+            setMissed(true);
+            router.refresh();
+          }
+        })
+      }
+    >
       Join project
     </Button>
   );

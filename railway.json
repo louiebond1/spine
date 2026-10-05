@@ -5,7 +5,7 @@
     "buildCommand": "npm ci && npm run build"
   },
   "deploy": {
-    "startCommand": "npm run db:deploy && npm start",
+    "startCommand": "npm run db:deploy && npm run seed:if-empty && npm start",
     "restartPolicyType": "ON_FAILURE"
   }
 }

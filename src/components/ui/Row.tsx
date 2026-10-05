@@ -11,10 +11,12 @@ type Props = {
   highlighted?: boolean;
   /** Small rows (Your work, plan steps) use less vertical padding. */
   density?: "comfortable" | "compact";
+  /** Space between the leading tile or avatar and the text. */
+  gap?: "normal" | "wide";
   className?: string;
 };
 
-export function Row({ leading, title, meta, trailing, href, highlighted, density = "comfortable", className }: Props) {
+export function Row({ leading, title, meta, trailing, href, highlighted, density = "comfortable", gap = "normal", className }: Props) {
   const body = (
     <div className="min-w-0 flex-1">
       <div className="truncate text-row-title font-medium text-text">{title}</div>
@@ -24,8 +26,9 @@ export function Row({ leading, title, meta, trailing, href, highlighted, density
   return (
     <div
       className={cx(
-        "flex items-center gap-6",
-        density === "comfortable" ? "py-5" : "py-4",
+        "flex items-center",
+        gap === "wide" ? "gap-9" : "gap-8",
+        density === "comfortable" ? "py-6" : "py-3.5",
         highlighted && "-mx-3 rounded-control bg-brand-soft px-3",
         className,
       )}

@@ -17,7 +17,7 @@ export function Container({ label, heading, count, action, className, children }
   return (
     <section className={cx("rounded-container border border-border bg-surface px-6", className)}>
       {(heading || label || action) && (
-        <header className={cx("flex items-center justify-between gap-4", heading ? "pb-3 pt-5" : "pb-1 pt-6")}>
+        <header className={cx("flex items-center justify-between gap-4", heading ? "border-b border-border pb-3 pt-4" : "pb-1 pt-6")}>
           {heading && (
             <h2 className="text-section font-semibold text-text">
               {heading}

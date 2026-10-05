@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       users={users.map(toSwitcher)}
       isAdmin={user.isAdmin}
       pulseCount={pulse.length}
-      bellItems={needsYou.map((n) => ({ key: n.key, title: n.title, reason: n.reason, href: n.action.href }))}
+      bellItems={needsYou.map((n) => ({ key: n.key, title: n.title, reason: [n.reason.before, n.reason.emphasis, n.reason.after].join(""), href: n.action.href }))}
     >
       {children}
     </Shell>

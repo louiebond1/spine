@@ -106,7 +106,7 @@ function ActionCard({ action, state, onDone }: { action: ProposedAction; state?:
 }
 
 const SUGGESTIONS = {
-  project: ["What should happen next on this project?", "What's at risk here?", "Write a short status update for the team"],
+  project: ["What should happen next on this project?", "What's at risk here?", "Draft a friendly nudge for the team about anything overdue"],
   app: ["What should I do first today?", "What's going quiet across the company?", "How do I use Claude with Excel?"],
 };
 

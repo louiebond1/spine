@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedToggle } from "@/components/ui/SegmentedToggle";
 import { PipelineBoard } from "@/features/ideas/PipelineBoard";
 import { ProjectList } from "@/features/ideas/ProjectList";
+import { SpottedBySpine } from "@/features/ideas/SpottedBySpine";
 import { now } from "@/server/clock";
 import { db } from "@/server/db";
 import { runDueAutoApprovals } from "@/server/projects/autoApprove";
@@ -28,6 +29,14 @@ export default async function IdeasPage({ searchParams }: { searchParams: Promis
     for (const [k, v] of Object.entries({ owner: params.owner, person: params.person, ...extra })) if (v) q.set(k, v);
     return `/ideas?${q.toString()}`;
   };
+  const openOpps = await db.opportunity.findMany({ where: { status: "OPEN" }, orderBy: { createdAt: "desc" }, take: 3 });
+  const evidence = await db.question.findMany({ where: { id: { in: openOpps.flatMap((o) => o.evidenceIds) } }, select: { id: true, title: true } });
+  const opportunities = openOpps.map((o) => ({
+    id: o.id,
+    title: o.title,
+    problem: o.problem,
+    evidence: o.evidenceIds.map((id) => evidence.find((e) => e.id === id)).filter((e): e is { id: string; title: string } => Boolean(e)),
+  }));
   const sort = params.sort === "stage" || params.sort === "stage-desc" ? params.sort : null;
   const filtered = Boolean(params.owner === "me" || person);
 
@@ -52,6 +61,7 @@ export default async function IdeasPage({ searchParams }: { searchParams: Promis
         )}
       </div>
       <p className="mb-6 text-meta text-text-muted">Approval: App ideas before recruiting · Cowork-native after building</p>
+      <SpottedBySpine items={opportunities} isAdmin={user.isAdmin} />
       {view === "pipeline" ? (
         <PipelineBoard projects={projects} viewerId={user.id} now={now()} />
       ) : (

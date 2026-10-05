@@ -66,6 +66,7 @@ export async function seed(db: PrismaClient, { allClear }: Options) {
 }
 
 async function wipe(db: PrismaClient) {
+  await db.opportunity.deleteMany();
   await db.attachment.deleteMany();
   await db.questionMessage.deleteMany();
   await db.questionEvent.deleteMany();

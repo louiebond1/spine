@@ -341,6 +341,7 @@ model Settings {
   hourlyCost             Decimal?  @db.Decimal(10, 2)
   programmeCost          Decimal?  @db.Decimal(12, 2)
   lastDigestSentOn       DateTime? // ADDED: stops the cron sending twice in one day
+  opportunitiesScannedAt DateTime? // last "Spotted by Spine" scan
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 }
@@ -393,4 +394,28 @@ model AssistantMessage {
   thread AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
+}
+
+// ---------- Spotted by Spine: repeated Help Desk questions that should become projects ----------
+
+enum OpportunityStatus {
+  OPEN
+  PROPOSED
+  DISMISSED
+}
+
+model Opportunity {
+  id           String            @id @default(cuid())
+  title        String
+  problem      String
+  whoBenefits  String
+  topicId      String?
+  /// Help Desk questions that show the need.
+  evidenceIds  String[]
+  /// Normalised key of the question cluster, so the same cluster isn't suggested twice.
+  clusterKey   String            @unique
+  status       OpportunityStatus @default(OPEN)
+  projectId    String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 }

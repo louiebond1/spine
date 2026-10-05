@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { Box, Calendar, Flag, Laptop, type LucideIcon } from "lucide-react";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { Box, Calendar, Flag, Laptop, Sparkles, type LucideIcon } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/Button";
 import { SectionLabel } from "@/components/ui/SectionLabel";
@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/Select";
 import { Field, controlClass } from "@/components/ui/Field";
 import { ICON_STROKE } from "@/components/ui/icons";
 import { saveDraft, type ProposeState } from "@/server/projects/actions";
+import { sharpenIdea, type Sharpened } from "@/server/ai/sharpen";
 
 export type IdeaDraft = {
   id?: string;
@@ -26,6 +27,8 @@ export type IdeaDraft = {
   /** yyyy-mm-dd */
   targetDate: string;
   returnNote?: string | null;
+  /** Set when proposing a "Spotted by Spine" opportunity. */
+  opportunityId?: string;
 };
 
 const range = (from: number, to: number, label: (n: number) => string = String) =>
@@ -60,10 +63,44 @@ export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id:
   const [state, action, pending] = useActionState<ProposeState, FormData>(saveDraft, {});
   const [path, setPath] = useState(draft.buildPath);
   const [target, setTarget] = useState(draft.targetDate);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [suggestion, setSuggestion] = useState<Sharpened | null>(null);
+  const [sharpenError, setSharpenError] = useState<string | null>(null);
+  const [sharpening, startSharpen] = useTransition();
+
+  const field = (name: string) => formRef.current?.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+  const sharpen = () =>
+    startSharpen(async () => {
+      setSharpenError(null);
+      const r = await sharpenIdea({
+        title: field("title")?.value ?? "",
+        problem: field("problem")?.value ?? "",
+        whoBenefits: field("whoBenefits")?.value ?? "",
+        buildPath: path,
+      });
+      if (r.ok) setSuggestion(r.result);
+      else setSharpenError(r.error);
+    });
+  const useSuggestion = () => {
+    if (!suggestion) return;
+    const set = (name: string, value: string) => {
+      const el = field(name);
+      if (el) el.value = value;
+    };
+    set("title", suggestion.title);
+    set("problem", suggestion.problem);
+    set("whoBenefits", suggestion.whoBenefits);
+    if (suggestion.topicId) set("topicId", suggestion.topicId);
+    set("teamSize", String(suggestion.teamSize));
+    set("lengthWeeks", String(suggestion.lengthWeeks));
+    set("difficulty", suggestion.difficulty);
+    setSuggestion(null);
+  };
 
   return (
-    <form action={action} className="space-y-3">
+    <form ref={formRef} action={action} className="space-y-3">
       {draft.id && <input type="hidden" name="id" value={draft.id} />}
+      {draft.opportunityId && <input type="hidden" name="opportunityId" value={draft.opportunityId} />}
       {draft.returnNote && (
         <div className="flex items-start gap-4 rounded-control bg-neutral-soft px-5 py-4">
           <Flag size={18} strokeWidth={ICON_STROKE} className="mt-0.5 shrink-0 text-text" aria-hidden />
@@ -85,6 +122,31 @@ export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id:
               options={[{ value: "", label: "Choose a topic" }, ...topics.map((t) => ({ value: t.id, label: t.name }))]}
             />
           </div>
+          <div className="flex items-center gap-4">
+            <button type="button" onClick={sharpen} disabled={sharpening} className="inline-flex items-center gap-2 text-meta font-medium text-brand hover:text-brand-hover disabled:opacity-50">
+              <Sparkles size={16} strokeWidth={ICON_STROKE} aria-hidden />
+              {sharpening ? "Sharpening…" : "Sharpen with Spine"}
+            </button>
+            {sharpenError && <span className="text-label text-text-muted">{sharpenError}</span>}
+          </div>
+          {suggestion && (
+            <div className="rounded-control border border-brand-soft bg-surface p-5">
+              <p className="text-label font-semibold text-brand">Spine&apos;s version</p>
+              <p className="mt-2 text-row-title font-semibold text-text">{suggestion.title}</p>
+              <p className="mt-1 text-meta text-text">{suggestion.problem}</p>
+              <p className="mt-2 text-label text-text-muted">
+                For {suggestion.whoBenefits} · {suggestion.teamSize} {suggestion.teamSize === 1 ? "person" : "people"} · {suggestion.lengthWeeks} weeks ·{" "}
+                {suggestion.difficulty.charAt(0) + suggestion.difficulty.slice(1).toLowerCase()}
+              </p>
+              <p className="mt-3 text-label text-text-muted">Tip: {suggestion.tip}</p>
+              <div className="mt-4 flex items-center gap-4">
+                <Button onClick={useSuggestion}>Use this</Button>
+                <Button variant="text" onClick={() => setSuggestion(null)}>
+                  Keep mine
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Section>
 

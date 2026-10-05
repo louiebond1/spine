@@ -121,6 +121,7 @@ export async function getThread(id: string, viewer: User) {
     body: q.body,
     suggested: q.aiAnswer ? { text: q.aiAnswer, sources: sources.map((s) => ({ id: s.id, title: s.title, href: `/help-desk/${s.id}` })) } : null,
     askerCanAccept: q.status === "UNCLAIMED" && q.askerId === viewer.id,
+    bestMatch: q.status === "UNCLAIMED" ? await bestChampionFor(q) : null,
     readable: can.readThread(viewer, q),
     canPost: can.postInThread(viewer, q),
     canResolve: can.resolveQuestion(viewer, q),
@@ -171,4 +172,24 @@ export async function findSimilarResolved(title: string, viewer: User) {
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
     .map(({ q }) => ({ id: q.id, title: q.title, isMine: q.askerId === viewer.id, resolvedBy: q.claimer?.name ?? null }));
+}
+
+/**
+ * Best Champion match for an unclaimed question: the Champion who has resolved the most
+ * questions in the same topic (ties go to recent activity). Never the asker.
+ */
+export async function bestChampionFor(q: { id: string; topicId: string; askerId: string }) {
+  const counts = await db.question.groupBy({
+    by: ["claimerId"],
+    where: { status: "RESOLVED", topicId: q.topicId, claimerId: { not: null }, NOT: { claimerId: q.askerId } },
+    _count: { _all: true },
+    _max: { resolvedAt: true },
+  });
+  const champions = await db.user.findMany({ where: { isChampion: true, id: { in: counts.map((c) => c.claimerId!).filter(Boolean) } } });
+  const best = counts
+    .filter((c) => champions.some((u) => u.id === c.claimerId))
+    .sort((a, b) => b._count._all - a._count._all || (b._max.resolvedAt?.getTime() ?? 0) - (a._max.resolvedAt?.getTime() ?? 0))[0];
+  if (!best) return null;
+  const user = champions.find((u) => u.id === best.claimerId)!;
+  return { id: user.id, name: user.name, answered: best._count._all };
 }

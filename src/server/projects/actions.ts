@@ -70,6 +70,10 @@ export async function saveDraft(_prev: ProposeState, form: FormData): Promise<Pr
       },
     });
     projectId = p.id;
+    const opportunityId = String(form.get("opportunityId") ?? "");
+    if (opportunityId) {
+      await db.opportunity.updateMany({ where: { id: opportunityId, status: "OPEN" }, data: { status: "PROPOSED", projectId: p.id } });
+    }
   }
   redirect(`/ideas/${projectId}/review`);
 }

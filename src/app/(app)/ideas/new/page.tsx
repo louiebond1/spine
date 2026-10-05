@@ -13,8 +13,8 @@ const isoDay = (d: Date) => {
 };
 
 /** Propose an idea (04). `?from=<id>` edits the owner's own draft, with any return note at the top. */
-export default async function ProposeIdeaPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
-  const { from } = await searchParams;
+export default async function ProposeIdeaPage({ searchParams }: { searchParams: Promise<{ from?: string; opportunity?: string }> }) {
+  const { from, opportunity } = await searchParams;
   const user = await getCurrentUser();
   const topics = await db.topic.findMany({ where: { archivedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } });
 
@@ -30,6 +30,12 @@ export default async function ProposeIdeaPage({ searchParams }: { searchParams: 
     difficulty: "MODERATE",
     targetDate: "",
   };
+  if (!from && opportunity) {
+    const o = await db.opportunity.findUnique({ where: { id: opportunity } });
+    if (o && o.status === "OPEN") {
+      draft = { ...draft, title: o.title, problem: o.problem, whoBenefits: o.whoBenefits, topicId: o.topicId ?? "", opportunityId: o.id };
+    }
+  }
   if (from) {
     const p = await db.project.findUnique({ where: { id: from } });
     if (!p || !can.editIdea(user, p)) notFound();

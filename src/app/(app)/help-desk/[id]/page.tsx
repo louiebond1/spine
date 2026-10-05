@@ -55,6 +55,11 @@ export default async function QuestionThreadPage({ params }: { params: Promise<{
                 askerCanAccept={thread.askerCanAccept}
                 generate={q.status !== "RESOLVED"}
               />
+              {thread.bestMatch && (
+                <p className="ml-14 text-label text-text-muted">
+                  Best Champion for this: <span className="font-medium text-text">{thread.bestMatch.id === user.id ? "you" : thread.bestMatch.name}</span> · answered {thread.bestMatch.answered} {q.topic} {thread.bestMatch.answered === 1 ? "question" : "questions"}
+                </p>
+              )}
               {thread.messages.map((m) => (
                 <ChatMessage
                   key={m.id}

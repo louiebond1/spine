@@ -116,6 +116,7 @@ export default async function ApprovalPage({ params }: { params: Promise<{ id: s
             </ul>
           </div>
         )}
+        {p.escalatedAt && <p className="mb-4 text-label font-semibold text-text">Escalated: any admin can decide now.</p>}
         {ruleSentence && (
           <p className="mb-7 text-label text-text-muted">
             Rule &ldquo;{rule!.name}&rdquo;: {ruleSentence}

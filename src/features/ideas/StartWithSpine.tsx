@@ -7,6 +7,7 @@ import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/Button";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { ICON_STROKE } from "@/components/ui/icons";
+import { AlreadyInFlight } from "./AlreadyInFlight";
 import type { IdeaBrief } from "@/server/ai/coach";
 import { createFromBrief, nextCoachTurn, previewKickoff } from "@/server/ideas/start-actions";
 
@@ -45,6 +46,8 @@ function BriefPreview({ brief, onReset }: { brief: IdeaBrief; onReset: () => voi
         </p>
         {brief.people.length > 0 && <p className="mt-2 text-label text-text-muted">Spine will invite {brief.people.join(" and ")}.</p>}
       </section>
+
+      <AlreadyInFlight title={brief.title} problem={brief.problem} />
 
       {brief.useCases.length > 0 && (
         <section className="rounded-container border border-border bg-surface px-6 py-5">
@@ -220,7 +223,7 @@ export function StartWithSpine({ firstName }: { firstName: string }) {
             aria-label="Your answer"
             className="max-h-32 flex-1 resize-none rounded-control border border-border px-4 py-2 text-meta text-text placeholder:text-text-muted focus:border-brand focus:outline-none"
           />
-          <button type="submit" disabled={pending || !answer.trim()} aria-label="Send" className="flex h-10 w-10 items-center justify-center rounded-control bg-brand text-surface disabled:opacity-40">
+          <button type="submit" disabled={pending || !answer.trim()} aria-label="Send" className="flex h-10 w-10 items-center justify-center rounded-control bg-brand text-on-brand disabled:opacity-40">
             <ArrowUp size={16} strokeWidth={2} />
           </button>
         </form>

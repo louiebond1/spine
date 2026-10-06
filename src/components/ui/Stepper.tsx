@@ -19,7 +19,7 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
             <span
               className={cx(
                 "relative z-10 flex h-6 w-6 items-center justify-center rounded-full border-2",
-                done && "border-brand bg-brand text-surface",
+                done && "border-brand bg-brand text-on-brand",
                 active && "border-brand bg-surface",
                 !done && !active && "border-border bg-surface",
               )}

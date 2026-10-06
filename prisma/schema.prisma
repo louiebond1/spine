@@ -16,6 +16,9 @@ model User {
   isChampion             Boolean  @default(false)
   isAdmin                Boolean  @default(false)
   isPublishingSpecialist Boolean  @default(false)
+  email                  String?  // where notifications are emailed
+  preferences            Json?    // appearance and notification choices (src/lib/preferences.ts)
+  notifications          Notification[]
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -216,6 +219,8 @@ model Project {
   approverIds       String[]          @default([]) // empty means any admin
   approvalsNeeded   Int               @default(1)
   approvalBrief     Json?             // Spine approval brief for approvers (never contains scores)
+  approvalNudgedAt  DateTime?         // approvers reminded about a stuck approval
+  escalatedAt       DateTime?         // stuck too long: any admin can now decide
   approvals         ProjectApproval[]
   recommendationsAt DateTime?
   assistantThreads AssistantThread[]
@@ -304,6 +309,9 @@ enum ProjectEventType {
   AUTO_APPROVED
   PARTIALLY_APPROVED // one approver of several signed off
   FAST_TRACKED       // an approval rule skipped review
+  APPROVAL_NUDGED    // approvers reminded
+  APPROVAL_ESCALATED // handed to any admin
+  IDEA_MERGED        // someone joined this instead of proposing a duplicate
   JOINED
   RECRUITED          // team full, moved to Building
   PLAN_GENERATED
@@ -351,6 +359,8 @@ model ImpactLog {
 model Settings {
   id                     String    @id @default("singleton")
   approvalTimeoutDays    Int       @default(7)
+  approvalNudgeDays      Int       @default(3) // remind approvers after this many days
+  approvalEscalateDays   Int       @default(7) // then let any admin decide
   stalledBuildDays       Int       @default(10)
   unclaimedQuestionHours Int       @default(2)
   digestChannel          String    @default("Slack")
@@ -525,4 +535,34 @@ model ProjectApproval {
   updatedAt DateTime @updatedAt
 
   @@unique([projectId, userId])
+}
+
+// ---------- Notifications (in-app, email, Slack) ----------
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String    // approval, decision, invite, reply, step, nudge, report
+  title     String
+  body      String
+  href      String
+  readAt    DateTime?
+  emailedAt DateTime?
+  at        DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, at])
+}
+
+// ---------- Monthly leadership report ----------
+
+model LeadershipReport {
+  id          String   @id @default(cuid())
+  month       String   @unique // yyyy-mm
+  content     Json
+  generatedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

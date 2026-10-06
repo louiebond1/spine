@@ -20,6 +20,8 @@ type Result = { error?: string; saved?: boolean };
 
 const rulesSchema = z.object({
   approvalTimeoutDays: z.coerce.number().int().min(1).max(60),
+  approvalNudgeDays: z.coerce.number().int().min(1).max(60),
+  approvalEscalateDays: z.coerce.number().int().min(1).max(90),
   stalledBuildDays: z.coerce.number().int().min(1).max(90),
   unclaimedQuestionHours: z.coerce.number().int().min(1).max(168),
   digestChannel: z.literal("Slack"),

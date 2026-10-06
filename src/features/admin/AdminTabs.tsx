@@ -30,11 +30,11 @@ function SettingRow({ title, hint, children }: { title: string; hint: string; ch
 
 const TIMES = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`);
 
-export function RulesTab({ initial }: { initial: { approvalTimeoutDays: number; stalledBuildDays: number; unclaimedQuestionHours: number; digestTime: string; digestWeekdaysOnly: boolean } }) {
+export function RulesTab({ initial }: { initial: { approvalTimeoutDays: number; approvalNudgeDays: number; approvalEscalateDays: number; stalledBuildDays: number; unclaimedQuestionHours: number; digestTime: string; digestWeekdaysOnly: boolean } }) {
   const [v, setV] = useState({ ...initial, digestChannel: "Slack" as const });
   const [result, setResult] = useState<Result | null>(null);
   const [pending, start] = useTransition();
-  const num = (key: "approvalTimeoutDays" | "stalledBuildDays" | "unclaimedQuestionHours") => ({
+  const num = (key: "approvalTimeoutDays" | "approvalNudgeDays" | "approvalEscalateDays" | "stalledBuildDays" | "unclaimedQuestionHours") => ({
     value: v[key],
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [key]: Number(e.target.value) }),
   });
@@ -43,6 +43,12 @@ export function RulesTab({ initial }: { initial: { approvalTimeoutDays: number; 
       <section className="divide-y divide-border rounded-container border border-border bg-surface px-6">
         <SettingRow title="Approval timeout" hint="How long before an idea auto-approves">
           <NumberField aria-label="Approval timeout in days" min={1} suffix="days" {...num("approvalTimeoutDays")} />
+        </SettingRow>
+        <SettingRow title="Remind approvers" hint="Nudge whoever still has to approve after this long">
+          <NumberField aria-label="Remind approvers after days" min={1} suffix="days" {...num("approvalNudgeDays")} />
+        </SettingRow>
+        <SettingRow title="Escalate stuck approvals" hint="When named approvers haven't decided, let any admin decide">
+          <NumberField aria-label="Escalate after days" min={1} suffix="days" {...num("approvalEscalateDays")} />
         </SettingRow>
         <SettingRow title="Stalled build threshold" hint="When a quiet build gets flagged">
           <NumberField aria-label="Stalled build threshold in days" min={1} suffix="days" {...num("stalledBuildDays")} />

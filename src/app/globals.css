@@ -2,6 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Colour tokens as RGB channels (Tailwind adds the alpha). Light with the cobalt accent is the
+ * design from /design; everything else is a per-person choice in Your settings.
+ */
+:root,
+.spine-app {
+  --background: 250 251 252;
+  --surface: 255 255 255;
+  --border: 230 234 241;
+  --text: 10 11 59;
+  --text-muted: 111 112 160;
+  --neutral-soft: 241 242 245;
+  --live: 11 212 111;
+  --logo-light: 0 162 248;
+  --on-brand: 255 255 255;
+
+  /* Accent sets: light (-l) and dark (-d) versions of brand, hover and soft. */
+  --accent-l: 0 90 254;
+  --accent-hover-l: 0 75 224;
+  --accent-soft-l: 232 241 253;
+  --accent-d: 77 138 255;
+  --accent-hover-d: 120 165 255;
+  --accent-soft-d: 27 41 82;
+
+  --brand: var(--accent-l);
+  --brand-hover: var(--accent-hover-l);
+  --brand-soft: var(--accent-soft-l);
+  --text-scale: 1;
+}
+
+.spine-app[data-accent="teal"] {
+  --accent-l: 13 128 118;
+  --accent-hover-l: 15 108 100;
+  --accent-soft-l: 224 244 241;
+  --accent-d: 52 190 175;
+  --accent-hover-d: 94 210 197;
+  --accent-soft-d: 18 52 54;
+}
+.spine-app[data-accent="violet"] {
+  --accent-l: 109 40 217;
+  --accent-hover-l: 91 33 182;
+  --accent-soft-l: 240 234 252;
+  --accent-d: 160 120 250;
+  --accent-hover-d: 182 152 252;
+  --accent-soft-d: 45 32 82;
+}
+.spine-app[data-accent="graphite"] {
+  --accent-l: 51 65 85;
+  --accent-hover-l: 30 41 59;
+  --accent-soft-l: 236 239 243;
+  --accent-d: 120 134 156;
+  --accent-hover-d: 150 162 182;
+  --accent-soft-d: 40 46 60;
+}
+
+.spine-app[data-theme="dark"] {
+  --background: 12 14 26;
+  --surface: 21 24 40;
+  --border: 40 45 66;
+  --text: 234 236 247;
+  --text-muted: 148 152 184;
+  --neutral-soft: 33 37 56;
+  --brand: var(--accent-d);
+  --brand-hover: var(--accent-hover-d);
+  --brand-soft: var(--accent-soft-d);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  .spine-app[data-theme="system"] {
+    --background: 12 14 26;
+    --surface: 21 24 40;
+    --border: 40 45 66;
+    --text: 234 236 247;
+    --text-muted: 148 152 184;
+    --neutral-soft: 33 37 56;
+    --brand: var(--accent-d);
+    --brand-hover: var(--accent-hover-d);
+    --brand-soft: var(--accent-soft-d);
+    color-scheme: dark;
+  }
+}
+
+.spine-app[data-size="compact"] {
+  --text-scale: 0.93;
+}
+.spine-app[data-size="large"] {
+  --text-scale: 1.1;
+}
+
 @layer base {
   html {
     @apply bg-background text-text antialiased;

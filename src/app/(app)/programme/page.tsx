@@ -81,9 +81,14 @@ export default async function ProgrammePage({ searchParams }: { searchParams: Pr
         date={pageDate(t)}
         title="Programme"
         aside={
-          <Suspense>
-            <PeriodSelect value={period} options={PROGRAMME_PERIODS} />
-          </Suspense>
+          <div className="flex items-center gap-6">
+            <Link href="/programme/report" className="text-meta font-medium text-brand hover:text-brand-hover">
+              Leadership report
+            </Link>
+            <Suspense>
+              <PeriodSelect value={period} options={PROGRAMME_PERIODS} />
+            </Suspense>
+          </div>
         }
       />
       <div className="space-y-5">

@@ -31,6 +31,9 @@ const TOOL_LABELS: Record<string, string> = {
   get_recommendations: "Checking Autopilot",
   propose_recommendation: "Preparing a change",
   propose_change: "Preparing a change",
+  get_approval_rules: "Reading the approval rules",
+  explain_approval: "Checking the approval",
+  propose_nudge_approvers: "Preparing a reminder",
 };
 
 const MAX_TURNS = 8;
@@ -54,6 +57,7 @@ async function systemPrompt(viewer: User, projectId: string | null) {
     `- You can't change anything yourself. To add a step, post an update or ask the Help Desk, call the matching propose_ tool; the user confirms with a button. Say so in one short sentence.`,
     `- Act like a calm, sharp project manager: lead with what to do next, flag risks (overdue steps, quiet builds, approvals about to auto-approve), keep it short.`,
     `- You are also Spine Autopilot. For any project question, check get_recommendations and the forecast in get_project. When a fix would help, say it plainly as a question (for example: "It's forecast 6 days late. Do you want me to move the target to 2 Dec and re-space the steps?") and call propose_recommendation (or propose_change for a specific change the user asks for) in the same turn, so they can just say yes. Mention that it can be undone.`,
+    `- Approvals: for "who approves this?", "why is it stuck?" or "how do I get this approved faster?" call explain_approval (or get_approval_rules for general questions). Name the approvers and what is left. If it has waited a while and the user is the owner or on the team, offer to remind the approvers with propose_nudge_approvers. Only suggest changing scope to hit a faster rule when that change genuinely suits the idea, and never suggest gaming the rules.`,
     `- When asked to nudge or unstick a team: read the project, name the overdue or next steps and who owns them, and propose_post_update a short, warm message that asks one clear question. Never guilt-trip.`,
     `- Plain English, short paragraphs or a few bullets. Markdown links to app paths like /ideas/<id> are fine. No headings, no tables, no em dashes, no emoji.`,
     `- Never reveal who asked an anonymous question, and never mention AI scores except the user's own ideas' scores when they ask.`,
@@ -68,7 +72,15 @@ async function fixtureReply(viewer: User, projectId: string | null, message: str
     const data = JSON.parse(await runTool("get_project", { projectId }, viewer, propose)) as { title: string; stage: string; next: string | null; plan: { title: string; done: boolean; overdue: boolean }[] };
     const open = data.plan.filter((s) => !s.done);
     const overdue = open.filter((s) => s.overdue);
-    if (/add (a )?step/i.test(message)) {
+    if (/approv/i.test(message)) {
+      emit({ type: "tool", label: TOOL_LABELS.explain_approval! });
+      const a = JSON.parse(await runTool("explain_approval", { projectId }, viewer, propose)) as { current: { approvers?: string[]; approvedBy?: string[]; waitingDays?: number; autoApproves?: string; ifSubmittedNow?: string } };
+      if (a.current.approvers) {
+        const left = a.current.approvers.filter((n) => !(a.current.approvedBy ?? []).includes(n));
+        await runTool("propose_nudge_approvers", { projectId }, viewer, propose);
+        text = `It needs ${a.current.approvers.join(" and ")}. Still to approve: ${left.join(" and ") || "nobody"}. It has waited ${a.current.waitingDays} days and auto-approves ${a.current.autoApproves}. Want me to send them a reminder?`;
+      } else text = `If it were submitted now: ${a.current.ifSubmittedNow}.`;
+    } else if (/add (a )?step/i.test(message)) {
       const title = message.replace(/.*add (a )?step( to)?/i, "").trim() || "Review progress with the team";
       await runTool("propose_add_step", { projectId, title: title.charAt(0).toUpperCase() + title.slice(1) }, viewer, propose);
       text = `I've drafted that step. Confirm it below and I'll add it to the plan.`;

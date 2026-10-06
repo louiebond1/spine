@@ -12,6 +12,7 @@ import { db } from "../db";
 import { assert, can } from "../permissions";
 import { getCurrentUser } from "../session";
 import * as lifecycle from "./lifecycle";
+import * as tell from "../notify/events";
 
 const refresh = () => revalidatePath("/", "layout");
 
@@ -169,8 +170,8 @@ export async function addStep(projectId: string, input: z.input<typeof stepSchem
   assert(p.team.some((m) => m.userId === parsed.data.assigneeId), "Steps can only be assigned to the team.");
   const last = await db.planStep.findFirst({ where: { projectId }, orderBy: { order: "desc" } });
   const activePhrase = await phraseForStep(parsed.data.title);
-  await db.$transaction(async (tx) => {
-    await tx.planStep.create({
+  const created = await db.$transaction(async (tx) => {
+    const step = await tx.planStep.create({
       data: {
         projectId,
         title: parsed.data.title,
@@ -182,7 +183,9 @@ export async function addStep(projectId: string, input: z.input<typeof stepSchem
     });
     await lifecycle.logEvent(tx, projectId, "STEP_ADDED", user.id, parsed.data.title);
     await lifecycle.touch(tx, projectId);
+    return step;
   });
+  await tell.stepAssigned([created.id], user.id);
   refresh();
   return {};
 }
@@ -203,6 +206,7 @@ export async function editStep(stepId: string, input: z.input<typeof stepSchema>
     await lifecycle.logEvent(tx, step.projectId, "STEP_EDITED", user.id, parsed.data.title);
     await lifecycle.touch(tx, step.projectId);
   });
+  if (parsed.data.assigneeId !== step.assigneeId) await tell.stepAssigned([stepId], user.id);
   refresh();
   return {};
 }

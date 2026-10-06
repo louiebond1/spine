@@ -66,6 +66,7 @@ function describe(a: ProposedAction) {
   if (a.kind === "post_update") return { title: `Post in ${a.projectTitle} chat`, body: a.message };
   if (a.kind === "ask_question") return { title: `Ask the Help Desk (${a.topicName})`, body: `${a.title}\n\n${a.details}` };
   if (a.kind === "recommendation") return { title: `${a.headline}`, body: `${a.projectTitle} · ${a.reason}` };
+  if (a.kind === "nudge_approvers") return { title: `Remind ${a.approverNames.join(" and ")}`, body: `${a.projectTitle} · One reminder that it's waiting for their decision.` };
   return { title: a.headline, body: `${a.projectTitle} · Spine can undo this from the project page.` };
 }
 
@@ -328,7 +329,7 @@ export function AskSpine({ open, onClose }: { open: boolean; onClose: () => void
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-brand text-surface disabled:opacity-40"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-brand text-on-brand disabled:opacity-40"
             aria-label="Send"
           >
             <ArrowUp size={16} strokeWidth={2} />

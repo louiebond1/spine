@@ -49,6 +49,30 @@ async function approvalsNearTimeout(t: Date): Promise<PulseItem[]> {
   });
 }
 
+/** Stuck approval: a rule that never auto-approves, still waiting after approvalNudgeDays. */
+async function stuckApprovals(t: Date, nudgeDays: number): Promise<PulseItem[]> {
+  const rows = await db.project.findMany({
+    where: { stage: "APPROVAL", autoApproveAt: null },
+    select: { id: true, title: true, submittedAt: true, buildCompletedAt: true, escalatedAt: true },
+  });
+  return rows.flatMap((p) => {
+    const since = p.buildCompletedAt ?? p.submittedAt;
+    if (!since || t.getTime() - since.getTime() < nudgeDays * DAY) return [];
+    const days = Math.floor((t.getTime() - since.getTime()) / DAY);
+    return [
+      {
+        key: `approval-${p.id}`,
+        check: "approval" as const,
+        targetId: p.id,
+        title: p.title,
+        reason: `Waiting ${plural(days, "day")} for approval${p.escalatedAt ? ", now open to any admin" : ""}`,
+        action: { label: "Review" as const, href: `/ideas/${p.id}/approve` },
+        crossedAt: new Date(since.getTime() + nudgeDays * DAY),
+      },
+    ];
+  });
+}
+
 /** Unanswered question: unclaimed for longer than unclaimedQuestionHours. */
 async function unclaimedQuestions(t: Date, thresholdHours: number): Promise<PulseItem[]> {
   const rows = await db.question.findMany({
@@ -93,7 +117,7 @@ export async function getAllPulseHits() {
   const t = now();
   const settings = await getSettings();
   const [approval, question, build] = await Promise.all([
-    approvalsNearTimeout(t),
+    Promise.all([approvalsNearTimeout(t), stuckApprovals(t, settings.approvalNudgeDays)]).then(([a, b]) => [...a, ...b]),
     unclaimedQuestions(t, settings.unclaimedQuestionHours),
     quietBuilds(t, settings.stalledBuildDays),
   ]);

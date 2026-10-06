@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronRight } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -37,7 +38,10 @@ export function UserMenu({ user, users }: { user: SwitcherUser; users: SwitcherU
     <div ref={ref} className="relative px-5 pb-6">
       {open && (
         <div className="absolute bottom-full left-4 right-4 mb-2 rounded-container border border-border bg-surface py-2" role="menu">
-          <p className="px-4 py-2 text-label text-text-muted">View as</p>
+          <Link href="/settings" onClick={() => setOpen(false)} className="block px-4 py-2 text-meta text-text hover:bg-neutral-soft">
+            Your settings
+          </Link>
+          <p className="mt-1 border-t border-border px-4 pb-2 pt-3 text-label text-text-muted">View as</p>
           {users.map((u) => (
             <button
               key={u.id}

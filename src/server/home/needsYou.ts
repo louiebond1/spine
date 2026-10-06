@@ -29,7 +29,7 @@ export const getNeedsYou = cache(async (user: User): Promise<NeedsYouItem[]> => 
       stage: "APPROVAL",
       ownerId: { not: user.id },
       approvals: { none: { userId: user.id } },
-      OR: [{ approverIds: { has: user.id } }, ...(user.isAdmin ? [{ approverIds: { isEmpty: true } }] : [])],
+      OR: [{ approverIds: { has: user.id } }, ...(user.isAdmin ? [{ approverIds: { isEmpty: true } }, { escalatedAt: { not: null } }] : [])],
     },
     orderBy: [{ autoApproveAt: { sort: "asc", nulls: "last" } }, { submittedAt: "asc" }],
     select: { id: true, title: true, autoApproveAt: true, approvalsNeeded: true, _count: { select: { approvals: true } } },

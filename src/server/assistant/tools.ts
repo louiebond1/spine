@@ -13,6 +13,8 @@ import { getPulseItems } from "../pulse/pulse";
 import { ACTION_SCHEMAS, canApply, type ActionKind } from "../autopilot/engine";
 import { recommendationsStale, refreshRecommendations } from "../autopilot/recommend";
 import { forecast, loadAutopilotProject } from "../autopilot/signals";
+import { describeRule, routeFor, totalHours, unmetConditions } from "../approvals/rules";
+import { getSettings } from "../settings";
 
 // Ask Spine tools. Every read runs as the signed-in user with the same permission rules as
 // the app: no drafts that aren't theirs, no AI scores except on their own ideas, and no
@@ -23,7 +25,8 @@ export type ProposedAction =
   | { id: string; kind: "post_update"; projectId: string; projectTitle: string; message: string }
   | { id: string; kind: "ask_question"; title: string; details: string; topicId: string; topicName: string }
   | { id: string; kind: "recommendation"; recommendationId: string; projectTitle: string; headline: string; reason: string }
-  | { id: string; kind: "change"; projectId: string; projectTitle: string; change: ActionKind; payload: Record<string, unknown>; headline: string };
+  | { id: string; kind: "change"; projectId: string; projectTitle: string; change: ActionKind; payload: Record<string, unknown>; headline: string }
+  | { id: string; kind: "nudge_approvers"; projectId: string; projectTitle: string; approverNames: string[] };
 
 const DAY = 86_400_000;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -43,6 +46,9 @@ const schemas = {
   propose_post_update: z.object({ projectId: z.string().min(1), message: z.string().min(3).max(2000) }),
   propose_ask_question: z.object({ title: z.string().min(5).max(200), details: z.string().min(5).max(3000), topic: z.string().min(2).max(40) }),
   get_recommendations: z.object({ projectId: z.string().min(1) }),
+  get_approval_rules: z.object({}),
+  explain_approval: z.object({ projectId: z.string().min(1) }),
+  propose_nudge_approvers: z.object({ projectId: z.string().min(1) }),
   propose_recommendation: z.object({ recommendationId: z.string().min(1) }),
   propose_change: z.object({
     projectId: z.string().min(1),
@@ -65,6 +71,21 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 });
 
 export const TOOLS: Anthropic.Beta.BetaTool[] = [
+  {
+    name: "get_approval_rules",
+    description: "The company's approval rules in order (first match wins): which ideas go to which approvers, whether all must sign off, auto-approve timing, fast tracks, and what happens to everything else. Use for questions like 'who approves Legal ideas?'.",
+    input_schema: obj({}),
+  },
+  {
+    name: "explain_approval",
+    description: "For one project (submitted, or the user's own draft): which approval rule applies, who must approve, who already has, how long it has waited, when it auto-approves or escalates, and for every other rule what would have to change for it to apply instead. Use for 'who needs to approve this?' and 'what would get this through faster?'. Suggest scope changes only if they genuinely make sense for the idea.",
+    input_schema: obj({ projectId: { type: "string" } }, ["projectId"]),
+  },
+  {
+    name: "propose_nudge_approvers",
+    description: "Propose sending a reminder to whoever still has to approve the user's idea (owner or team only, at most once a day). Nothing is sent until the user confirms.",
+    input_schema: obj({ projectId: { type: "string" } }, ["projectId"]),
+  },
   {
     name: "get_recommendations",
     description: "Spine Autopilot's measured fixes for a project (from its pace, workload and dates): for example extend the target, add a team spot, rebalance a step, reschedule overdue steps, start building with the current team. Each has an id you can offer with propose_recommendation.",
@@ -347,6 +368,72 @@ export async function runTool(
       if (!check.success) return "That change is missing details (for example the new date as yyyy-mm-dd).";
       propose({ id: crypto.randomUUID(), kind: "change", projectId: p.id, projectTitle: p.title, change: raw.change, payload, headline: raw.headline });
       return "Offered to the user. It applies when they say yes or click Confirm, and can be undone.";
+    }
+
+    case "get_approval_rules": {
+      const [rules, topics, users, s] = await Promise.all([
+        db.approvalRule.findMany({ where: { active: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+        db.topic.findMany({ select: { id: true, name: true } }),
+        db.user.findMany({ select: { id: true, name: true } }),
+        getSettings(),
+      ]);
+      const names = { topics: new Map(topics.map((x) => [x.id, x.name])), users: new Map(users.map((u) => [u.id, u.name])) };
+      return JSON.stringify({
+        rules: rules.map((r, i) => ({ order: i + 1, name: r.name, rule: describeRule(r, names) })),
+        everythingElse: `Any admin approves; it auto-approves after ${s.approvalTimeoutDays} days.`,
+        chasing: `Approvers are reminded after ${s.approvalNudgeDays} days; ideas that never auto-approve are escalated to any admin after ${s.approvalEscalateDays} days.`,
+        note: "App ideas are approved before recruiting; Cowork-native ideas are approved after the build is finished.",
+      });
+    }
+
+    case "explain_approval": {
+      const p = await visibleProject(input.projectId!, viewer);
+      if (!p) return "No project with that id is visible to this user.";
+      const [rules, topics, users, review, approvals, s] = await Promise.all([
+        db.approvalRule.findMany({ where: { active: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+        db.topic.findMany({ select: { id: true, name: true } }),
+        db.user.findMany({ select: { id: true, name: true } }),
+        db.aiReview.findUnique({ where: { projectId: p.id }, select: { raisedConcerns: true } }),
+        db.projectApproval.findMany({ where: { projectId: p.id } }),
+        getSettings(),
+      ]);
+      const topicName = (id: string) => topics.find((x) => x.id === id)?.name ?? "a removed topic";
+      const userName = (id: string) => users.find((u) => u.id === id)?.name ?? "someone";
+      const names = { topics: new Map(topics.map((x) => [x.id, x.name])), users: new Map(users.map((u) => [u.id, u.name])) };
+      const concerns = review?.raisedConcerns ?? false;
+      const inApproval = p.stage === "APPROVAL";
+      const route = inApproval ? null : await db.$transaction((tx) => routeFor(tx, p));
+      const since = p.buildCompletedAt ?? p.submittedAt;
+      return JSON.stringify({
+        title: p.title,
+        stage: STAGE_LABEL[p.stage],
+        totalHours: totalHours(p),
+        whenApprovalHappens: p.buildPath === "APP" ? "before recruiting" : "after the build is finished",
+        current: inApproval
+          ? {
+              rule: p.approvalRuleId ? (rules.find((r) => r.id === p.approvalRuleId)?.name ?? "a rule that has since changed") : "default (any admin)",
+              approvers: p.approverIds.length ? p.approverIds.map(userName) : ["any admin"],
+              approvalsNeeded: p.approvalsNeeded,
+              approvedBy: approvals.map((a) => userName(a.userId)),
+              waitingDays: since ? Math.floor((t.getTime() - since.getTime()) / DAY) : 0,
+              autoApproves: p.autoApproveAt ? longDate(p.autoApproveAt) : "never",
+              escalated: !!p.escalatedAt,
+              escalatesAfterDays: p.approverIds.length && !p.autoApproveAt ? s.approvalEscalateDays : null,
+            }
+          : { ifSubmittedNow: route?.ruleName ? `Rule "${route.ruleName}"${route.fastTrack ? ": approved straight away" : ""}` : `Default: any admin, auto-approves after ${s.approvalTimeoutDays} days` },
+        otherRules: rules.map((r) => ({ name: r.name, rule: describeRule(r, names), wouldNeed: unmetConditions(r, p, concerns, topicName) })),
+      });
+    }
+
+    case "propose_nudge_approvers": {
+      const p = await db.project.findUnique({ where: { id: input.projectId! }, include: { team: true } });
+      if (!p || !(p.ownerId === viewer.id || can.onTeam(viewer, p.team))) return "Only the owner or team can nudge approvers.";
+      if (p.stage !== "APPROVAL") return "That idea isn't waiting for approval.";
+      const done = (await db.projectApproval.findMany({ where: { projectId: p.id } })).map((a) => a.userId);
+      const ids = p.approverIds.filter((id) => !done.includes(id));
+      const approverNames = ids.length ? (await db.user.findMany({ where: { id: { in: ids } }, select: { name: true } })).map((u) => u.name) : ["the admins"];
+      propose({ id: crypto.randomUUID(), kind: "nudge_approvers", projectId: p.id, projectTitle: p.title, approverNames });
+      return `Offered to remind ${approverNames.join(" and ")}. It sends when the user confirms.`;
     }
 
     case "propose_ask_question": {

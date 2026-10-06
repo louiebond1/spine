@@ -54,8 +54,8 @@ export const can = {
     user.isPublishingSpecialist && p.stage === "PUBLISHING" && p.publisherId === user.id,
 
   /** Approvers come from the matching approval rule; with none named, any admin approves. */
-  approve: (user: User, p: ProjectLike & Pick<Project, "approverIds">) =>
-    p.stage === "APPROVAL" && p.ownerId !== user.id && (p.approverIds.length > 0 ? p.approverIds.includes(user.id) : user.isAdmin),
+  approve: (user: User, p: ProjectLike & Pick<Project, "approverIds" | "escalatedAt">) =>
+    p.stage === "APPROVAL" && p.ownerId !== user.id && (p.approverIds.length > 0 ? p.approverIds.includes(user.id) || (!!p.escalatedAt && user.isAdmin) : user.isAdmin),
 
   manage: (user: User) => user.isAdmin,
 };

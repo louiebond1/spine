@@ -1,5 +1,6 @@
 "use client";
 
+import { AlreadyInFlight } from "./AlreadyInFlight";
 import { useActionState, useRef, useState, useTransition } from "react";
 import { Box, Calendar, Flag, Laptop, Sparkles, type LucideIcon } from "lucide-react";
 import { cx } from "@/lib/cx";
@@ -67,6 +68,7 @@ export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id:
   const [suggestion, setSuggestion] = useState<Sharpened | null>(null);
   const [sharpenError, setSharpenError] = useState<string | null>(null);
   const [sharpening, startSharpen] = useTransition();
+  const [idea, setIdea] = useState({ title: draft.title, problem: draft.problem });
 
   const field = (name: string) => formRef.current?.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
   const sharpen = () =>
@@ -98,7 +100,15 @@ export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id:
   };
 
   return (
-    <form ref={formRef} action={action} className="space-y-3">
+    <form
+      ref={formRef}
+      action={action}
+      className="space-y-3"
+      onBlur={(e) => {
+        const name = (e.target as unknown as { name?: string }).name;
+        if (name === "title" || name === "problem") setIdea({ title: field("title")?.value ?? "", problem: field("problem")?.value ?? "" });
+      }}
+    >
       {draft.id && <input type="hidden" name="id" value={draft.id} />}
       {draft.opportunityId && <input type="hidden" name="opportunityId" value={draft.opportunityId} />}
       {draft.returnNote && (
@@ -112,6 +122,7 @@ export function ProposeForm({ draft, topics }: { draft: IdeaDraft; topics: { id:
         <div className="space-y-4">
           <TextField id="title" name="title" label="Name your idea" defaultValue={draft.title} required maxLength={120} />
           <TextArea id="problem" name="problem" label="What problem does it solve?" defaultValue={draft.problem} rows={3} required />
+          <AlreadyInFlight title={idea.title} problem={idea.problem} draftId={draft.id} />
           <div className="grid grid-cols-2 gap-5">
             <TextField id="whoBenefits" name="whoBenefits" label="Who benefits?" defaultValue={draft.whoBenefits} required />
             <Select

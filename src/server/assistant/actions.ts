@@ -5,6 +5,7 @@ import { askQuestion } from "../questions/actions";
 import { addStep, sendProjectMessage } from "../projects/actions";
 import { getCurrentUser } from "../session";
 import { applyChange, applyRecommendation } from "../autopilot/actions";
+import { nudgeApprovers } from "../approvals/nudge";
 
 // Confirming an Ask Spine proposal runs the normal app action, with the normal permission
 // checks, as the signed-in user. The proposal itself grants nothing.
@@ -14,6 +15,7 @@ const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("post_update"), projectId: z.string(), message: z.string().min(1).max(5000) }),
   z.object({ kind: z.literal("ask_question"), title: z.string().min(3).max(200), details: z.string().min(1).max(5000), topicId: z.string() }),
   z.object({ kind: z.literal("recommendation"), recommendationId: z.string() }),
+  z.object({ kind: z.literal("nudge_approvers"), projectId: z.string() }),
   z.object({ kind: z.literal("change"), projectId: z.string(), change: z.string(), payload: z.record(z.string(), z.unknown()), headline: z.string().max(120) }),
 ]);
 
@@ -26,6 +28,10 @@ export async function confirmAssistantAction(raw: unknown): Promise<{ ok: boolea
     if (a.kind === "add_step") {
       const r = await addStep(a.projectId, { title: a.title, assigneeId: a.assigneeId, dueDate: a.dueDate });
       return r.error ? { ok: false, message: r.error } : { ok: true, message: "Step added.", href: `/ideas/${a.projectId}` };
+    }
+    if (a.kind === "nudge_approvers") {
+      const r = await nudgeApprovers(a.projectId);
+      return { ok: r.ok, message: r.message, href: `/ideas/${a.projectId}` };
     }
     if (a.kind === "recommendation") {
       const r = await applyRecommendation(a.recommendationId);

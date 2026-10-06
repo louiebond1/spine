@@ -6,6 +6,7 @@ import { now } from "../clock";
 import { db } from "../db";
 import { assignPublisher } from "./publishing";
 import { enterApproval } from "../approvals/rules";
+import * as tell from "../notify/events";
 
 // The only module that changes Project.stage. CLAUDE.md section 7, Ideas & Projects rules 1 to 11.
 
@@ -92,6 +93,7 @@ export async function submit(projectId: string, actorId: string) {
     await logEvent(tx, p.id, "SUBMITTED", actorId);
   });
   if (fastTrack !== null) return approve(projectId, null, `Fast-tracked by the rule "${fastTrack}"`);
+  await tell.approvalNeeded(projectId);
   if (startBuild) await startBuilding(projectId);
 }
 
@@ -118,6 +120,7 @@ export async function approve(projectId: string, approverId: string | null, fast
       startBuild = (await tx.teamMember.count({ where: { projectId } })) >= p.teamSize;
     }
   });
+  await tell.decision(projectId, "approved");
   if (startBuild) await startBuilding(projectId);
 }
 
@@ -136,7 +139,9 @@ export async function recordApproval(projectId: string, userId: string): Promise
       create: { projectId, userId, at: now() },
     });
     const count = await tx.projectApproval.count({ where: { projectId } });
-    const needed = Math.max(1, p.approvalsNeeded);
+    // Once escalated, an admin who wasn't named decides on their own.
+    const override = !!p.escalatedAt && !p.approverIds.includes(userId);
+    const needed = override ? count : Math.max(1, p.approvalsNeeded);
     if (count < needed) {
       const actor = await tx.user.findUniqueOrThrow({ where: { id: userId } });
       await logEvent(tx, projectId, "PARTIALLY_APPROVED", userId, `${count} of ${needed}`);
@@ -179,6 +184,7 @@ export async function returnToOwner(projectId: string, actorId: string, note: st
     }
     await logEvent(tx, p.id, "RETURNED", actorId, note);
   });
+  await tell.decision(projectId, "returned", note);
 }
 
 /** Rule 8: join while recruiting; when the team is full the build starts. */
@@ -241,6 +247,7 @@ async function completeBuild(projectId: string) {
     if (route.fastTrack) fastTrack = route.ruleName;
   });
   if (fastTrack !== null) await approve(projectId, null, `Fast-tracked by the rule "${fastTrack}"`);
+  else await tell.approvalNeeded(projectId);
 }
 
 /** Serialises publisher choice so two projects can't both see the same lightest load. */

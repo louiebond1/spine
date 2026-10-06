@@ -9,6 +9,7 @@ import { db } from "../db";
 import { assert, can } from "../permissions";
 import { getCurrentUser } from "../session";
 import { logEvent, onStepsChanged, systemMessage, touch } from "../projects/lifecycle";
+import { stepAssigned } from "../notify/events";
 import { askClaudeForJson, fixturesEnabled, lenient as L } from "./client";
 
 // Meeting notes to plan: Spine reads pasted notes against the live plan and proposes the
@@ -140,6 +141,7 @@ export async function applyMeetingChanges(projectId: string, rawChanges: unknown
   const onTeam = (id: string) => p.team.some((m) => m.userId === id);
   const stepOf = (id: string) => p.steps.find((s) => s.id === id && !s.done);
   let applied = 0;
+  const assigned: string[] = [];
 
   await db.$transaction(async (tx) => {
     let order = Math.max(-1, ...p.steps.map((s) => s.order)) + 1;
@@ -150,14 +152,16 @@ export async function applyMeetingChanges(projectId: string, rawChanges: unknown
         applied++;
       }
       if (c.type === "add" && onTeam(c.assigneeId)) {
-        await tx.planStep.create({
+        const created = await tx.planStep.create({
           data: { projectId: p.id, title: c.title, activePhrase: `working on ${c.title.charAt(0).toLowerCase()}${c.title.slice(1)}`, assigneeId: c.assigneeId, dueDate: parseZoned(c.due), order: order++ },
         });
+        assigned.push(created.id);
         await logEvent(tx, p.id, "STEP_ADDED", user.id, c.title);
         applied++;
       }
       if (c.type === "reassign" && stepOf(c.stepId) && onTeam(c.assigneeId)) {
         await tx.planStep.update({ where: { id: c.stepId }, data: { assigneeId: c.assigneeId } });
+        assigned.push(c.stepId);
         applied++;
       }
       if (c.type === "due" && stepOf(c.stepId)) {
@@ -171,6 +175,7 @@ export async function applyMeetingChanges(projectId: string, rawChanges: unknown
     await touch(tx, p.id);
   });
   await onStepsChanged(p.id);
+  await stepAssigned(assigned, user.id);
   revalidatePath("/", "layout");
   return { ok: true, message: `Applied ${applied} ${applied === 1 ? "change" : "changes"} and posted the summary to Chat.` };
 }

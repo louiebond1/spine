@@ -9,6 +9,7 @@ import { db } from "../db";
 import { assert, can } from "../permissions";
 import { getCurrentUser } from "../session";
 import { saveAttachment } from "../storage/attachments";
+import * as tell from "../notify/events";
 
 // CLAUDE.md section 7, Help Desk rules 1 to 5. Every action logs a QuestionEvent.
 
@@ -95,6 +96,7 @@ export async function claimQuestion(questionId: string) {
   });
   assert(count === 1, "Someone else has just claimed this question.");
   await db.questionEvent.create({ data: { questionId: q.id, type: "CLAIMED", actorId: user.id, at: t } });
+  await tell.questionClaimed(q.id, user.id);
 
   revalidatePath("/", "layout");
   redirect(`/help-desk/${q.id}`);
@@ -118,6 +120,7 @@ export async function sendQuestionMessage(questionId: string, data: FormData) {
     }),
     db.questionEvent.create({ data: { questionId: q.id, type: saved.length ? "REPLIED_WITH_FILE" : "REPLIED", actorId: user.id, at: t } }),
   ]);
+  await tell.questionReply(q.id, user.id);
   revalidatePath("/", "layout");
 }
 

@@ -96,6 +96,8 @@ export async function generateBuildPlan(projectId: string) {
       db.project.update({ where: { id: projectId }, data: { planStatus: "READY", lastActivityAt: now() } }),
       db.projectEvent.create({ data: { projectId, type: "PLAN_GENERATED", actorId: null, at: now() } }),
     ]);
+    const { planReady } = await import("../notify/events");
+    await planReady(projectId).catch((e) => console.error("[notify] plan ready", e));
   } catch {
     await db.project.update({ where: { id: projectId }, data: { planStatus: "FAILED" } });
   }

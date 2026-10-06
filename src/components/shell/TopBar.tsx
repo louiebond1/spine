@@ -5,9 +5,11 @@ import Link from "next/link";
 import { Bell, ChevronDown, Plus, Search, Sparkles } from "lucide-react";
 import { AskSpine } from "./AskSpine";
 import { CommandPalette } from "@/components/ui/CommandPalette";
+import { markUpdatesRead } from "@/server/notify/actions";
 import { ICON_STROKE } from "@/components/ui/icons";
 
 export type BellItem = { key: string; title: string; reason: React.ReactNode; href: string };
+export type UpdateItem = { id: string; title: string; body: string; href: string; when: string; unread: boolean };
 
 function useDismiss(open: boolean, setOpen: (v: boolean) => void) {
   const ref = useRef<HTMLDivElement>(null);
@@ -62,23 +64,33 @@ function NewMenu() {
   );
 }
 
-function BellMenu({ items }: { items: BellItem[] }) {
+function BellMenu({ items, updates }: { items: BellItem[]; updates: UpdateItem[] }) {
   const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState(false);
   const ref = useDismiss(open, setOpen);
+  const unread = !seen && updates.some((u) => u.unread);
+  const toggle = () => {
+    setOpen(!open);
+    if (!open && unread) {
+      setSeen(true);
+      void markUpdatesRead();
+    }
+  };
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => setOpen(!open)}
-        aria-label={items.length ? `${items.length} things need you` : "Nothing needs you right now"}
+        onClick={toggle}
+        aria-label={items.length ? `${items.length} ${items.length === 1 ? "thing needs" : "things need"} you` : unread ? "New updates" : "Nothing needs you right now"}
         aria-expanded={open}
         className="relative flex h-10 w-10 items-center justify-center text-text hover:text-brand"
       >
         <Bell size={22} strokeWidth={ICON_STROKE} aria-hidden />
-        {items.length > 0 && <span className="absolute right-2 top-1 h-3 w-3 rounded-full bg-brand" aria-hidden />}
+        {(items.length > 0 || unread) && <span className="absolute right-2 top-1 h-3 w-3 rounded-full bg-brand" aria-hidden />}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-96 rounded-container border border-border bg-surface px-5 py-2">
+        <div className="absolute right-0 top-full z-40 mt-2 max-h-coach w-96 overflow-y-auto rounded-container border border-border bg-surface px-5 py-2">
+          {updates.length > 0 && <p className="pt-2 text-eyebrow font-semibold uppercase text-text-muted">Needs you</p>}
           {items.length === 0 ? (
             <p className="py-3 text-meta text-text-muted">Nothing needs you right now</p>
           ) : (
@@ -91,13 +103,31 @@ function BellMenu({ items }: { items: BellItem[] }) {
               ))}
             </div>
           )}
+          {updates.length > 0 && (
+            <>
+              <p className="border-t border-border pt-4 text-eyebrow font-semibold uppercase text-text-muted">Updates</p>
+              <div className="divide-y divide-border">
+                {updates.map((u) => (
+                  <Link key={u.id} href={u.href} onClick={() => setOpen(false)} className="block py-3">
+                    <span className={u.unread ? "block text-meta font-semibold text-text" : "block text-meta text-text"}>{u.title}</span>
+                    <span className="block text-label text-text-muted">
+                      {u.body} · {u.when}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+          <Link href="/settings" onClick={() => setOpen(false)} className="block border-t border-border py-3 text-label text-brand hover:text-brand-hover">
+            Notification settings
+          </Link>
         </div>
       )}
     </div>
   );
 }
 
-export function TopBar({ bellItems }: { bellItems: BellItem[] }) {
+export function TopBar({ bellItems, updates }: { bellItems: BellItem[]; updates: UpdateItem[] }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [spineOpen, setSpineOpen] = useState(false);
 
@@ -139,7 +169,7 @@ export function TopBar({ bellItems }: { bellItems: BellItem[] }) {
           Ask Spine
         </button>
         <NewMenu />
-        <BellMenu items={bellItems} />
+        <BellMenu items={bellItems} updates={updates} />
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AskSpine open={spineOpen} onClose={() => setSpineOpen(false)} />

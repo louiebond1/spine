@@ -8,6 +8,7 @@ import { now } from "../clock";
 import { db } from "../db";
 import { getCurrentUser } from "../session";
 import * as lifecycle from "../projects/lifecycle";
+import * as tell from "../notify/events";
 
 export async function previewKickoff(sentence: string): Promise<{ ok: true; brief: IdeaBrief } | { ok: false; error: string }> {
   await getCurrentUser();
@@ -85,6 +86,7 @@ export async function createFromBrief(raw: unknown): Promise<{ ok: true; id: str
       invites: { create: invitees.map((u) => ({ userId: u.id, invitedById: user.id })) },
     },
   });
+  if (invitees.length) await tell.invited(p.id, invitees.map((u) => u.id), user.id);
   revalidatePath("/", "layout");
   return { ok: true, id: p.id, invited: invitees.map((u) => u.name) };
 }

@@ -69,6 +69,8 @@ export async function enterApproval(tx: Tx, p: Routable, at: Date) {
       approvalsNeeded: Math.max(1, Math.min(route.approvalsNeeded, approverIds.length || 1)),
       autoApproveAt: route.autoApproveDays == null ? null : new Date(at.getTime() + route.autoApproveDays * DAY),
       approvalBrief: Prisma.DbNull,
+      approvalNudgedAt: null,
+      escalatedAt: null,
     },
   };
 }
@@ -92,4 +94,17 @@ export function describeRule(rule: Omit<ApprovalRule, "id" | "createdAt" | "upda
   const approvers = who.length === 0 ? "any admin approves" : who.length === 1 ? `${who[0]} approves` : rule.requireAll ? `${listAnd(who)} must all approve` : `any of ${list(who)} can approve`;
   const timeout = rule.autoApproveDays == null ? "it never auto-approves" : `it auto-approves after ${rule.autoApproveDays} ${rule.autoApproveDays === 1 ? "day" : "days"}`;
   return `${condition}, ${approvers} and ${timeout}.`;
+}
+
+/** Which of a rule's conditions this idea does not meet (empty means it matches). */
+export function unmetConditions(rule: ApprovalRule, p: Routable, raisedConcerns: boolean, topicName: (id: string) => string): string[] {
+  const out: string[] = [];
+  if (rule.topicIds.length && !rule.topicIds.includes(p.topicId)) out.push(`topic would need to be ${rule.topicIds.map(topicName).join(" or ")}`);
+  if (rule.buildPaths.length && !rule.buildPaths.includes(p.buildPath)) out.push(`build path would need to be ${rule.buildPaths.join(" or ")}`);
+  if (rule.difficulties.length && !rule.difficulties.includes(p.difficulty)) out.push(`difficulty would need to be ${rule.difficulties.join(" or ").toLowerCase()}`);
+  const hours = totalHours(p);
+  if (rule.minTotalHours != null && hours < rule.minTotalHours) out.push(`needs at least ${rule.minTotalHours} total hours (it has ${hours})`);
+  if (rule.maxTotalHours != null && hours > rule.maxTotalHours) out.push(`needs ${rule.maxTotalHours} total hours or fewer (it has ${hours})`);
+  if (rule.onlyWithConcerns && !raisedConcerns) out.push("only applies when the AI review raised concerns");
+  return out;
 }

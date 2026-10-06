@@ -42,6 +42,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <RulesTab
           initial={{
             approvalTimeoutDays: settings.approvalTimeoutDays,
+            approvalNudgeDays: settings.approvalNudgeDays,
+            approvalEscalateDays: settings.approvalEscalateDays,
             stalledBuildDays: settings.stalledBuildDays,
             unclaimedQuestionHours: settings.unclaimedQuestionHours,
             digestTime: settings.digestTime,

@@ -81,8 +81,18 @@ export async function gatherFacts(key: string) {
 const writingSchema = z.object({
   headline: L.text(160),
   story: L.text(700),
-  watch: z.array(L.text(220)).default([]).transform((a) => a.slice(0, 3)),
-  backNext: z.array(z.object({ title: L.text(80), why: L.text(220) })).default([]).transform((a) => a.slice(0, 3)),
+  backNext: z
+    .array(
+      // Accept "Title: why" strings as well as objects.
+      z.preprocess((v) => {
+        if (typeof v !== "string") return v;
+        const i = v.indexOf(":");
+        return i > 0 ? { title: v.slice(0, i), why: v.slice(i + 1) } : { title: v, why: "" };
+      }, z.object({ title: L.text(80), why: L.text(220) })),
+    )
+    .default([])
+    .transform((a) => a.slice(0, 3)),
+  watch: z.array(z.preprocess((v) => (typeof v === "string" ? v : JSON.stringify(v)), L.text(220))).default([]).transform((a) => a.slice(0, 3)),
 });
 export type ReportWriting = z.infer<typeof writingSchema>;
 export type Report = { facts: ReportFacts; writing: ReportWriting; generatedAt: Date };
@@ -106,7 +116,8 @@ headline: one sentence with the single most important result.
 story: 2 to 4 sentences: what changed this month and why it matters to the business (hours and value saved, what went live and for whom, momentum in ideas and questions).${f.partial ? " The month is not over yet, so say 'so far'." : ""}
 watch: up to 3 short risks leadership can act on (approvals waiting, quiet builds), each naming the project.
 backNext: up to 3 projects worth leadership's backing now (for example ones that need people to start), each with one sentence on why.
-Never rank or compare individual people, and don't mention speed metrics.`,
+Never rank or compare individual people, and don't mention speed metrics.
+JSON shape: {"headline":"","story":"","watch":["",""],"backNext":[{"title":"project title","why":"one sentence"}]}`,
     prompt: JSON.stringify(f),
   });
 }

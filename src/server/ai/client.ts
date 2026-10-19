@@ -53,6 +53,9 @@ export const lenient = {
   date: () => z.preprocess((v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v ?? "")) ? String(v).slice(0, 10) : "1970-01-01"), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
 };
 
+/** Whether AI is set up on this server. When it isn't, AI panels stay hidden rather than showing an error. */
+export const aiConfigured = () => !!process.env.ANTHROPIC_API_KEY && !!process.env.ANTHROPIC_MODEL;
+
 let client: Anthropic | null = null;
 const HARD_FAILURE_COOLDOWN_MS = 5 * 60_000;
 

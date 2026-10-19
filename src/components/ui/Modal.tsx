@@ -15,15 +15,21 @@ type Props = {
 
 export function Modal({ open, onClose, title, bare, children, footer }: Props) {
   const panel = useRef<HTMLDivElement>(null);
+  // Callers often pass a new onClose on every render; keep the latest without re-running the effects.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
     };
     document.addEventListener("keydown", onKey);
-    panel.current?.querySelector<HTMLElement>("input, textarea, select")?.focus();
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open]);
+  // Focus the first field once when the modal opens, never again while people type.
+  useEffect(() => {
+    if (open) panel.current?.querySelector<HTMLElement>("input, textarea, select")?.focus();
+  }, [open]);
 
   if (!open) return null;
   return (

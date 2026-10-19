@@ -1,114 +1,98 @@
-# Trailer brief: Spine
+# Spine trailer, take two
 
-Everything you need is in this one document: the brief below, and every screenshot linked at the end (each link opens the full-resolution image).
+Everything you need is in this one document. Every clip and screenshot is linked below, and each link opens the full-resolution file.
 
-Make the best trailer you can for Spine. You have full creative freedom over the concept, style, length, format, music, voiceover, pacing, visuals and copy. The screenshots in this folder are real screens from the product, with demo data for a fictional company, Acme Group. Use them however you like: animate them, rebuild them in motion, restyle them, recreate the interface, combine them with live action or abstract visuals, or don't show the UI at all if a different idea is stronger. Break any convention if it makes the trailer better.
+## How version 1 landed: honestly
 
-## What Spine is
+Thank you for version 1. The story order was right: problem, help, ideas, team, plan, momentum, Live, proof, then what's next. The "Coming next · Concept" labels and the "Illustrative demo data" note were exactly right. Keep all of that. Some lines were good too: "A question shouldn't stop your day", "A good answer goes further", "Only what you choose to send".
 
-Spine is where a company runs its AI adoption. Most companies have bought AI tools, but the good questions get lost in chat, the good ideas never get an owner, and nobody can say what AI has actually delivered. Spine fixes that, quietly: it only asks for your attention when a person is needed.
+But as a viewer it wasn't fun, it wasn't cool, and it didn't hook you. You left with more questions than answers. The reasons:
 
-The idea behind it: **good AI ideas and questions should never quietly die.** Feel free to find a better line.
+1. **It was a feature tour, not a story.** Every feature got the same weight. There was no tension, no character to care about, and no moment that makes you go "oh".
+2. **Half the product footage was the old version of Spine.** The white sidebar, "Ideas & Projects", "Leaderboard", "Programme", "Ask Spine", "Spotted by Spine" and the AI score card don't exist any more. The public website is still the old version, so never record from it. **Use only the clips and screenshots linked below.**
+3. **The cartoon people.** Flat, colourful explainer characters made Spine feel small and generic, like every startup video from 2019.
+4. **The UI was too small to read.** Whole screens were shrunk into frames.
+5. **The colours wandered:** bright blue full-screen slides, green text, multicoloured characters.
+6. **The best idea was buried.** "Spine lives where you work" was a small coda at the end.
+7. **No hook at the start and no call to action at the end.** It never said plainly what Spine is or who it's for.
+8. **72 seconds felt like a slideshow.** It needs to be shorter and faster.
 
-## Who it's for
+## Your freedom
 
-The buyer is whoever leads AI adoption at a company (Head of AI, COO, transformation or IT leadership). The users are employees who want help using AI at work, and leaders who want to see results.
+You still have full creative freedom over concept, length, music, voice, pacing, style, live action or not, typography, and anything else. What's below is a strong recommendation, not a script. If you have a better idea, do that instead. Just don't make version 1 again.
 
-## What it does (raw material, not a script)
+## The direction I'd push
 
-- **Playbook:** the company's AI priorities, which tools are approved for which data, and plain-English guidance. ([09-playbook.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/09-playbook.png))
-- **Help Desk:** anyone asks an AI question, anonymously if they like. A Champion answers in a private thread, and the asker can share a summary of a good answer with everyone. ([02-help-desk.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/02-help-desk.png), [03-private-question-thread.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/03-private-question-thread.png), [21-phone-thread.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/21-phone-thread.png), [10-discover.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/10-discover.png))
-- **Initiatives:** ideas go through approval, form a team, get a step-by-step plan (first drafted by AI), and move to Live. Each one shows a plain next step, for example "Jamie is testing supplier cases". ([12-propose-an-idea.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/12-propose-an-idea.png), [07-approval-decision.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/07-approval-decision.png), [04-initiatives-board.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/04-initiatives-board.png), [05-initiative-plan.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/05-initiative-plan.png), [22-phone-initiative.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/22-phone-initiative.png))
-- **Momentum:** one-minute check-ins, blockers that reach the right people, and Pulse, which shows anything stuck or waiting. Home tells each person what needs them first. ([01-home-what-needs-you.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/01-home-what-needs-you.png), [20-phone-home.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/20-phone-home.png), [06-check-ins.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/06-check-ins.png), [08-pulse-whats-stuck.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/08-pulse-whats-stuck.png), [30-member-home.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/30-member-home.png))
-- **Proof:** leadership sees hours saved that count only once someone outside the team has verified them, plus what's live and where to step in. ([11-leadership.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/11-leadership.png))
-- Quick search across everything ([13-search-palette.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/13-search-palette.png)). It posts updates to your Slack or Teams channel, and plans export to any calendar.
+**Core idea: "Most AI ideas quietly die."** Every company has them: the question nobody answered, the clever workflow one person built that never spread, the pilot that went silent after a month. That pain is the hook. People recognise it instantly, and it's a little funny because it's true.
 
-The product's own look, if you want it: deep navy sidebar, warm off-white workspace, one cobalt blue, and a green dot for "Live". The logo is the wordmark "Spine" beside three offset rounded blue bars (top-left of any desktop screenshot). You're free to go in a different direction.
+**Feel:** confident, fast, rhythmic and premium. Think of a Linear, Arc, Apple or Notion launch film, not a corporate explainer. Cuts land on the music. Dry wit, not jokes. Real UI, big and sharp.
 
-## The bigger idea: Spine lives where people already work
+**Suggested shape (about 45 seconds, plus a 15-second cut):**
 
-This is the direction for Spine, and it's yours to use in the trailer if you think it makes it stronger. It's probably the most distinctive part of the story. You decide how much of it to include and how to show it.
+1. **Cold open, 0 to 8 seconds: the graveyard.** Fast and a little funny. A Teams or Slack message, "Anyone know if we can use AI for this?", sinks unanswered under other messages. A "Great idea, let's discuss next week" reply. An "AI pilot" document last edited 47 days ago. A thumbs-up reaction, then silence. Text: *"Every company has AI ideas like this. Most quietly die."* You can build these chat moments as clean mock interfaces or film them on real screens. They show the problem, not Spine, so they don't need to be real Spine footage.
+2. **The turn, 8 to 12 seconds:** a hard cut to calm. The navy Spine sidebar, then **"3 things need you."** (clip 01). Quiet confidence: *"Spine makes sure they don't."*
+3. **Four fast beats, about 5 seconds each, each one moment from the clips, zoomed in close:**
+   - *Ask, and get a person:* the question asked (clip 03), then the Champion's reply (clip 04).
+   - *Ideas get an owner and a plan:* approve (clip 08), then the step ticked and "Mia is fixing edge cases" (clip 05).
+   - *Nothing stalls quietly:* "Blocked" picked (clip 06), then it's top of Pulse (clip 07).
+   - *Prove it:* the verified hours line climbing (clip 09).
+4. **The climax, about 10 seconds: "And it lives where you already work."** Teams: "@Spine is Copilot OK for client data?" with the company's answer in the thread. Slack: "Send to Spine". Claude: "This could save your team hours every week. Propose it as an initiative?", then "Yes", then the initiative appears in Spine. **This is the moment to make people go "wow".** It's not built yet, so it must read clearly as coming soon (see the rules).
+5. **End card:** the Spine logo, one line, and a call to action. Suggested line: *"Spine. Where good AI ideas don't die."* (find a better one if you can). Add a call to action such as "Book a demo", with a placeholder URL we'll fill in.
 
-Spine shouldn't be one more app to remember. It should be inside the tools people already use, with the web app as the control room.
+**Visual rules I'd strongly suggest:**
+- **No cartoon people.** If you want humans, use a few real, natural shots (a phone lighting up with a Teams message, hands on a laptop, a manager reading a dashboard), or none at all.
+- **Product shots fill the frame.** Zoom into the one thing that matters in each shot (a headline, a button, a row, a number) and let the rest blur or fall away.
+- **Brand colours only:** deep navy (#0F1733 area, the sidebar), warm off-white workspace, and one cobalt blue for the thing you want people to look at. A green dot means Live. Red is only for "Blocked". No bright full-screen blue or green slides.
+- **Type:** large, tight and confident, a few words at a time.
+- **Logo:** the wordmark "Spine" beside three offset rounded blue bars (top left of any desktop screenshot).
 
-**Inside Claude, as a connector (built on MCP, an open standard that lets an AI assistant use another app's tools):**
-- *Rules at the moment of use.* "Can I put this client spreadsheet in here?" Claude checks the company's Playbook in Spine and answers with that company's rule.
-- *Answers, or a human.* Claude answers from the company's shared answers. If nothing fits, it offers to send the question to a Spine Champion, and the reply comes back later.
-- *From chat to initiative (the wow moment).* After someone spends an hour building something useful in Claude, Claude suggests: "This could save your team hours every week. Propose it as an initiative?" One yes, and it's in Spine with the problem already written.
-- *Momentum without leaving the chat.* "What needs me?" shows what's waiting. "I finished testing" ticks off the plan step.
-- The story: **the AI tool itself feeds the AI adoption programme.** Usage becomes ideas, ideas become initiatives, initiatives become verified hours saved.
+## What Spine is (for the voice and the end card)
 
-**In Slack and Teams, two-way:**
-- "@Spine is Copilot OK for client data?" gets the Playbook answer in the thread.
-- "Send to Spine" on any message turns it into a question or an idea, linked back to the original message. Spine only ever sees what someone deliberately sends it, never whole chats. That's a feature: private by design.
-- Check-ins arrive as a direct message with three buttons: On track, At risk, Blocked.
-- When the same question keeps appearing, Spine suggests making it a shared answer or an initiative.
+Spine is where a company runs its AI adoption. Employees ask AI questions privately and a colleague who knows (a Champion) answers. Good answers can be shared. Ideas become initiatives with an owner, an approval, a team and a plan. One-minute check-ins catch anything blocked or going quiet. Leaders see hours saved that only count once someone outside the team has verified them. It's for the person leading AI adoption at a company, and everyone they're trying to bring along.
 
-**What exists today:** the web app (everything in the screenshots), posting updates to a chosen Slack or Teams channel, and calendar export. **The Claude connector and the Slack and Teams bots are not built yet.** They may be built before the trailer is published; ask before assuming either way.
+## The only rules (so it's safe to publish)
 
-So for this part, the one rule is: anything not built yet appears as what's coming, clearly signposted as the future (for example "Coming soon", a "next" chapter, or a vision sequence). How you signpost it is entirely your call. This isn't caution for its own sake: the first customer who types "@Spine" after watching the trailer has to find it works, or the launch loses their trust.
+- **Only real Spine 2.0 footage:** the clips and screenshots below. Never record the public website; it's the old version.
+- **The Teams, Slack and Claude moments aren't built yet.** Show them as coming soon, clearly signposted (for example a "Coming soon" label, or a "Next" chapter). How you signpost it is your call. The first customer who types "@Spine" after watching has to find it works, or we lose their trust.
+- **No invented customers, logos, testimonials, statistics, prices or certifications.** The demo company Acme Group and its numbers ("94 verified hours saved") are fictional. Show them inside the product with a small "Demo data" note, never as claims about real results.
+- **Never show Spine reading people's messages or calendars, or AI running things on its own.** AI drafts and suggests; people decide. Spine only sees what someone deliberately sends it.
 
-## The only limits (so the trailer can be published safely)
+## What I'd like back
 
-- Don't present invented customers, testimonials, statistics, awards, prices or certifications as real. The demo numbers (like "94 verified hours saved") belong to the fictional Acme Group, so show them as product UI, not as claims about real results.
-- Don't show Spine doing things it doesn't do today as if they already work. The Claude connector and the Slack and Teams bots above are fine as clearly signposted future features. Never show Spine reading people's messages or calendars, or running projects on its own: AI in Spine drafts and suggests, and people decide.
+The main trailer (about 45 seconds, 16:9), a 15-second cut, a vertical 9:16 version for social, and three stills for static ads. Include the script and voiceover text.
 
-Everything else is your call. Deliver whatever you think makes the strongest trailer, and include any variants (cut-downs, aspect ratios, stills) you think are worth having.
+## Screen recordings (real Spine 2.0, 2880 x 1620, 30 fps, with a visible cursor)
 
-## All screenshots (open each link to view or download)
+- **[01-home-what-needs-you.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/01-home-what-needs-you.mp4)**: Home: "3 things need you". The cursor moves down the list to the one primary button, Review.
+- **[02-search.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/02-search.mp4)**: Ctrl+K search: typing "supplier" finds questions and initiatives instantly.
+- **[03-ask-a-question.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/03-ask-a-question.mp4)**: An employee asks the Help Desk a question: title, details, topic, Ask.
+- **[04-champion-replies.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/04-champion-replies.mp4)**: A Champion replies in the private thread and sends.
+- **[05-plan-moves-forward.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/05-plan-moves-forward.mp4)**: A step is ticked off, and the next-action line changes from "Jamie is testing supplier cases" to "Mia is fixing edge cases from testing".
+- **[06-check-in-blocked.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/06-check-in-blocked.mp4)**: A one-minute check-in: the team picks Blocked, writes why, and checks in.
+- **[07-pulse-whats-stuck.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/07-pulse-whats-stuck.mp4)**: Pulse: the blocked initiative is now at the top, followed by decisions waiting and unanswered questions.
+- **[08-approve-an-idea.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/08-approve-an-idea.mp4)**: A leader reads an idea and approves it, and it moves to Forming team.
+- **[09-leadership-proof.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/09-leadership-proof.mp4)**: Leadership: 94 verified hours saved, with the cursor tracing the line climbing month by month.
+- **[10-playbook.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/10-playbook.mp4)**: The Playbook: priorities, approved tools with green, amber and red status, and guidance opening.
 
-Desktop shots are 2880 x 1800 and phone shots are 1170 x 2532, all PNG.
+## Screenshots (real Spine 2.0; desktop 2880 x 1800, phone 1170 x 2532)
 
-![01-home-what-needs-you](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/01-home-what-needs-you.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/01-home-what-needs-you.png
+- [01-home-what-needs-you.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/01-home-what-needs-you.png)
+- [02-help-desk.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/02-help-desk.png)
+- [03-private-question-thread.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/03-private-question-thread.png)
+- [04-initiatives-board.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/04-initiatives-board.png)
+- [05-initiative-plan.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/05-initiative-plan.png)
+- [06-check-ins.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/06-check-ins.png)
+- [07-approval-decision.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/07-approval-decision.png)
+- [08-pulse-whats-stuck.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/08-pulse-whats-stuck.png)
+- [09-playbook.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/09-playbook.png)
+- [10-discover.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/10-discover.png)
+- [11-leadership.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/11-leadership.png)
+- [12-propose-an-idea.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/12-propose-an-idea.png)
+- [13-search-palette.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/13-search-palette.png)
+- [20-phone-home.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/20-phone-home.png)
+- [21-phone-thread.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/21-phone-thread.png)
+- [22-phone-initiative.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/22-phone-initiative.png)
+- [23-phone-pulse.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/23-phone-pulse.png)
+- [30-member-home.png](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/30-member-home.png)
 
-![02-help-desk](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/02-help-desk.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/02-help-desk.png
-
-![03-private-question-thread](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/03-private-question-thread.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/03-private-question-thread.png
-
-![04-initiatives-board](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/04-initiatives-board.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/04-initiatives-board.png
-
-![05-initiative-plan](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/05-initiative-plan.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/05-initiative-plan.png
-
-![06-check-ins](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/06-check-ins.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/06-check-ins.png
-
-![07-approval-decision](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/07-approval-decision.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/07-approval-decision.png
-
-![08-pulse-whats-stuck](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/08-pulse-whats-stuck.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/08-pulse-whats-stuck.png
-
-![09-playbook](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/09-playbook.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/09-playbook.png
-
-![10-discover](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/10-discover.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/10-discover.png
-
-![11-leadership](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/11-leadership.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/11-leadership.png
-
-![12-propose-an-idea](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/12-propose-an-idea.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/12-propose-an-idea.png
-
-![13-search-palette](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/13-search-palette.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/13-search-palette.png
-
-![20-phone-home](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/20-phone-home.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/20-phone-home.png
-
-![21-phone-thread](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/21-phone-thread.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/21-phone-thread.png
-
-![22-phone-initiative](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/22-phone-initiative.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/22-phone-initiative.png
-
-![23-phone-pulse](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/23-phone-pulse.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/23-phone-pulse.png
-
-![30-member-home](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/30-member-home.png)
-https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/30-member-home.png
+If anything here is unclear, ask rather than guess.

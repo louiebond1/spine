@@ -13,6 +13,7 @@ import { SharePanel } from "@/features/help-desk/SharePanel";
 import { plural, shortDate, timeAgo } from "@/lib/format";
 import { now } from "@/server/clock";
 import { requireCtx } from "@/server/ctx";
+import { aiConfigured } from "@/server/ai/client";
 import { getSharedAnswer, getThread } from "@/server/questions/queries";
 
 export default async function QuestionThreadPage({ params }: { params: Promise<{ id: string }> }) {
@@ -61,7 +62,7 @@ export default async function QuestionThreadPage({ params }: { params: Promise<{
           </p>
           <div className="flex-1 space-y-6 pb-6">
             <ChatMessage author={q.asker.name} initials={q.asker.initials} time={timeAgo(q.postedAt, t)} body={thread.body} mine={q.askedByViewer} />
-            {thread.participant && <SuggestedAnswer questionId={q.id} suggested={thread.suggested} askerCanAccept={thread.askerCanAccept} generate={q.status !== "RESOLVED"} />}
+            {thread.participant && <SuggestedAnswer questionId={q.id} suggested={thread.suggested} askerCanAccept={thread.askerCanAccept} generate={q.status !== "RESOLVED" && q.replyCount === 0 && aiConfigured()} />}
             {thread.bestMatch && (
               <p className="text-label text-text-muted sm:ml-11">
                 Likely best Champion: <span className="font-medium text-text">{thread.bestMatch.id === ctx.user.id ? "you" : thread.bestMatch.name}</span> ({thread.bestMatch.answered} {q.topic} {thread.bestMatch.answered === 1 ? "answer" : "answers"})

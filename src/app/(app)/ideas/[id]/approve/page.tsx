@@ -8,6 +8,7 @@ import { Container } from "@/components/ui/Container";
 import { ICON_STROKE } from "@/components/ui/icons";
 import { ApprovalActions } from "@/features/ideas/ApprovalActions";
 import { ApprovalBriefPanel } from "@/features/ideas/ApprovalBriefPanel";
+import { aiConfigured } from "@/server/ai/client";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { Avatar } from "@/components/ui/Avatar";
 import { describeRule, totalHours } from "@/server/approvals/rules";
@@ -76,7 +77,7 @@ export default async function ApprovalPage({ params }: { params: Promise<{ id: s
               ))}
             </dl>
           </Container>
-          <ApprovalBriefPanel projectId={p.id} />
+          {aiConfigured() && <ApprovalBriefPanel projectId={p.id} />}
         </div>
         <aside>
           <div className="space-y-5 rounded-container border border-border bg-surface p-4 sm:p-5 lg:sticky lg:top-20">

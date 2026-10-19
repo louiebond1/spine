@@ -15,7 +15,7 @@ export function LoginForm({ next }: { next?: string }) {
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next ?? ""} />
-      <TextField id="email" name="email" type="email" label="Work email" autoComplete="email" required />
+      <TextField id="email" name="email" type="email" label="Work email" autoComplete="email" required defaultValue={state.values?.email} key={`e-${state.values?.email ?? ""}`} />
       <TextField id="password" name="password" type="password" label="Password" autoComplete="current-password" required />
       <ErrorLine state={state} />
       <Button type="submit" variant="primary" fullWidth disabled={pending}>
@@ -31,7 +31,7 @@ export function AcceptInviteForm({ token, name, email }: { token: string; name: 
     <form action={action} className="space-y-4">
       <input type="hidden" name="token" value={token} />
       <TextField id="email" label="Work email" value={email} readOnly disabled />
-      <TextField id="name" name="name" label="Your name" defaultValue={name} autoComplete="name" required />
+      <TextField id="name" name="name" label="Your name" defaultValue={state.values?.name ?? name} key={`n-${state.values?.name ?? ""}`} autoComplete="name" required />
       <TextField id="password" name="password" type="password" label="Choose a password" hint="At least 12 characters." autoComplete="new-password" required minLength={12} />
       <ErrorLine state={state} />
       <Button type="submit" variant="primary" fullWidth disabled={pending}>
@@ -45,9 +45,9 @@ export function SignupForm() {
   const [state, action, pending] = useActionState(signup, {});
   return (
     <form action={action} className="space-y-4">
-      <TextField id="org" name="org" label="Organisation" autoComplete="organization" required />
-      <TextField id="name" name="name" label="Your name" autoComplete="name" required />
-      <TextField id="email" name="email" type="email" label="Work email" autoComplete="email" required />
+      <TextField id="org" name="org" label="Organisation" autoComplete="organization" required defaultValue={state.values?.org} key={`o-${state.values?.org ?? ""}`} />
+      <TextField id="name" name="name" label="Your name" autoComplete="name" required defaultValue={state.values?.name} key={`n-${state.values?.name ?? ""}`} />
+      <TextField id="email" name="email" type="email" label="Work email" autoComplete="email" required defaultValue={state.values?.email} key={`e-${state.values?.email ?? ""}`} />
       <TextField id="password" name="password" type="password" label="Password" hint="At least 12 characters." autoComplete="new-password" required minLength={12} />
       <ErrorLine state={state} />
       <Button type="submit" variant="primary" fullWidth disabled={pending}>

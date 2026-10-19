@@ -9,6 +9,8 @@ export default [
     files: ["src/**/*.{ts,tsx}", "prisma/seed/**/*.ts"],
     rules: {
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+      // Plain apostrophes and quotes in copy render correctly; escaping them hurts readability.
+      "react/no-unescaped-entities": "off",
       "no-restricted-syntax": [
         "error",
         {

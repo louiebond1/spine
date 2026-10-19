@@ -10,7 +10,8 @@ import { findOpenInvitation } from "./invitations";
 import { allow, clearLimit } from "./rate-limit";
 import { createSession, destroyAllSessions, destroyCurrentSession, getSessionUser } from "./session";
 
-export type FormState = { error?: string };
+/** `values` echoes what was typed (never passwords) so a failed submit doesn't clear the form. */
+export type FormState = { error?: string; values?: Record<string, string> };
 
 const clientIp = async () => ((await headers()).get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "local";
 
@@ -23,17 +24,18 @@ function safeNext(next: unknown) {
 const loginSchema = z.object({ email: z.string().trim().toLowerCase().email().max(200), password: z.string().min(1).max(200) });
 
 export async function login(_prev: FormState, form: FormData): Promise<FormState> {
+  const values = { email: String(form.get("email") ?? "").slice(0, 200) };
   const parsed = loginSchema.safeParse({ email: form.get("email"), password: form.get("password") });
-  if (!parsed.success) return { error: "Enter your email and password." };
+  if (!parsed.success) return { error: "Enter your email and password.", values };
   const { email, password } = parsed.data;
   const ip = await clientIp();
   const okEmail = await allow(`login:email:${email}`, 8, 15 * 60_000);
   const okIp = await allow(`login:ip:${ip}`, 30, 15 * 60_000);
-  if (!okEmail || !okIp) return { error: "Too many attempts. Wait 15 minutes and try again." };
+  if (!okEmail || !okIp) return { error: "Too many attempts. Wait 15 minutes and try again.", values };
 
   const user = await rootDb.user.findUnique({ where: { email } });
   const valid = await verifyPassword(password, user?.passwordHash);
-  if (!user || !valid || user.status !== "ACTIVE") return { error: "That email and password don't match an active account." };
+  if (!user || !valid || user.status !== "ACTIVE") return { error: "That email and password don't match an active account.", values };
 
   await clearLimit(`login:email:${email}`);
   await createSession(user.id);
@@ -53,11 +55,12 @@ const acceptSchema = z.object({
 
 /** Accepting an invitation creates the account (or resets access) and signs the person in. */
 export async function acceptInvitation(_prev: FormState, form: FormData): Promise<FormState> {
+  const values = { name: String(form.get("name") ?? "").slice(0, 80) };
   const parsed = acceptSchema.safeParse({ token: form.get("token"), name: form.get("name"), password: form.get("password") });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
-  if (!(await allow(`invite:ip:${await clientIp()}`, 20, 15 * 60_000))) return { error: "Too many attempts. Wait 15 minutes and try again." };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form.", values };
+  if (!(await allow(`invite:ip:${await clientIp()}`, 20, 15 * 60_000))) return { error: "Too many attempts. Wait 15 minutes and try again.", values };
   const problem = passwordProblem(parsed.data.password);
-  if (problem) return { error: problem };
+  if (problem) return { error: problem, values };
 
   const inv = await findOpenInvitation(parsed.data.token);
   if (!inv) return { error: "This link has expired or was already used. Ask your admin for a new one." };
@@ -96,8 +99,8 @@ export async function acceptInvitation(_prev: FormState, form: FormData): Promis
     return u.id;
   }).catch((e: Error) => (e.message === "other-org" ? "other-org" : null));
 
-  if (userId === "other-org") return { error: "That email already belongs to another organisation in Spine." };
-  if (!userId) return { error: "This link has expired or was already used. Ask your admin for a new one." };
+  if (userId === "other-org") return { error: "That email already belongs to another organisation in Spine.", values };
+  if (!userId) return { error: "This link has expired or was already used. Ask your admin for a new one.", values };
   await destroyAllSessions(userId);
   await createSession(userId);
   redirect("/");
@@ -115,12 +118,13 @@ const signupSchema = z.object({
 
 export async function signup(_prev: FormState, form: FormData): Promise<FormState> {
   if (!(await signupEnabled())) return { error: "Sign-up is closed. Ask your admin for an invitation." };
+  const values = { org: String(form.get("org") ?? "").slice(0, 80), name: String(form.get("name") ?? "").slice(0, 80), email: String(form.get("email") ?? "").slice(0, 200) };
   const parsed = signupSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
-  if (!(await allow(`signup:ip:${await clientIp()}`, 5, 60 * 60_000))) return { error: "Too many sign-ups from here. Try again later." };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form.", values };
+  if (!(await allow(`signup:ip:${await clientIp()}`, 5, 60 * 60_000))) return { error: "Too many sign-ups from here. Try again later.", values };
   const problem = passwordProblem(parsed.data.password);
-  if (problem) return { error: problem };
-  if (await rootDb.user.findUnique({ where: { email: parsed.data.email } })) return { error: "That email already has an account. Sign in instead." };
+  if (problem) return { error: problem, values };
+  if (await rootDb.user.findUnique({ where: { email: parsed.data.email } })) return { error: "That email already has an account. Sign in instead.", values };
 
   const passwordHash = await hashPassword(parsed.data.password);
   const name = parsed.data.name;

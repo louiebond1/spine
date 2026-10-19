@@ -23,9 +23,32 @@ The buyer is whoever leads AI adoption at a company (Head of AI, COO, transforma
 
 The product's own look, if you want it: deep navy sidebar, warm off-white workspace, one cobalt blue, and a green dot for "Live". The logo is the wordmark "Spine" beside three offset rounded blue bars (top-left of any desktop screenshot). You're free to go in a different direction.
 
+## The bigger idea: Spine lives where people already work
+
+This is the direction for Spine, and it's yours to use in the trailer if you think it makes it stronger. It's probably the most distinctive part of the story. You decide how much of it to include and how to show it.
+
+Spine shouldn't be one more app to remember. It should be inside the tools people already use, with the web app as the control room.
+
+**Inside Claude, as a connector (built on MCP, an open standard that lets an AI assistant use another app's tools):**
+- *Rules at the moment of use.* "Can I put this client spreadsheet in here?" Claude checks the company's Playbook in Spine and answers with that company's rule.
+- *Answers, or a human.* Claude answers from the company's shared answers. If nothing fits, it offers to send the question to a Spine Champion, and the reply comes back later.
+- *From chat to initiative (the wow moment).* After someone spends an hour building something useful in Claude, Claude suggests: "This could save your team hours every week. Propose it as an initiative?" One yes, and it's in Spine with the problem already written.
+- *Momentum without leaving the chat.* "What needs me?" shows what's waiting. "I finished testing" ticks off the plan step.
+- The story: **the AI tool itself feeds the AI adoption programme.** Usage becomes ideas, ideas become initiatives, initiatives become verified hours saved.
+
+**In Slack and Teams, two-way:**
+- "@Spine is Copilot OK for client data?" gets the Playbook answer in the thread.
+- "Send to Spine" on any message turns it into a question or an idea, linked back to the original message. Spine only ever sees what someone deliberately sends it, never whole chats. That's a feature: private by design.
+- Check-ins arrive as a direct message with three buttons: On track, At risk, Blocked.
+- When the same question keeps appearing, Spine suggests making it a shared answer or an initiative.
+
+**What exists today:** the web app (everything in the screenshots), posting updates to a chosen Slack or Teams channel, and calendar export. **The Claude connector and the Slack and Teams bots are not built yet.** They may be built before the trailer is published; ask before assuming either way.
+
+So for this part, the one rule is: anything not built yet appears as what's coming, clearly signposted as the future (for example "Coming soon", a "next" chapter, or a vision sequence). How you signpost it is entirely your call. This isn't caution for its own sake: the first customer who types "@Spine" after watching the trailer has to find it works, or the launch loses their trust.
+
 ## The only limits (so the trailer can be published safely)
 
 - Don't present invented customers, testimonials, statistics, awards, prices or certifications as real. The demo numbers (like "94 verified hours saved") belong to the fictional Acme Group, so show them as product UI, not as claims about real results.
-- Don't show Spine doing things it doesn't do, like chatting with people inside Slack or Teams, reading their messages or calendars, or running projects on its own. AI in Spine drafts and suggests; people decide.
+- Don't show Spine doing things it doesn't do today as if they already work. The Claude connector and the Slack and Teams bots above are fine as clearly signposted future features. Never show Spine reading people's messages or calendars, or running projects on its own: AI in Spine drafts and suggests, and people decide.
 
 Everything else is your call. Deliver whatever you think makes the strongest trailer, and include any variants (cut-downs, aspect ratios, stills) you think are worth having.

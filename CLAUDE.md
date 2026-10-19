@@ -1,4 +1,31 @@
-# Spine: build brief
+# Spine
+
+## Spine 2.0: read this first
+
+Spine 2.0 replaced parts of the original build brief (kept below for reference). Where they disagree, this section wins.
+
+**Security rules. Never weaken these.**
+
+- Nobody is signed in by default, and there is no user switcher or demo identity in production. Every page and server action starts with `requireCtx()` (`src/server/ctx.ts`). API routes use `getCtx()` and return 401 without a session.
+- All data access goes through `ctx.db`, the organisation-scoped client from `forOrg()` (`src/server/tenant.ts`). Child tables (steps, messages, attachments, check-ins and so on) aren't scoped by the extension, so load them through their parent and check `orgId`. See `stepInOrg` and the attachment route. `rootDb` is limited to the allow-list in `scripts/guard.mjs`.
+- Permission checks live in `src/server/permissions.ts` and are enforced in server actions, not only by hiding buttons. The tests in `tests/` replay real actions with other people's sessions. Add one for any new permission.
+- Help Desk threads and attachments are visible only to the asker and the claimer. Resolved questions stay private unless the asker shares a summary. AI never reads private threads. Anonymous askers are never revealed.
+- GET requests never change data. Scheduled work (auto-approve and the rest) runs in `scripts/daily-job.ts`, which must not import Next.js request APIs (use `src/server/scope.ts`).
+- AI failures show `AI_ERROR_TEXT` and never block anyone. Never use AI fixtures in production or in the end-to-end tests.
+
+**Product changes from the brief**
+
+- One lifecycle: Draft, Approval, Forming team, Building, Launching, Live. "Ideas & Projects" is now "Initiatives".
+- New areas: Playbook (priorities, approved tools, guides), Discover (shared discoveries and shared answers), check-ins and blockers, outcomes verified by someone outside the team, Leadership (which replaces Programme), and Admin tabs for People, Settings, Approval rules, Topics, Integrations, AI & health and Audit log.
+- Removed: Leaderboard, Ask Spine, Autopilot, the dev gallery, and the separate "start with Spine" flow.
+- Design: a dark navy sidebar, a warm light workspace, and semantic colours (positive, warning, critical) used sparingly for state. The tokens in `tailwind.config.ts` are the only source. The design guard still bans arbitrary values, italics and em dashes. It must work at 390px wide.
+- Integrations: organisation-level Slack and Teams Workflows webhooks, channel links, and `.ics` export only. See `docs/INTEGRATIONS.md` before building anything else.
+
+**Running and checking**: see README.md. Before pushing, run `npm run lint`, `npm run typecheck`, `npm run test:unit`, and `npm test` against a production build. Deploying and migrations: see `docs/DEPLOYMENT.md`.
+
+---
+
+# Original build brief (phase 1)
 
 The 13 final mockups are in /design: 01-home.png, 02-help-desk.png, 03-question-thread.png, 04-propose-idea.png, 05-ai-review.png, 06-admin-approval.png, 07-pipeline.png, 08-project-workspace.png, 09-pulse.png, 10-programme.png, 11-leaderboard.png, 12-admin-settings.png, 13-home-all-clear.png. Read this whole file and open every mockup before doing anything.
 

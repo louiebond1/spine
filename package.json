@@ -13,6 +13,7 @@
     "db:deploy": "prisma migrate deploy",
     "seed": "tsx --env-file-if-exists=.env prisma/seed/index.ts",
     "seed:all-clear": "tsx --env-file-if-exists=.env prisma/seed/all-clear.ts",
+    "seed:if-empty": "node -e \"console.log('[seed] seed:if-empty was removed in Spine 2.0: production never loads demo data. Remove it from the start command.')\"",
     "job:daily": "tsx --conditions=react-server --env-file-if-exists=.env scripts/daily-job.ts",
     "job:daily:prod": "tsx --conditions=react-server scripts/daily-job.ts",
     "bootstrap": "tsx --conditions=react-server scripts/bootstrap.ts",

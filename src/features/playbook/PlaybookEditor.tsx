@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
+import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { TextArea } from "@/components/ui/TextArea";
@@ -21,7 +22,7 @@ const BLANK: Record<Kind, Values> = {
 };
 
 /** Inline add/edit for one playbook item. Only rendered for admins; the server checks again. */
-export function PlaybookItemEditor({ kind, id, initial, label }: { kind: Kind; id?: string; initial?: Values; label?: string }) {
+export function PlaybookItemEditor({ kind, id, initial, label, triggerClassName }: { kind: Kind; id?: string; initial?: Values; label?: string; triggerClassName?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [v, setV] = useState<Values>(initial ?? BLANK[kind]);
@@ -31,7 +32,7 @@ export function PlaybookItemEditor({ kind, id, initial, label }: { kind: Kind; i
 
   if (!open)
     return id ? (
-      <button type="button" onClick={() => setOpen(true)} className="rounded-sm p-1 text-text-faint hover:bg-subtle hover:text-text" aria-label={`Edit ${label ?? "item"}`}>
+      <button type="button" onClick={() => setOpen(true)} className={cx("rounded-sm p-1 text-text-faint hover:bg-subtle hover:text-text", triggerClassName)} aria-label={`Edit ${label ?? "item"}`}>
         <Pencil size={14} strokeWidth={ICON_STROKE} />
       </button>
     ) : (

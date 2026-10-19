@@ -38,15 +38,15 @@ export default async function PlaybookPage() {
             <EmptyState>{edit ? "Add the two or three outcomes AI should help with first." : "No priorities published yet."}</EmptyState>
           ) : (
             priorities.map((p, i) => (
-              <div key={p.id} className="flex gap-3 py-3">
+              <div key={p.id} className="relative flex gap-3 py-3">
                 <span className="w-5 shrink-0 text-label font-semibold text-text-faint">{i + 1}</span>
-                <div className="min-w-0 flex-1">
+                <div className={cx("min-w-0 flex-1", edit && "pr-8")}>
                   <p className="text-meta font-medium text-text">
                     {p.title}
                     {!p.active && <span className="ml-2 text-label font-normal text-text-faint">Hidden</span>}
                   </p>
                   <p className="text-meta text-text-muted">{p.description}</p>
-                  {edit && <PlaybookItemEditor kind="priority" id={p.id} label={p.title} initial={{ title: p.title, description: p.description, active: p.active }} />}
+                  {edit && <PlaybookItemEditor triggerClassName="absolute right-0 top-3" kind="priority" id={p.id} label={p.title} initial={{ title: p.title, description: p.description, active: p.active }} />}
                 </div>
               </div>
             ))
@@ -58,7 +58,7 @@ export default async function PlaybookPage() {
             <EmptyState>{edit ? "List the AI tools people may use, and the data rules for each." : "No tools listed yet. Ask the Help Desk before using a new AI tool with company data."}</EmptyState>
           ) : (
             tools.map((t) => (
-              <div key={t.id} id={`tool-${t.id}`} className="py-3">
+              <div key={t.id} id={`tool-${t.id}`} className={cx("relative py-3", edit && "pr-8")}>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-meta font-medium text-text">{t.name}</p>
                   <span className={cx("rounded-full px-2 py-0.5 text-tiny font-medium", STATUS[t.status].cls)}>{STATUS[t.status].label}</span>
@@ -73,7 +73,7 @@ export default async function PlaybookPage() {
                   <span className="font-medium">Data: </span>
                   {t.dataGuidance}
                 </p>
-                {edit && <PlaybookItemEditor kind="tool" id={t.id} label={t.name} initial={{ name: t.name, purpose: t.purpose, status: t.status, dataGuidance: t.dataGuidance, url: t.url ?? "" }} />}
+                {edit && <PlaybookItemEditor triggerClassName="absolute right-0 top-3" kind="tool" id={t.id} label={t.name} initial={{ name: t.name, purpose: t.purpose, status: t.status, dataGuidance: t.dataGuidance, url: t.url ?? "" }} />}
               </div>
             ))
           )}

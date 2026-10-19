@@ -1047,6 +1047,8 @@ async function seedSpine2(db: PrismaClient, allClear: boolean) {
         position: 0,
         title: "AI acceptable use policy (summary)",
         updatedById: "u-alex",
+        createdAt: ago(30 * DAY),
+        updatedAt: ago(12 * DAY),
         body: "Use approved tools only (see AI tools above).\nYou are responsible for anything you send or publish, even if AI drafted it: read it first.\nDon't put personal data about colleagues into AI tools unless HR has approved the use.\nIf a client contract forbids AI processing, don't use AI on that client's documents.\nQuestions? Ask the Help Desk: a Champion will reply privately.",
       },
       {
@@ -1054,6 +1056,8 @@ async function seedSpine2(db: PrismaClient, allClear: boolean) {
         position: 1,
         title: "Working with client data",
         updatedById: "u-alex",
+        createdAt: ago(30 * DAY),
+        updatedAt: ago(5 * DAY),
         body: "Anonymise where you can: replace names and account numbers with placeholders before you start.\nKeep files in the company workspace, not on personal devices.\nDelete working copies when the task is done.",
       },
     ],
@@ -1097,7 +1101,12 @@ async function seedSpine2(db: PrismaClient, allClear: boolean) {
     await db.project.update({ where: { id: "p-contract-clause" }, data: { nextCheckInAt: ago(-3 * DAY) } });
   }
 
-  // Outcomes: past months measured and verified outside the team; this month reported, waiting for checks.
+  // Most people have signed in recently, so Leadership's adoption numbers look like a live company.
+  const lastSeen: [string, number][] = [["u-alex", HOUR], ["u-sarah", 2 * HOUR], ["u-jamie", 5 * HOUR], ["u-mia", DAY], ["u-louie", 2 * DAY], ["u-ben", 3 * DAY]];
+  for (const [id, gap] of lastSeen) await db.user.update({ where: { id }, data: { lastLoginAt: ago(gap) } });
+
+  // Outcomes: every month measured and verified by someone outside the team. Verification
+  // itself is exercised by the end-to-end tests, not shown waiting on Home.
   const logs = await db.impactLog.findMany();
   const thisMonth = month(2026, 10).getTime();
   for (const l of logs) {
@@ -1110,7 +1119,8 @@ async function seedSpine2(db: PrismaClient, allClear: boolean) {
       data: {
         evidence,
         reportedById: onboarding ? "u-priya" : "u-ben",
-        ...(l.month.getTime() < thisMonth || allClear ? { verifiedById: onboarding ? "u-louie" : "u-alex", verifiedAt: new Date(l.month.getTime() + 25 * DAY) } : {}),
+        verifiedById: onboarding ? "u-louie" : "u-alex",
+        verifiedAt: l.month.getTime() < thisMonth ? new Date(l.month.getTime() + 25 * DAY) : ago(DAY),
       },
     });
   }

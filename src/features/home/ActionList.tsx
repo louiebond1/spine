@@ -1,4 +1,6 @@
-import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, type LucideIcon } from "lucide-react";
+import { ICON_STROKE } from "@/components/ui/icons";
 import { Container } from "@/components/ui/Container";
 import { Row } from "@/components/ui/Row";
 import { IconTile } from "@/components/ui/IconTile";
@@ -25,12 +27,26 @@ export function ActionList({ items, heading, count, primaryFirst = true }: { ite
           title={item.title}
           href={item.href}
           meta={<p className="text-label text-text-muted">{item.reason}</p>}
+          inlineTrailing={!(primaryFirst && i === 0)}
           trailing={
-            item.actionLabel && (
-              <Button href={item.href} variant={primaryFirst && i === 0 ? "primary" : "secondary"} size="sm" className="ml-14 sm:ml-0">
+            item.actionLabel &&
+            (primaryFirst && i === 0 ? (
+              <Button href={item.href} variant="primary" size="sm" className="ml-14 sm:ml-0">
                 {item.actionLabel}
               </Button>
-            )
+            ) : (
+              <>
+                {/* Phones: one button per list keeps it short; the rest of each row is the link. */}
+                <span className="hidden sm:block">
+                  <Button href={item.href} variant="secondary" size="sm">
+                    {item.actionLabel}
+                  </Button>
+                </span>
+                <Link href={item.href} className="text-text-faint sm:hidden" aria-label={`${item.actionLabel}: ${item.title}`}>
+                  <ChevronRight size={18} strokeWidth={ICON_STROKE} aria-hidden />
+                </Link>
+              </>
+            ))
           }
         />
       ))}

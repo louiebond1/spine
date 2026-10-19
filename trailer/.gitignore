@@ -1,0 +1,11 @@
+node_modules/
+public/frames/
+public/assets/clips/
+public/assets/stills/
+public/assets/audio/*.wav
+output/*.mp4
+output/*.log
+output/check/
+output/vframes/
+output/storyboard/
+output/*.zip

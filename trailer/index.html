@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Spine launch trailer</title>
+<style>
+  @font-face { font-family: "Inter"; font-weight: 400; src: url("public/assets/fonts/Inter-Regular.otf"); }
+  @font-face { font-family: "Inter"; font-weight: 500; src: url("public/assets/fonts/Inter-Medium.otf"); }
+  @font-face { font-family: "Inter"; font-weight: 600; src: url("public/assets/fonts/Inter-SemiBold.otf"); }
+  @font-face { font-family: "Inter"; font-weight: 700; src: url("public/assets/fonts/Inter-Bold.otf"); }
+  html, body { margin: 0; padding: 0; background: #000; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased; font-feature-settings: "cv11"; }
+  #stage img { image-rendering: auto; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<!-- preload font weights so the first captured frame never substitutes -->
+<div style="position:absolute;left:-9999px;font-family:Inter"><b style="font-weight:400">a</b><b style="font-weight:500">a</b><b style="font-weight:600">a</b><b style="font-weight:700">a</b></div>
+<script type="module">
+  import "./src/main.js";
+</script>
+</body>
+</html>

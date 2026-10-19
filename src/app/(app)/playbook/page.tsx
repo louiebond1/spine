@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 import { Page } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Container } from "@/components/ui/Container";
@@ -16,6 +16,10 @@ const STATUS = {
   LIMITED: { label: "Approved with limits", cls: "bg-warning-soft text-warning" },
   NOT_APPROVED: { label: "Not approved", cls: "bg-critical-soft text-critical" },
 } as const;
+const DOT = { APPROVED: "bg-positive", LIMITED: "bg-warning", NOT_APPROVED: "bg-critical" } as const;
+
+/** Every Playbook row shares one leading column (number, status dot or expand arrow) so titles line up. */
+const GUTTER = "flex w-5 shrink-0 justify-start";
 
 /** Alignment: what the company is prioritising, which AI tools are approved for what data, and how to use them. */
 export default async function PlaybookPage() {
@@ -39,7 +43,7 @@ export default async function PlaybookPage() {
           ) : (
             priorities.map((p, i) => (
               <div key={p.id} className="relative flex gap-3 py-3">
-                <span className="w-5 shrink-0 text-label font-semibold text-text-faint">{i + 1}</span>
+                <span className={cx(GUTTER, "pt-px text-label font-semibold text-text-faint")}>{i + 1}</span>
                 <div className={cx("min-w-0 flex-1", edit && "pr-8")}>
                   <p className="text-meta font-medium text-text">
                     {p.title}
@@ -58,7 +62,11 @@ export default async function PlaybookPage() {
             <EmptyState>{edit ? "List the AI tools people may use, and the data rules for each." : "No tools listed yet. Ask the Help Desk before using a new AI tool with company data."}</EmptyState>
           ) : (
             tools.map((t) => (
-              <div key={t.id} id={`tool-${t.id}`} className={cx("relative py-3", edit && "pr-8")}>
+              <div key={t.id} id={`tool-${t.id}`} className="relative flex gap-3 py-3">
+                <span className={cx(GUTTER, "pt-2")} aria-hidden>
+                  <span className={cx("h-2 w-2 rounded-full", DOT[t.status])} />
+                </span>
+                <div className={cx("min-w-0 flex-1", edit && "pr-8")}>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-meta font-medium text-text">{t.name}</p>
                   <span className={cx("rounded-full px-2 py-0.5 text-tiny font-medium", STATUS[t.status].cls)}>{STATUS[t.status].label}</span>
@@ -74,6 +82,7 @@ export default async function PlaybookPage() {
                   {t.dataGuidance}
                 </p>
                 {edit && <PlaybookItemEditor triggerClassName="absolute right-0 top-3" kind="tool" id={t.id} label={t.name} initial={{ name: t.name, purpose: t.purpose, status: t.status, dataGuidance: t.dataGuidance, url: t.url ?? "" }} />}
+                </div>
               </div>
             ))
           )}
@@ -85,12 +94,19 @@ export default async function PlaybookPage() {
           ) : (
             guides.map((g) => (
               <details key={g.id} id={`guide-${g.id}`} className="group py-3">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                  <span className="text-meta font-medium text-text">{g.title}</span>
+                <summary className="flex cursor-pointer list-none items-center gap-3">
+                  <span className={GUTTER} aria-hidden>
+                    <ChevronRight size={14} strokeWidth={ICON_STROKE} className="text-text-faint transition-transform group-open:rotate-90" />
+                  </span>
+                  <span className="min-w-0 flex-1 text-meta font-medium text-text">{g.title}</span>
                   <span className="text-label text-text-faint">Updated {shortDate(g.updatedAt)}</span>
                 </summary>
-                <p className="mt-2 max-w-prose whitespace-pre-line text-body text-text">{g.body}</p>
-                {edit && <PlaybookItemEditor kind="guide" id={g.id} label={g.title} initial={{ title: g.title, body: g.body }} />}
+                <p className="ml-8 mt-2 max-w-prose whitespace-pre-line text-body text-text">{g.body}</p>
+                {edit && (
+                  <div className="ml-8 mt-2">
+                    <PlaybookItemEditor kind="guide" id={g.id} label={g.title} initial={{ title: g.title, body: g.body }} />
+                  </div>
+                )}
               </details>
             ))
           )}

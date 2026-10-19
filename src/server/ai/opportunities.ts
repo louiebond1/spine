@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { now } from "../clock";
-import { db } from "../db";
+import type { Scope } from "../ctx";
 import { askClaudeForJson, fixturesEnabled } from "./client";
 
 // Spotted by Spine: when several people keep asking the Help Desk about the same thing,
@@ -23,10 +23,12 @@ const words = (text: string) => [...new Set(text.toLowerCase().split(/[^a-z]+/).
 type Q = { id: string; title: string; topic: string; askerId: string };
 
 /** Groups of at least three recent questions sharing a subject word, strongest first. */
-export async function findQuestionClusters() {
+export async function findQuestionClusters(scope: Pick<Scope, "db">) {
   const since = new Date(now().getTime() - WINDOW_DAYS * 86_400_000);
+  // Privacy: only questions still in the Champions' queue, and answers the asker chose to share.
+  // A resolved private thread never feeds suggestions.
   const questions: Q[] = (
-    await db.question.findMany({ where: { postedAt: { gte: since } }, select: { id: true, title: true, askerId: true, topic: { select: { name: true } } } })
+    await scope.db.question.findMany({ where: { postedAt: { gte: since }, OR: [{ status: { not: "RESOLVED" } }, { sharedAt: { not: null } }] }, select: { id: true, title: true, askerId: true, topic: { select: { name: true } } } })
   ).map((q) => ({ id: q.id, title: q.title, topic: q.topic.name, askerId: q.askerId }));
 
   const byWord = new Map<string, Q[]>();
@@ -64,12 +66,12 @@ const SYSTEM = `People in a company keep asking their AI Help Desk about the sam
 No em dashes. JSON shape: {"worthIt":true,"title":"","problem":"","whoBenefits":"","topic":""}`;
 
 /** Finds new clusters and writes up to three new opportunities. Safe to run often. */
-export async function scanOpportunities() {
+export async function scanOpportunities(scope: Pick<Scope, "db" | "org">) {
   const [clusters, existing, projects, topics] = await Promise.all([
-    findQuestionClusters(),
-    db.opportunity.findMany({ select: { clusterKey: true } }),
-    db.project.findMany({ select: { title: true, problem: true } }),
-    db.topic.findMany({ where: { archivedAt: null }, select: { id: true, name: true } }),
+    findQuestionClusters(scope),
+    scope.db.opportunity.findMany({ select: { clusterKey: true } }),
+    scope.db.project.findMany({ select: { title: true, problem: true } }),
+    scope.db.topic.findMany({ where: { archivedAt: null }, select: { id: true, name: true } }),
   ]);
   const seen = new Set(existing.map((e) => e.clusterKey));
   let created = 0;
@@ -82,11 +84,13 @@ export async function scanOpportunities() {
       ? {
           worthIt: true,
           title: `${cluster.key.charAt(0).toUpperCase()}${cluster.key.slice(1)} Assistant`,
-          problem: `${cluster.questions.length} people have asked the Help Desk about ${cluster.key} recently. A shared assistant would answer this once for everyone.`,
+          problem: `${cluster.questions.length} questions have come to the Help Desk about ${cluster.key} recently. A shared assistant would answer this once for everyone.`,
           whoBenefits: "Everyone who keeps asking",
           topic: cluster.questions[0]!.topic,
         }
       : await askClaudeForJson({
+          scope,
+          feature: "opportunity_scan",
           system: SYSTEM,
           schema: pitchSchema,
           maxTokens: 800,
@@ -101,8 +105,9 @@ export async function scanOpportunities() {
 
     // Record every cluster we looked at, so a "not worth it" verdict isn't re-asked each scan.
     const topic = topics.find((t) => t.name.toLowerCase() === pitch.topic.toLowerCase());
-    await db.opportunity.create({
+    await scope.db.opportunity.create({
       data: {
+        orgId: scope.org.id,
         clusterKey: cluster.key,
         title: pitch.title.replace(new RegExp(String.fromCharCode(0x2014), "g"), ","),
         problem: pitch.problem.replace(new RegExp(String.fromCharCode(0x2014), "g"), ","),
@@ -114,6 +119,6 @@ export async function scanOpportunities() {
     });
     if (pitch.worthIt) created++;
   }
-  await db.settings.update({ where: { id: "singleton" }, data: { opportunitiesScannedAt: now() } });
+  await scope.db.settings.update({ where: { orgId: scope.org.id }, data: { opportunitiesScannedAt: now() } });
   return created;
 }

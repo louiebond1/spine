@@ -2,74 +2,63 @@ import Link from "next/link";
 import { Page } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedToggle } from "@/components/ui/SegmentedToggle";
+import { Button } from "@/components/ui/Button";
 import { PipelineBoard } from "@/features/ideas/PipelineBoard";
 import { ProjectList } from "@/features/ideas/ProjectList";
-import { SpottedBySpine } from "@/features/ideas/SpottedBySpine";
 import { now } from "@/server/clock";
-import { db } from "@/server/db";
-import { runDueAutoApprovals } from "@/server/projects/autoApprove";
+import { requireCtx } from "@/server/ctx";
 import { listProjects } from "@/server/projects/queries";
-import { getCurrentUser } from "@/server/session";
 
-type Params = { view?: string; owner?: string; person?: string; sort?: string };
+type Params = { view?: string; person?: string; sort?: string };
 
-/** Ideas & Projects (07): Pipeline or List, optionally filtered to one person's work. */
-export default async function IdeasPage({ searchParams }: { searchParams: Promise<Params> }) {
+/** Initiatives: every submitted idea and initiative, as a board or a list, optionally one person's. */
+export default async function InitiativesPage({ searchParams }: { searchParams: Promise<Params> }) {
   const params = await searchParams;
-  const user = await getCurrentUser();
-  await runDueAutoApprovals();
-
+  const ctx = await requireCtx();
   const view = params.view === "list" ? "list" : "pipeline";
-  const personId = params.owner === "me" ? user.id : params.person;
-  const person = personId && personId !== user.id ? await db.user.findUnique({ where: { id: personId } }) : null;
-  const projects = await listProjects(user, { personId: personId && (personId === user.id || person) ? personId : undefined });
-
+  const personId = params.person === "me" ? ctx.user.id : params.person;
+  const person = personId && personId !== ctx.user.id ? await ctx.db.user.findUnique({ where: { id: personId } }) : null;
+  const projects = await listProjects(ctx, { personId: personId && (personId === ctx.user.id || person) ? personId : undefined });
   const keep = (extra: Record<string, string | undefined>) => {
     const q = new URLSearchParams();
-    for (const [k, v] of Object.entries({ owner: params.owner, person: params.person, ...extra })) if (v) q.set(k, v);
+    for (const [k, v] of Object.entries({ person: params.person, ...extra })) if (v) q.set(k, v);
     return `/ideas?${q.toString()}`;
   };
-  const openOpps = await db.opportunity.findMany({ where: { status: "OPEN" }, orderBy: { createdAt: "desc" }, take: 3 });
-  const evidence = await db.question.findMany({ where: { id: { in: openOpps.flatMap((o) => o.evidenceIds) } }, select: { id: true, title: true } });
-  const opportunities = openOpps.map((o) => ({
-    id: o.id,
-    title: o.title,
-    problem: o.problem,
-    evidence: o.evidenceIds.map((id) => evidence.find((e) => e.id === id)).filter((e): e is { id: string; title: string } => Boolean(e)),
-  }));
   const sort = params.sort === "stage" || params.sort === "stage-desc" ? params.sort : null;
-  const filtered = Boolean(params.owner === "me" || person);
+  const filtered = Boolean(params.person === "me" || person);
 
   return (
     <Page>
-      <PageHeader title="Ideas & Projects" />
-      <div className="-mt-3 mb-3 flex items-center gap-6">
+      <PageHeader
+        title="Initiatives"
+        subtitle="Every AI initiative from idea to live: who owns it, what stage it's at and what happens next."
+        aside={<Button variant="primary" href="/ideas/new">Propose an idea</Button>}
+      />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <SegmentedToggle
           active={view}
           options={[
-            { key: "pipeline", label: "Pipeline", href: keep({ view: undefined }) },
+            { key: "pipeline", label: "Board", href: keep({ view: undefined }) },
             { key: "list", label: "List", href: keep({ view: "list" }) },
           ]}
         />
-        {filtered && (
-          <span className="text-meta text-text-muted">
-            {person ? `${person.name}’s projects` : "Your projects"} ·{" "}
-            <Link href={view === "list" ? "/ideas?view=list" : "/ideas"} className="text-brand hover:text-brand-hover">
+        {filtered ? (
+          <span className="text-label text-text-muted">
+            {person ? `${person.name}'s initiatives` : "Your initiatives"} ·{" "}
+            <Link href={view === "list" ? "/ideas?view=list" : "/ideas"} className="font-medium text-brand hover:text-brand-hover">
               Show all
             </Link>
           </span>
+        ) : (
+          <Link href={keep({ view: view === "list" ? "list" : undefined, person: "me" })} className="text-label text-text-muted hover:text-text">
+            Only mine
+          </Link>
         )}
       </div>
-      <p className="mb-6 text-meta text-text-muted">Approval: App ideas before recruiting · Cowork-native after building</p>
-      <SpottedBySpine items={opportunities} isAdmin={user.isAdmin} />
       {view === "pipeline" ? (
-        <PipelineBoard projects={projects} viewerId={user.id} now={now()} />
+        <PipelineBoard projects={projects.filter((p) => p.stage !== "IDEA")} viewerId={ctx.user.id} now={now()} />
       ) : (
-        <ProjectList
-          projects={projects}
-          sort={sort}
-          sortHref={keep({ view: "list", sort: sort === "stage" ? "stage-desc" : sort === "stage-desc" ? undefined : "stage" })}
-        />
+        <ProjectList projects={projects} sort={sort} sortHref={keep({ view: "list", sort: sort === "stage" ? "stage-desc" : sort === "stage-desc" ? undefined : "stage" })} />
       )}
     </Page>
   );

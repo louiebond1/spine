@@ -28,10 +28,10 @@ export function ApprovalBriefPanel({ projectId }: { projectId: string }) {
   }, [projectId, attempt]);
 
   return (
-    <section className="mt-5 rounded-container border border-border bg-surface px-6 py-5">
-      <p className="flex items-center gap-2 text-label font-semibold text-brand">
-        <Sparkles size={14} strokeWidth={ICON_STROKE} aria-hidden />
-        Spine&apos;s approval brief
+    <section className="rounded-container border border-border bg-surface p-4 sm:p-5">
+      <p className="flex items-center gap-1.5 text-label font-medium text-text-muted">
+        <Sparkles size={13} strokeWidth={ICON_STROKE} aria-hidden />
+        Approval brief
       </p>
       {error ? (
         <p className="mt-3 text-meta text-text-muted">
@@ -42,13 +42,13 @@ export function ApprovalBriefPanel({ projectId }: { projectId: string }) {
         </p>
       ) : !brief ? (
         <div className="mt-3 space-y-3" aria-busy="true" aria-label="Writing the brief">
-          <span className="block h-4 w-3/4 animate-pulse rounded-sm bg-neutral-soft" />
-          <span className="block h-4 w-1/2 animate-pulse rounded-sm bg-neutral-soft" />
+          <span className="block h-4 w-3/4 animate-pulse rounded-sm bg-subtle" />
+          <span className="block h-4 w-1/2 animate-pulse rounded-sm bg-subtle" />
         </div>
       ) : (
         <>
           <p className="mt-3 text-meta text-text">{brief.summary}</p>
-          <div className="mt-5 grid grid-cols-3 gap-6">
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
             {(
               [
                 ["Worth doing because", brief.strengths],
@@ -68,7 +68,7 @@ export function ApprovalBriefPanel({ projectId }: { projectId: string }) {
               </div>
             ))}
           </div>
-          <p className="mt-4 text-tiny text-text-muted">Written from the idea and what&apos;s already in flight. It never includes the owner&apos;s AI scores.</p>
+          <p className="mt-4 text-tiny text-text-muted">Drafted by AI from the idea, your company's priorities and what's already in flight. It never includes the owner's AI scores.</p>
         </>
       )}
     </section>

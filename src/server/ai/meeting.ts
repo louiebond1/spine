@@ -5,12 +5,11 @@ import { z } from "zod";
 import { firstName, shortDate } from "@/lib/format";
 import { parseZoned, zonedParts } from "@/lib/tz";
 import { now } from "../clock";
-import { db } from "../db";
 import { assert, can } from "../permissions";
-import { getCurrentUser } from "../session";
+import { requireCtx } from "../ctx";
 import { logEvent, onStepsChanged, systemMessage, touch } from "../projects/lifecycle";
 import { stepAssigned } from "../notify/events";
-import { askClaudeForJson, fixturesEnabled, lenient as L } from "./client";
+import { AI_ERROR_TEXT, askClaudeForJson, classify, fixturesEnabled, lenient as L } from "./client";
 
 // Meeting notes to plan: Spine reads pasted notes against the live plan and proposes the
 // exact updates (finished steps, new actions with owners, reassignments, new dates). The
@@ -64,7 +63,8 @@ function bestStep<T extends { title: string }>(steps: T[], title: string | undef
 }
 
 export async function readMeetingNotes(projectId: string, notes: string): Promise<{ ok: true; summary: string; changes: MeetingChange[] } | { ok: false; error: string }> {
-  const user = await getCurrentUser();
+  const ctx = await requireCtx();
+  const { user, db } = ctx;
   const p = await db.project.findUnique({ where: { id: projectId }, include: { team: { include: { user: true } }, steps: { include: { assignee: true }, orderBy: { order: "asc" } } } });
   assert(!!p && can.editPlan(user, p, p.team), "Only the team can update the plan.");
   const text = notes.trim().slice(0, 8000);
@@ -82,6 +82,8 @@ export async function readMeetingNotes(projectId: string, notes: string): Promis
     parsed = fixturesEnabled()
       ? fixtureParse(text, open.map((s) => s.title), p.team.map((m) => m.user.name))
       : await askClaudeForJson({
+          scope: ctx,
+          feature: "meeting_notes",
           system: SYSTEM,
           schema: parsedSchema,
           maxTokens: 3000,
@@ -96,8 +98,7 @@ export async function readMeetingNotes(projectId: string, notes: string): Promis
           ].join("\n"),
         });
   } catch (error) {
-    console.error("[meeting] read failed", error);
-    return { ok: false, error: "Spine couldn't read those notes just now. Try again." };
+    return { ok: false, error: AI_ERROR_TEXT[classify(error)] };
   }
 
   const changes: MeetingChange[] = [];
@@ -133,7 +134,8 @@ const applySchema = z.array(
 );
 
 export async function applyMeetingChanges(projectId: string, rawChanges: unknown, summary: string): Promise<{ ok: boolean; message: string }> {
-  const user = await getCurrentUser();
+  const ctx = await requireCtx();
+  const { user, db } = ctx;
   const p = await db.project.findUnique({ where: { id: projectId }, include: { team: true, steps: true } });
   assert(!!p && can.editPlan(user, p, p.team), "Only the team can update the plan.");
   const parsed = applySchema.safeParse(rawChanges);
@@ -170,14 +172,14 @@ export async function applyMeetingChanges(projectId: string, rawChanges: unknown
       }
     }
     const clean = summary.replace(new RegExp(String.fromCharCode(0x2014), "g"), ",").trim().slice(0, 1500);
-    if (clean) await tx.projectMessage.create({ data: { projectId: p.id, authorId: user.id, body: `Meeting summary: ${clean}`, sentAt: now() } });
+    if (clean) await tx.projectMessage.create({ data: { projectId: p.id, authorId: user.id, body: `Meeting notes: ${clean}`, sentAt: now() } });
     await systemMessage(tx, p.id, `${firstName(user.name)} updated the plan from meeting notes (${applied} ${applied === 1 ? "change" : "changes"})`);
     await touch(tx, p.id);
   });
-  await onStepsChanged(p.id);
-  await stepAssigned(assigned, user.id);
+  await onStepsChanged(ctx, p.id);
+  await stepAssigned(ctx, assigned, user.id);
   revalidatePath("/", "layout");
-  return { ok: true, message: `Applied ${applied} ${applied === 1 ? "change" : "changes"} and posted the summary to Chat.` };
+  return { ok: true, message: `Applied ${applied} ${applied === 1 ? "change" : "changes"} and saved the summary to Activity.` };
 }
 
 /** Local development without an API key: simple pattern reading of the notes. */

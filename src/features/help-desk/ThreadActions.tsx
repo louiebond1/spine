@@ -9,7 +9,7 @@ import { resolveQuestion, sendQuestionMessage } from "@/server/questions/actions
 export function ThreadComposer({ questionId, canPost, canResolve }: { questionId: string; canPost: boolean; canResolve: boolean }) {
   const [resolving, start] = useTransition();
   const resolve = canResolve ? (
-    <Button disabled={resolving} onClick={() => start(() => resolveQuestion(questionId))}>
+    <Button size="sm" disabled={resolving} onClick={() => start(() => resolveQuestion(questionId))}>
       Mark resolved
     </Button>
   ) : null;

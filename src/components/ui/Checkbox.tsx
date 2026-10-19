@@ -7,10 +7,15 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> & { label
 
 export function Checkbox({ label, className, disabled, ...rest }: Props) {
   return (
-    <label className={cx("inline-flex items-center gap-3 text-meta text-text", disabled ? "cursor-default" : "cursor-pointer", className)}>
-      <span className="relative inline-flex h-6 w-6 shrink-0">
-        <input type="checkbox" disabled={disabled} className="peer h-6 w-6 appearance-none rounded-sm border border-text-muted bg-surface checked:border-brand checked:bg-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" {...rest} />
-        <Check size={14} strokeWidth={3} className="pointer-events-none absolute left-1 top-1 hidden text-on-brand peer-checked:block" aria-hidden />
+    <label className={cx("inline-flex items-center gap-2.5 text-meta text-text", disabled ? "cursor-default" : "cursor-pointer", className)}>
+      <span className="relative inline-flex h-4 w-4 shrink-0">
+        <input
+          type="checkbox"
+          disabled={disabled}
+          className="peer h-4 w-4 appearance-none rounded-sm border border-border-strong bg-surface checked:border-brand checked:bg-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          {...rest}
+        />
+        <Check size={12} strokeWidth={3} className="pointer-events-none absolute left-0.5 top-0.5 hidden text-on-brand peer-checked:block" aria-hidden />
       </span>
       {label}
     </label>

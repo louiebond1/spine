@@ -9,7 +9,7 @@ export function PeriodSelect({ value, options }: { value: string; options: reado
   const pathname = usePathname();
   const params = useSearchParams();
   return (
-    <div className="w-56">
+    <div className="w-full sm:w-48">
       <Select
         aria-label="Period"
         value={value}

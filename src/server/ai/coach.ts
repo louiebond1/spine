@@ -3,7 +3,8 @@ import { z } from "zod";
 import { longDate } from "@/lib/format";
 import { zonedParts } from "@/lib/tz";
 import { now } from "../clock";
-import { db } from "../db";
+import type { Scope } from "../ctx";
+import { playbookContext } from "../playbook/context";
 import { askClaudeForJson, fixturesEnabled, lenient as L } from "./client";
 
 // "Start with Spine": turn one sentence into a full idea, or coach someone through it with a
@@ -19,7 +20,6 @@ export const briefSchema = z.object({
   problem: L.text(800).pipe(z.string().min(10)),
   whoBenefits: L.text(120).pipe(z.string().min(2)),
   topic: L.text(40),
-  buildPath: L.oneOf(["APP", "COWORK_NATIVE"], "COWORK_NATIVE"),
   teamSize: L.int(1, 10, 2),
   hoursPerWeek: L.int(1, 10, 2),
   lengthWeeks: L.int(1, 12, 4),
@@ -43,17 +43,23 @@ export const briefSchema = z.object({
 });
 export type IdeaBrief = z.infer<typeof briefSchema>;
 
-async function context() {
-  const [topics, people] = await Promise.all([
-    db.topic.findMany({ where: { archivedAt: null }, select: { name: true } }),
-    db.user.findMany({ select: { name: true } }),
+async function context(scope: Scope) {
+  const [topics, people, playbook] = await Promise.all([
+    scope.db.topic.findMany({ where: { archivedAt: null }, select: { name: true } }),
+    scope.db.user.findMany({ where: { status: "ACTIVE" }, select: { name: true } }),
+    playbookContext(scope),
   ]);
-  return `Today is ${longDate(now())} (${isoDay(now())}). Topics: ${topics.map((t) => t.name).join(", ")}. People in the company: ${people.map((p) => p.name).join(", ")}.`;
+  return [
+    `Today is ${longDate(now())} (${isoDay(now())}). Topics: ${topics.map((t) => t.name).join(", ")}. People in the company: ${people.map((p) => p.name).join(", ")}.`,
+    playbook ? `${playbook}
+Prefer approved tools. If the idea depends on a tool that is not approved, say so in the problem text.` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 const BRIEF_RULES = `Field rules:
 - title: product-style name, 2 to 4 words. problem: 2 sentences, the pain today then what the tool does. whoBenefits: the team or role. topic: one of the topics given.
-- buildPath: "COWORK_NATIVE" if it can be built inside approved workplace tools (a shared Claude project, prompts, templates, docs); "APP" if it needs infrastructure, hosting, integrations or admin access.
 - teamSize, hoursPerWeek, lengthWeeks, difficulty: realistic for a small internal team. teamSize must be at least 1 plus the number of people named.
 - targetDate: yyyy-mm-dd in the future; use the date they gave, otherwise today plus lengthWeeks plus a week.
 - people: full names of colleagues they mentioned, matched to the people list (never the speaker). Empty if none.
@@ -62,46 +68,15 @@ const BRIEF_RULES = `Field rules:
 No em dashes. Never invent company facts beyond what they said; keep estimates modest.`;
 
 /** One sentence in, a complete idea out. */
-export async function kickoffFromSentence(sentence: string): Promise<IdeaBrief> {
+export async function kickoffFromSentence(scope: Scope, sentence: string): Promise<IdeaBrief> {
   if (fixturesEnabled()) return fixtureBrief(sentence);
   return askClaudeForJson({
-    system: `You turn one sentence about a new internal AI tool into a complete project proposal.\n${BRIEF_RULES}\nJSON with exactly the fields: title, problem, whoBenefits, topic, buildPath, teamSize, hoursPerWeek, lengthWeeks, difficulty, targetDate, people, useCases, successMetric, mvpScope, laterScope, hoursSavedEstimate.`,
+    scope,
+    feature: "idea_draft",
+    system: `You turn one sentence about a new internal AI tool into a complete project proposal.\n${BRIEF_RULES}\nJSON with exactly the fields: title, problem, whoBenefits, topic, teamSize, hoursPerWeek, lengthWeeks, difficulty, targetDate, people, useCases, successMetric, mvpScope, laterScope, hoursSavedEstimate.`,
     schema: briefSchema,
     maxTokens: 2500,
-    prompt: `${await context()}\n\nTheir sentence: ${sentence}`,
-  });
-}
-
-const turnSchema = z.object({
-  done: z.boolean(),
-  question: L.text(300).default(""),
-  suggestions: z.array(L.text(100)).default([]).transform((a) => a.slice(0, 4)),
-  brief: briefSchema.optional(),
-});
-export type CoachTurn = z.infer<typeof turnSchema>;
-
-const COACH_SYSTEM = `You are Spine, coaching an employee to turn a rough idea for an internal AI tool into something worth building. Interview them one short question at a time, like a sharp, friendly product manager.
-Cover, in a natural order and only what's still unclear: who exactly struggles and how often; a real recent example of the problem; what "done" looks like for them; the data or systems involved (and anything sensitive); who else should help and by when.
-Each question: one sentence, specific to what they've said, plus up to 4 short tap-to-answer suggestions they might pick.
-After 4 to 6 answers (or sooner if you have enough), set done true and return the full brief.
-${BRIEF_RULES}
-JSON shape while asking: {"done":false,"question":"","suggestions":[]}. When finished: {"done":true,"question":"","suggestions":[],"brief":{...all brief fields...}}.`;
-
-export async function coachTurn(transcript: { role: "spine" | "user"; text: string }[]): Promise<CoachTurn> {
-  if (fixturesEnabled()) return fixtureTurn(transcript);
-  const answers = transcript.filter((t) => t.role === "user").length;
-  return askClaudeForJson({
-    system: COACH_SYSTEM,
-    schema: turnSchema,
-    maxTokens: 3000,
-    prompt: [
-      await context(),
-      "",
-      "Conversation so far:",
-      ...transcript.map((t) => `${t.role === "spine" ? "Spine" : "Them"}: ${t.text}`),
-      "",
-      answers >= 6 ? "You have enough now. Finish with done true and the brief." : "Ask the next most useful question, or finish if you have enough.",
-    ].join("\n"),
+    prompt: `${await context(scope)}\n\nTheir sentence: ${sentence}`,
   });
 }
 
@@ -119,7 +94,6 @@ function fixtureBrief(text: string): IdeaBrief {
     problem: `${text.trim().replace(/\.?$/, ".")} Today this is done by hand and takes time every week.`,
     whoBenefits: "The team doing this work",
     topic: "Productivity",
-    buildPath: "COWORK_NATIVE",
     teamSize: people.length + 1,
     hoursPerWeek: 2,
     lengthWeeks: 4,
@@ -135,19 +109,4 @@ function fixtureBrief(text: string): IdeaBrief {
     laterScope: "Connections to other systems and automatic weekly runs.",
     hoursSavedEstimate: 12,
   };
-}
-
-function fixtureTurn(transcript: { role: "spine" | "user"; text: string }[]): CoachTurn {
-  const questions = [
-    { question: "Who struggles with this most, and how often does it come up?", suggestions: ["My whole team, every week", "Just me, daily", "Another team, monthly"] },
-    { question: "Tell me about the last time it happened. What did it cost?", suggestions: ["About an hour of copy and paste", "We missed a deadline", "A client noticed"] },
-    { question: "What would 'done' look like for you?", suggestions: ["A summary I can trust", "An alert when something's off", "A first draft I just edit"] },
-    { question: "Who should help build it, and by when?", suggestions: ["Me and one other person", "Mia and Ben, by December", "Not sure yet"] },
-  ];
-  const answers = transcript.filter((t) => t.role === "user");
-  if (answers.length <= questions.length - 1 + 1 && answers.length < questions.length + 1) {
-    const next = questions[answers.length - 1];
-    if (next) return { done: false, ...next };
-  }
-  return { done: true, question: "", suggestions: [], brief: fixtureBrief(answers.map((a) => a.text).join(". ")) };
 }

@@ -75,7 +75,7 @@ export function firstName(name: string): string {
 }
 
 /** "Champion · Admin" (sidebar). Publishing specialist is left out, as in every mockup. */
-export function rolesLine(user: { isChampion: boolean; isAdmin: boolean }): string {
-  const roles = [user.isChampion && "Champion", user.isAdmin && "Admin"].filter(Boolean);
+export function rolesLine(user: { isChampion: boolean; isAdmin: boolean; isPublishingSpecialist?: boolean }): string {
+  const roles = [user.isChampion && "Champion", user.isAdmin && "Admin", user.isPublishingSpecialist && "Publishing specialist"].filter(Boolean);
   return roles.length ? roles.join(" · ") : "Member";
 }

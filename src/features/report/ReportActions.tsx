@@ -11,11 +11,12 @@ export function ReportActions({ month, canRewrite }: { month: string; canRewrite
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(false);
   return (
-    <div className="flex items-center gap-4 print:hidden">
-      {error && <p className="text-label text-text-muted">Spine couldn&apos;t rewrite it just now.</p>}
+    <div className="flex flex-wrap items-center gap-2 print:hidden">
+      {error && <p className="text-label text-text-muted">AI couldn't rewrite it just now, so it uses plain wording.</p>}
       {canRewrite && (
         <Button
-          variant="text"
+          variant="ghost"
+          size="sm"
           disabled={pending}
           onClick={() =>
             start(async () => {
@@ -25,11 +26,12 @@ export function ReportActions({ month, canRewrite }: { month: string; canRewrite
             })
           }
         >
-          {pending ? "Rewriting…" : "Rewrite"}
+          {pending ? "Rewriting..." : "Rewrite"}
         </Button>
       )}
       <Button
-        variant="text"
+        variant="ghost"
+        size="sm"
         onClick={() => {
           void navigator.clipboard?.writeText(window.location.href);
           setCopied(true);
@@ -37,7 +39,7 @@ export function ReportActions({ month, canRewrite }: { month: string; canRewrite
       >
         {copied ? "Link copied" : "Copy link"}
       </Button>
-      <Button onClick={() => window.print()}>Download PDF</Button>
+      <Button size="sm" onClick={() => window.print()}>Download PDF</Button>
     </div>
   );
 }

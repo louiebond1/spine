@@ -2,8 +2,9 @@ import "server-only";
 import { z } from "zod";
 import { longDate } from "@/lib/format";
 import { now } from "../clock";
-import { db } from "../db";
+import type { Scope } from "../ctx";
 import { askClaudeForJson, fixturesEnabled } from "./client";
+import { playbookContext } from "../playbook/context";
 
 // CLAUDE.md section 7, Ideas & Projects rule 4: four advisory scores from 1 to 10, higher is
 // better, each with one plain-English line. Originality names the closest existing project.
@@ -23,6 +24,7 @@ const SYSTEM = `You review AI project ideas for a company's AI adoption programm
 - resourcingConfidence: is the team size, hours and length realistic for the scope?
 - originality: 10 means nothing similar exists; low means it overlaps an existing project
 Each reason is one short plain-English sentence, under 20 words, no jargon, no em dashes.
+When the company's AI priorities and approved tools are given, let business value reflect fit with the priorities and feasibility reflect whether it can be built with approved tools.
 For originality, compare against the existing projects listed and set closestProjectId to the id of the most similar one, or null if none is meaningfully similar. When there is overlap, name that project in the reason.
 JSON shape: {"feasibility":{"score":n,"reason":""},"businessValue":{...},"resourcingConfidence":{...},"originality":{"score":n,"reason":"","closestProjectId":"id or null"}}`;
 
@@ -49,16 +51,19 @@ function fixture(title: string, others: { id: string; title: string }[]): Review
 }
 
 /** Runs (or re-runs) the review and stores it. Throws if Claude can't be reached. */
-export async function runAiReview(projectId: string) {
-  const p = await db.project.findUniqueOrThrow({ where: { id: projectId }, include: { topic: true } });
-  const others = await db.project.findMany({
+export async function runAiReview(scope: Scope, projectId: string) {
+  const p = await scope.db.project.findUniqueOrThrow({ where: { id: projectId }, include: { topic: true } });
+  const others = await scope.db.project.findMany({
     where: { id: { not: p.id }, stage: { not: "IDEA" } },
     select: { id: true, title: true, problem: true },
   });
+  const playbook = await playbookContext(scope);
 
   const review = fixturesEnabled()
     ? fixture(p.title, others)
     : await askClaudeForJson({
+        scope,
+        feature: "idea_review",
         system: SYSTEM,
         schema: reviewSchema,
         prompt: [
@@ -66,8 +71,9 @@ export async function runAiReview(projectId: string) {
           `Problem: ${p.problem}`,
           `Who benefits: ${p.whoBenefits}`,
           `Topic: ${p.topic.name}`,
-          `Build path: ${p.buildPath === "APP" ? "App (needs infrastructure, hosting or admin access)" : "Cowork-native (built within approved workplace tools)"}`,
-          `Team: ${p.teamSize} people, ${p.hoursPerWeek} hours a week each, ${p.lengthWeeks} weeks, difficulty ${p.difficulty.toLowerCase()}, target ${longDate(p.targetDate)}`,
+                    `Team: ${p.teamSize} people, ${p.hoursPerWeek} hours a week each, ${p.lengthWeeks} weeks, difficulty ${p.difficulty.toLowerCase()}, target ${longDate(p.targetDate)}`,
+          "",
+          ...(playbook ? ["", playbook] : []),
           "",
           "Existing projects:",
           ...others.map((o) => `- id ${o.id}: ${o.title}. ${o.problem}`),
@@ -92,8 +98,8 @@ export async function runAiReview(projectId: string) {
     completedAt: now(),
   };
 
-  await db.$transaction([
-    db.aiReview.upsert({ where: { projectId }, create: { projectId, ...data }, update: data }),
-    db.projectEvent.create({ data: { projectId, type: "AI_REVIEWED", actorId: null, at: now() } }),
+  await scope.db.$transaction([
+    scope.db.aiReview.upsert({ where: { projectId }, create: { projectId, ...data }, update: data }),
+    scope.db.projectEvent.create({ data: { projectId, type: "AI_REVIEWED", actorId: null, at: now() } }),
   ]);
 }

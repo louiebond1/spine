@@ -1,66 +1,47 @@
 import "server-only";
 import type { Range } from "@/lib/periods";
 import { addMonths, startOfMonth } from "@/lib/tz";
-import { now } from "../clock";
-import { db } from "../db";
-import { getSettings } from "../settings";
+import type { Scope } from "../ctx";
 
-// CLAUDE.md section 7, Programme. Never reads AI scores, speed metrics or rankings of people.
+// Leadership view. Counts verified outcomes; never reads AI scores, speed metrics or rankings of people.
 
-const DAY = 86_400_000;
-
-export async function recentWins(range: Range) {
-  return db.project.findMany({
+export async function recentWins(scope: Scope, range: Range) {
+  return scope.db.project.findMany({
     where: { stage: "LIVE", liveAt: { gte: range.from, lte: range.to } },
-    orderBy: { liveAt: "asc" },
-    select: { id: true, title: true, liveAt: true, owner: { select: { name: true } }, topic: { select: { name: true } } },
+    orderBy: { liveAt: "desc" },
+    select: { id: true, title: true, liveAt: true, whoBenefits: true, owner: { select: { name: true } }, topic: { select: { name: true } } },
   });
 }
 
-export async function bigFlags() {
-  const t = now();
-  const settings = await getSettings();
-  const [waiting, stalled] = await Promise.all([
-    db.project.findMany({
-      // Waiting since submission (App) or since the build finished (Cowork-native).
-      where: {
-        stage: "APPROVAL",
-        OR: [
-          { buildCompletedAt: null, submittedAt: { lt: new Date(t.getTime() - 3 * DAY) } },
-          { buildCompletedAt: { lt: new Date(t.getTime() - 3 * DAY) } },
-        ],
-      },
-      orderBy: { submittedAt: "asc" },
-      select: { id: true, title: true, submittedAt: true, autoApproveAt: true, buildCompletedAt: true, owner: { select: { name: true } } },
-    }),
-    db.project.findMany({
-      where: { stage: "BUILDING", lastActivityAt: { lt: new Date(t.getTime() - settings.stalledBuildDays * DAY) } },
-      orderBy: { lastActivityAt: "asc" },
-      select: { id: true, title: true, lastActivityAt: true, owner: { select: { name: true } } },
-    }),
-  ]);
-  return { waiting, stalled };
-}
+export type ValuePoint = { month: Date; verified: number; reported: number };
 
-export type ValuePoint = { month: Date; hours: number; byProject: { title: string; hours: number }[] };
-
-/** Hours saved per month, from the month the period starts to the current month. */
-export async function valueSeries(range: Range): Promise<ValuePoint[]> {
+/** Verified and reported-but-unverified hours per month across the range. */
+export async function valueSeries(scope: Scope, range: Range): Promise<ValuePoint[]> {
   const first = startOfMonth(range.from);
   const last = startOfMonth(range.to);
-  const logs = await db.impactLog.findMany({
-    where: { month: { gte: first, lte: last } },
-    include: { project: { select: { title: true } } },
-    orderBy: { project: { title: "asc" } },
-  });
+  const logs = await scope.db.impactLog.findMany({ where: { project: { orgId: scope.org.id }, month: { gte: first, lte: last } }, select: { month: true, hoursSaved: true, verifiedAt: true } });
   const points: ValuePoint[] = [];
   for (let m = first; m.getTime() <= last.getTime(); m = addMonths(m, 1)) {
     const month = logs.filter((l) => l.month.getTime() === m.getTime());
     points.push({
       month: m,
-      hours: month.reduce((s, l) => s + l.hoursSaved, 0),
-      byProject: month.filter((l) => l.hoursSaved > 0).map((l) => ({ title: l.project.title, hours: l.hoursSaved })),
+      verified: month.filter((l) => l.verifiedAt).reduce((s, l) => s + l.hoursSaved, 0),
+      reported: month.filter((l) => !l.verifiedAt).reduce((s, l) => s + l.hoursSaved, 0),
     });
   }
   return points;
+}
+
+/** Adoption at a glance: what the programme looks like right now. */
+export async function adoptionSnapshot(scope: Scope, since: Date) {
+  const { db } = scope;
+  const [people, active, asked, shared, discoveries, stages] = await Promise.all([
+    db.user.count({ where: { status: "ACTIVE" } }),
+    db.user.count({ where: { status: "ACTIVE", lastLoginAt: { gte: since } } }),
+    db.question.count({ where: { postedAt: { gte: since } } }),
+    db.question.count({ where: { sharedAt: { not: null } } }),
+    db.discovery.count({ where: { at: { gte: since } } }),
+    db.project.groupBy({ by: ["stage"], _count: true, where: { stage: { not: "IDEA" } } }),
+  ]);
+  return { people, active, asked, shared, discoveries, stages: Object.fromEntries(stages.map((s) => [s.stage, s._count])) as Record<string, number> };
 }

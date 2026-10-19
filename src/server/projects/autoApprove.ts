@@ -1,24 +1,21 @@
 import "server-only";
 import { now } from "../clock";
-import { db } from "../db";
+import type { Scope } from "../ctx";
 import { approve } from "./lifecycle";
 
 /**
- * CLAUDE.md section 7, Ideas & Projects rule 7: approve anything nobody acted on by
- * autoApproveAt. Runs on every page load and in the daily job; safe to run repeatedly.
+ * Approves anything nobody acted on by autoApproveAt. Runs in the scheduled job only (never
+ * during a page view), and is safe to run repeatedly.
  */
-export async function runDueAutoApprovals(): Promise<number> {
-  const due = await db.project.findMany({
-    where: { stage: "APPROVAL", autoApproveAt: { lte: now() } },
-    select: { id: true },
-  });
+export async function runDueAutoApprovals(scope: Scope): Promise<number> {
+  const due = await scope.db.project.findMany({ where: { stage: "APPROVAL", autoApproveAt: { lte: now() } }, select: { id: true } });
   let approved = 0;
   for (const p of due) {
     try {
-      await approve(p.id, null);
+      await approve(scope, p.id, null);
       approved++;
     } catch {
-      // Another request approved it first.
+      // Another run approved it first.
     }
   }
   return approved;

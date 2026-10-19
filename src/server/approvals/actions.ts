@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { askClaudeForJson, fixturesEnabled, lenient as L } from "../ai/client";
-import { db } from "../db";
+import { AI_ERROR_TEXT, askClaudeForJson, classify, fixturesEnabled, lenient as L } from "../ai/client";
 import { assert, can } from "../permissions";
-import { getCurrentUser } from "../session";
+import { requireCtx, type Ctx } from "../ctx";
+import { audit } from "../audit";
 import { describeRule } from "./rules";
 
 const ruleInput = z.object({
@@ -23,19 +23,21 @@ const ruleInput = z.object({
 });
 export type RuleInput = z.infer<typeof ruleInput>;
 
-async function admin() {
-  const user = await getCurrentUser();
-  assert(can.manage(user), "Only admins can change approval rules.");
-  return user;
+async function admin(): Promise<Ctx> {
+  const ctx = await requireCtx();
+  assert(can.manage(ctx.user), "Only admins can change approval rules.");
+  return ctx;
 }
 
-async function names() {
+async function names(ctx: Ctx) {
+  const { db } = ctx;
   const [topics, users] = await Promise.all([db.topic.findMany({ select: { id: true, name: true } }), db.user.findMany({ select: { id: true, name: true } })]);
   return { topics: new Map(topics.map((t) => [t.id, t.name])), users: new Map(users.map((u) => [u.id, u.name])) };
 }
 
 export async function saveRule(id: string | null, raw: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
-  await admin();
+  const ctx = await admin();
+  const { db } = ctx;
   const parsed = ruleInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the rule." };
   const r = parsed.data;
@@ -46,27 +48,33 @@ export async function saveRule(id: string | null, raw: unknown): Promise<{ ok: t
     await db.approvalRule.update({ where: { id }, data: r });
   } else {
     const last = await db.approvalRule.findFirst({ orderBy: { position: "desc" } });
-    await db.approvalRule.create({ data: { ...r, position: (last?.position ?? -1) + 1 } });
+    await db.approvalRule.create({ data: { orgId: ctx.org.id, ...r, position: (last?.position ?? -1) + 1 } });
   }
+  await audit(ctx, id ? "approval_rule.updated" : "approval_rule.created", "ApprovalRule", id, r.name);
   revalidatePath("/admin");
   return { ok: true };
 }
 
 export async function deleteRule(id: string) {
-  await admin();
+  const ctx = await admin();
+  const { db } = ctx;
   await db.approvalRule.delete({ where: { id } });
+  await audit(ctx, "approval_rule.deleted", "ApprovalRule", id);
   revalidatePath("/admin");
 }
 
 export async function toggleRule(id: string, active: boolean) {
-  await admin();
+  const ctx = await admin();
+  const { db } = ctx;
   await db.approvalRule.update({ where: { id }, data: { active } });
+  await audit(ctx, active ? "approval_rule.enabled" : "approval_rule.disabled", "ApprovalRule", id);
   revalidatePath("/admin");
 }
 
 /** Rules are checked top to bottom; the first match wins. */
 export async function moveRule(id: string, direction: "up" | "down") {
-  await admin();
+  const ctx = await admin();
+  const { db } = ctx;
   const rules = await db.approvalRule.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] });
   const i = rules.findIndex((r) => r.id === id);
   const j = direction === "up" ? i - 1 : i + 1;
@@ -78,10 +86,10 @@ export async function moveRule(id: string, direction: "up" | "down") {
 
 /** Live preview sentence for the rule editor. */
 export async function previewRule(raw: unknown): Promise<string> {
-  await admin();
+  const ctx = await admin();
   const parsed = ruleInput.safeParse({ name: "Preview", ...(raw as object) });
   if (!parsed.success) return "";
-  return describeRule(parsed.data, await names());
+  return describeRule(parsed.data, await names(ctx));
 }
 
 // ---------------------------------------------------------------------------
@@ -103,26 +111,28 @@ const draftSchema = z.object({
 });
 
 export async function draftRuleFromText(text: string): Promise<{ ok: true; rule: RuleInput; sentence: string; unknown: string[] } | { ok: false; error: string }> {
-  await admin();
+  const ctx = await admin();
+  const { db } = ctx;
   const t = text.trim().slice(0, 1000);
   if (t.length < 8) return { ok: false, error: "Describe the rule in a sentence first." };
-  const [topics, users] = await Promise.all([db.topic.findMany({ where: { archivedAt: null }, select: { id: true, name: true } }), db.user.findMany({ select: { id: true, name: true } })]);
+  const [topics, users] = await Promise.all([db.topic.findMany({ where: { archivedAt: null }, select: { id: true, name: true } }), db.user.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true } })]);
 
   let d: z.infer<typeof draftSchema>;
   try {
     d = fixturesEnabled()
       ? fixtureDraft(t, topics.map((x) => x.name), users.map((u) => u.name))
       : await askClaudeForJson({
+          scope: ctx,
+          feature: "approval_rule_draft",
           schema: draftSchema,
           maxTokens: 800,
           system: `You turn an admin's plain-English approval policy into one structured rule for Spine, an internal AI ideas platform.
-Fields: name (short label), topics (from the topic list, empty = any), buildPaths ("APP" needs infrastructure; "COWORK_NATIVE" is built in workplace tools; empty = any), difficulties (EASY, MODERATE, HARD; empty = any), minTotalHours / maxTotalHours (total effort = team size x hours per week x weeks; null = no limit), onlyWithConcerns (true if it only applies when the AI review raised concerns), approvers (full names from the people list; empty = any admin), requireAll (true if every approver must sign off), autoApproveDays (number, or null for never auto-approve; if not mentioned use 7 unless they want sign-off guaranteed), fastTrack (true if matching ideas should be approved straight away with no review; then approvers are empty).
+Fields: name (short label), topics (from the topic list, empty = any), buildPaths (always empty), difficulties (EASY, MODERATE, HARD; empty = any), minTotalHours / maxTotalHours (total effort = team size x hours per week x weeks; null = no limit), onlyWithConcerns (true if it only applies when the AI review raised concerns), approvers (full names from the people list; empty = any admin), requireAll (true if every approver must sign off), autoApproveDays (number, or null for never auto-approve; if not mentioned use 7 unless they want sign-off guaranteed), fastTrack (true if matching ideas should be approved straight away with no review; then approvers are empty).
 Only use topics and people from the lists. No em dashes.`,
           prompt: `Topics: ${topics.map((x) => x.name).join(", ")}\nPeople: ${users.map((u) => u.name).join(", ")}\n\nPolicy: ${t}`,
         });
   } catch (error) {
-    console.error("[approvals] draft failed", error);
-    return { ok: false, error: "Spine couldn't turn that into a rule just now. Try again." };
+    return { ok: false, error: AI_ERROR_TEXT[classify(error)] };
   }
 
   const unknown: string[] = [];
@@ -148,7 +158,7 @@ Only use topics and people from the lists. No em dashes.`,
     autoApproveDays: d.fastTrack ? null : d.autoApproveDays,
     fastTrack: d.fastTrack,
   };
-  return { ok: true, rule, sentence: describeRule(rule, await names()), unknown };
+  return { ok: true, rule, sentence: describeRule(rule, await names(ctx)), unknown };
 }
 
 /** Local development without an API key: keyword reading of the policy. */

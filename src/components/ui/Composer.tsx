@@ -1,21 +1,14 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Paperclip, Send, X } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
 import { Button } from "./Button";
 import { controlClass } from "./Field";
 import { ICON_STROKE } from "./icons";
 
-type Props = {
-  /** Receives a FormData with "body" and, if allowAttach, "files". */
-  onSend: (data: FormData) => Promise<void>;
-  allowAttach?: boolean;
-  /** Extra action after Send, e.g. the secondary "Mark resolved". */
-  trailing?: React.ReactNode;
-  placeholder?: string;
-};
+type Props = { onSend: (data: FormData) => Promise<void>; allowAttach?: boolean; trailing?: React.ReactNode; placeholder?: string };
 
-export function Composer({ onSend, allowAttach, trailing, placeholder = "Type a message..." }: Props) {
+export function Composer({ onSend, allowAttach, trailing, placeholder = "Write a reply..." }: Props) {
   const form = useRef<HTMLFormElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -40,46 +33,37 @@ export function Composer({ onSend, allowAttach, trailing, placeholder = "Type a 
   };
 
   return (
-    <div className="rounded-container border border-border bg-surface p-4">
+    <div className="rounded-container border border-border bg-surface p-2.5">
       {files.length > 0 && (
-        <ul className="mb-3 flex flex-wrap gap-3">
+        <ul className="mb-2 flex flex-wrap gap-2">
           {files.map((f, i) => (
-            <li key={i} className="flex items-center gap-2 rounded-control bg-neutral-soft px-3 py-1 text-label text-text">
+            <li key={i} className="flex items-center gap-1.5 rounded-control bg-subtle px-2 py-1 text-label text-text">
               {f.name}
               <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles(files.filter((_, j) => j !== i))}>
-                <X size={14} strokeWidth={ICON_STROKE} />
+                <X size={13} strokeWidth={ICON_STROKE} />
               </button>
             </li>
           ))}
         </ul>
       )}
-      <form ref={form} action={submit} className="flex items-center gap-3">
+      <form ref={form} action={submit} className="flex flex-wrap items-center gap-2">
         {allowAttach && (
           <>
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              className="flex h-control w-control shrink-0 items-center justify-center rounded-control border border-border text-text hover:text-brand"
-              aria-label="Attach a file"
-            >
-              <Paperclip size={18} strokeWidth={ICON_STROKE} />
+            <button type="button" onClick={() => fileInput.current?.click()} className="flex h-control w-control shrink-0 items-center justify-center rounded-control text-text-muted hover:bg-subtle hover:text-text" aria-label="Attach a file">
+              <Paperclip size={16} strokeWidth={ICON_STROKE} />
             </button>
-            <input
-              ref={fileInput}
-              type="file"
-              multiple
-              hidden
-              onChange={(e) => setFiles([...files, ...Array.from(e.target.files ?? [])])}
-            />
+            <input ref={fileInput} type="file" multiple hidden onChange={(e) => setFiles([...files, ...Array.from(e.target.files ?? [])])} />
           </>
         )}
-        <input name="body" placeholder={placeholder} className={controlClass + " h-control w-full"} autoComplete="off" disabled={pending} />
-        <Button type="submit" variant="primary" icon={Send} disabled={pending}>
-          Send
-        </Button>
-        {trailing}
+        <input name="body" placeholder={placeholder} className={controlClass + " min-w-0 flex-1 border-transparent focus:ring-0"} autoComplete="off" disabled={pending} aria-label="Message" />
+        <div className="flex items-center gap-2">
+          <Button type="submit" variant="primary" size="sm" disabled={pending}>
+            Send
+          </Button>
+          {trailing}
+        </div>
       </form>
-      {error && <p className="mt-3 text-label text-text-muted">Your message couldn&apos;t be sent. Try again.</p>}
+      {error && <p className="mt-2 text-label text-critical">Your message couldn't be sent. Try again.</p>}
     </div>
   );
 }

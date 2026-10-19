@@ -1,33 +1,44 @@
-import { Suspense } from "react";
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AskQuestionModal } from "@/features/help-desk/AskQuestionModal";
-import { Sidebar } from "./Sidebar";
+import { SidebarNav, type NavAccess, type NavUser } from "./Sidebar";
 import { TopBar, type BellItem, type UpdateItem } from "./TopBar";
-import type { SwitcherUser } from "./UserMenu";
 
 type Props = {
-  user: SwitcherUser;
-  users: SwitcherUser[];
-  isAdmin: boolean;
+  user: NavUser;
+  access: NavAccess;
   pulseCount: number;
   bellItems: BellItem[];
   updates: UpdateItem[];
-  appearance: { theme: string; accent: string; size: string };
   topics: { id: string; name: string }[];
   children: React.ReactNode;
 };
 
-/** Sidebar, top bar and the centred content column used by every page. */
-export function Shell({ user, users, isAdmin, pulseCount, bellItems, updates, appearance, topics, children }: Props) {
+/** Navy sidebar (a drawer on smaller screens), the top bar and the content column. */
+export function Shell({ user, access, pulseCount, bellItems, updates, topics, children }: Props) {
+  const [drawer, setDrawer] = useState(false);
+  const pathname = usePathname();
+  useEffect(() => setDrawer(false), [pathname]);
   return (
-    <div className="spine-app min-h-screen bg-background text-text" data-theme={appearance.theme} data-accent={appearance.accent} data-size={appearance.size}>
-      <div className="print:hidden">
-        <Sidebar user={user} users={users} isAdmin={isAdmin} pulseCount={pulseCount} />
-      </div>
-      <div className="pl-sidebar print:pl-0">
-        <div className="print:hidden">
-          <TopBar bellItems={bellItems} updates={updates} />
+    <div className="min-h-screen bg-background text-text">
+      <aside className="fixed inset-y-0 left-0 hidden w-sidebar print:hidden lg:block">
+        <SidebarNav user={user} access={access} pulseCount={pulseCount} />
+      </aside>
+      {drawer && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+          <button type="button" className="absolute inset-0 bg-scrim/50" aria-label="Close navigation" onClick={() => setDrawer(false)} />
+          <div className="absolute inset-y-0 left-0 w-drawer">
+            <SidebarNav user={user} access={access} pulseCount={pulseCount} onNavigate={() => setDrawer(false)} />
+          </div>
         </div>
-        <main className="px-10 pb-16 pt-8 print:px-0 print:pt-0">{children}</main>
+      )}
+      <div className="lg:pl-sidebar print:pl-0">
+        <div className="print:hidden">
+          <TopBar bellItems={bellItems} updates={updates} onMenu={() => setDrawer(true)} />
+        </div>
+        <main className="px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-8 print:px-0 print:pt-0">{children}</main>
         <Suspense>
           <AskQuestionModal topics={topics} />
         </Suspense>
@@ -36,11 +47,7 @@ export function Shell({ user, users, isAdmin, pulseCount, bellItems, updates, ap
   );
 }
 
-/** Content column: centred at max-content width; narrow pages (Leaderboard) stay left-aligned inside it. */
+/** Content column: centred at max width; narrow pages are a readable measure. */
 export function Page({ children, width = "content" }: { children: React.ReactNode; width?: "content" | "narrow" }) {
-  return (
-    <div className="mx-auto max-w-content">
-      <div className={width === "narrow" ? "max-w-narrow" : undefined}>{children}</div>
-    </div>
-  );
+  return <div className={width === "narrow" ? "mx-auto max-w-narrow" : "mx-auto max-w-content"}>{children}</div>;
 }

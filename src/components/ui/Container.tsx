@@ -2,33 +2,37 @@ import { cx } from "@/lib/cx";
 import { SectionLabel } from "./SectionLabel";
 
 type Props = {
-  /** Uppercase label inside the top of the container ("RECENT WINS"). */
   label?: string;
-  /** Section heading ("Your work", "Unclaimed") with optional count and right-side action. */
   heading?: React.ReactNode;
   count?: number;
+  description?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
+  /** Rows are divided by thin lines; "plain" content is padded instead. */
+  variant?: "rows" | "plain";
   children: React.ReactNode;
 };
 
-/** One container per section. Children are usually Rows, divided by thin lines. */
-export function Container({ label, heading, count, action, className, children }: Props) {
+/** One container per section. Never cards inside cards. */
+export function Container({ label, heading, count, description, action, className, variant = "rows", children }: Props) {
   return (
-    <section className={cx("rounded-container border border-border bg-surface px-6", className)}>
+    <section className={cx("rounded-container border border-border bg-surface", className)}>
       {(heading || label || action) && (
-        <header className={cx("flex items-center justify-between gap-4", heading ? "border-b border-border pb-3 pt-4" : "pb-1 pt-6")}>
-          {heading && (
-            <h2 className="text-section font-semibold text-text">
-              {heading}
-              {count !== undefined && <span className="ml-3 text-label font-medium text-text-muted">{count}</span>}
-            </h2>
-          )}
-          {label && <SectionLabel>{label}</SectionLabel>}
-          {action}
+        <header className="flex items-start justify-between gap-4 border-b border-border px-4 py-3 sm:px-5">
+          <div className="min-w-0">
+            {heading && (
+              <h2 className="text-section font-semibold text-text">
+                {heading}
+                {count !== undefined && <span className="ml-2 text-label font-medium text-text-faint">{count}</span>}
+              </h2>
+            )}
+            {label && <SectionLabel>{label}</SectionLabel>}
+            {description && <p className="mt-0.5 text-label text-text-muted">{description}</p>}
+          </div>
+          {action && <div className="shrink-0">{action}</div>}
         </header>
       )}
-     <div className="divide-y divide-border">{children}</div>
+      {variant === "rows" ? <div className="divide-y divide-border px-4 sm:px-5">{children}</div> : <div className="p-4 sm:p-5">{children}</div>}
     </section>
   );
 }

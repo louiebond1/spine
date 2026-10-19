@@ -1,49 +1,41 @@
-/** Line chart of a monthly total (10). Hand-built SVG using the design tokens only. */
-export function ValueChart({ points, format }: { points: { label: string; value: number }[]; format: (n: number) => string }) {
-  const width = 1100;
-  const height = 170;
-  const left = 56;
-  const right = 40;
-  const top = 24;
-  const bottom = 34;
+/** Monthly verified hours as a line, with reported-but-unverified hours as a quieter dashed line. Hand-built SVG on tokens. */
+export function ValueChart({ points, format }: { points: { label: string; value: number; pending?: number }[]; format: (n: number) => string }) {
+  const width = 720;
+  const height = 180;
+  const left = 44;
+  const right = 16;
+  const top = 20;
+  const bottom = 28;
   const plotH = height - top - bottom;
   const plotW = width - left - right;
-
-  const rawMax = Math.max(1, ...points.map((p) => p.value));
-  // Smallest "nice" step (1, 2 or 5 times a power of ten) so three steps cover the data: 42 -> 0, 20, 40, 60.
+  const rawMax = Math.max(1, ...points.map((p) => p.value + (p.pending ?? 0)));
   const target = rawMax / 3;
   const power = 10 ** Math.floor(Math.log10(target));
   const step = [1, 2, 5, 10].map((m) => m * power).find((s) => s >= target) ?? 10 * power;
   const max = step * 3;
   const ticks = [0, step, step * 2, step * 3];
-
-  const x = (i: number) => left + 36 + (points.length === 1 ? plotW / 2 : (i * (plotW - 72)) / (points.length - 1));
+  const x = (i: number) => left + 20 + (points.length === 1 ? plotW / 2 : (i * (plotW - 40)) / (points.length - 1));
   const y = (v: number) => top + plotH - (v / max) * plotH;
-  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.value)}`).join(" ");
-  const lastIndex = points.length - 1;
-
+  const line = (vals: number[]) => vals.map((v, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
+  const hasPending = points.some((p) => p.pending);
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label="Value over time">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label="Verified hours saved per month">
       {ticks.map((t) => (
-        <text key={t} x={left - 16} y={y(t) + 5} textAnchor="end" className="fill-text-muted text-label">
-          {format(t)}
-        </text>
+        <g key={t}>
+          <line x1={left} y1={y(t)} x2={width - right} y2={y(t)} className="stroke-border" strokeWidth={1} />
+          <text x={left - 8} y={y(t) + 4} textAnchor="end" className="fill-text-faint text-tiny">
+            {format(t)}
+          </text>
+        </g>
       ))}
-      <line x1={left} y1={top - 8} x2={left} y2={top + plotH} className="stroke-border" strokeWidth={1} />
-      <line x1={left} y1={top + plotH} x2={width - 8} y2={top + plotH} className="stroke-border" strokeWidth={1} />
-      <line x1={left} y1={y(max)} x2={width - 8} y2={y(max)} className="stroke-border" strokeWidth={1} />
-      <path d={path} fill="none" className="stroke-brand" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+      {hasPending && <path d={line(points.map((p) => p.value + (p.pending ?? 0)))} fill="none" className="stroke-border-strong" strokeWidth={1.5} strokeDasharray="4 4" />}
+      <path d={line(points.map((p) => p.value))} fill="none" className="stroke-brand" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
       {points.map((p, i) => (
         <g key={p.label}>
-          <circle cx={x(i)} cy={y(p.value)} r={5} className="fill-brand" />
-          <text x={x(i)} y={height - 6} textAnchor="middle" className="fill-text-muted text-label">
+          <circle cx={x(i)} cy={y(p.value)} r={3.5} className="fill-brand" />
+          <text x={x(i)} y={height - 8} textAnchor="middle" className="fill-text-muted text-tiny">
             {p.label}
           </text>
-          {i === lastIndex && (
-            <text x={x(i)} y={y(p.value) - 14} textAnchor="middle" className="fill-brand text-label font-semibold">
-              {format(p.value)}
-            </text>
-          )}
         </g>
       ))}
     </svg>

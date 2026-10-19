@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { randomBytes, scryptSync } from "node:crypto";
 import { join } from "node:path";
 import type { BuildPath, Difficulty, PrismaClient, ProjectEventType, ProjectStage } from "@prisma/client";
 import { addMonths, parseZoned, zonedParts, zonedTime } from "../../src/lib/tz";
@@ -35,6 +36,19 @@ const daysIn = (year: number, m: number, fullDays: number) => {
 
 type Options = { allClear: boolean };
 
+/** The demo organisation every seeded record belongs to, plus a second one used to test isolation. */
+export const ORG = "org_demo";
+export const OTHER_ORG = "org_northwind";
+
+/** Demo sign-in. The password is only for local demos and tests; seeding refuses to run in production. */
+export const DEMO_PASSWORD = process.env.SPINE_DEMO_PASSWORD || "spine-demo-password";
+const demoHash = (() => {
+  const salt = randomBytes(16);
+  const key = scryptSync(DEMO_PASSWORD, salt, 64, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+  return `scrypt$${salt.toString("base64url")}$${key.toString("base64url")}`;
+})();
+export const emailFor = (name: string) => `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@demo.spine.test`;
+
 const PEOPLE = [
   { id: "u-alex", name: "Alex Morgan", initials: "AM", isChampion: true, isAdmin: true, isPublishingSpecialist: true },
   { id: "u-louie", name: "Louie Morris", initials: "LM", isChampion: true, isAdmin: false, isPublishingSpecialist: false },
@@ -50,29 +64,32 @@ const topicId = (name: string) => `t-${name.toLowerCase()}`;
 const USER_IDS = PEOPLE.map((p) => p.id);
 
 export async function seed(db: PrismaClient, { allClear }: Options) {
-  await wipe(db);
-
-  // People, created in a fixed order so the default demo user (first created) is Alex.
-  for (const [i, p] of PEOPLE.entries()) {
-    await db.user.create({ data: { ...p, createdAt: new Date(REFERENCE.getTime() - (100 - i) * DAY) } });
+  if (process.env.NODE_ENV === "production" && process.env.SPINE_ALLOW_DEMO_SEED !== "1") {
+    throw new Error("Refusing to load demo data in production. Use npm run bootstrap to create a real organisation.");
   }
-  await db.topic.createMany({ data: TOPICS.map((name) => ({ id: topicId(name), name })) });
-  await db.settings.create({ data: { id: "singleton" } });
+  await wipe(db);
+  await db.organization.create({ data: { id: ORG, name: "Acme Group", slug: "acme" } });
+
+  for (const [i, p] of PEOPLE.entries()) {
+    await db.user.create({ data: { ...p, orgId: ORG, email: emailFor(p.name), passwordHash: demoHash, status: "ACTIVE", createdAt: new Date(REFERENCE.getTime() - (100 - i) * DAY) } });
+  }
+  await db.topic.createMany({ data: TOPICS.map((name) => ({ id: topicId(name), name, orgId: ORG })) });
+  await db.settings.create({ data: { id: "s-demo", orgId: ORG } });
   // Example approval rules (Admin > Approvals). They only route ideas submitted from now on,
   // so the seeded Approval items still match the mockups.
   await db.approvalRule.createMany({
     data: [
       {
         id: "r-leadership",
-        name: "Leadership sign-off for Legal and Finance apps",
+        orgId: ORG,
+        name: "Leadership sign-off for Legal and Finance",
         position: 0,
         topicIds: [topicId("Legal"), topicId("Finance")],
-        buildPaths: ["APP"],
         approverIds: ["u-alex", "u-louie"],
         requireAll: true,
         autoApproveDays: null,
       },
-      { id: "r-fast-track", name: "Fast track small Cowork-native builds", position: 1, active: false, buildPaths: ["COWORK_NATIVE"], difficulties: ["EASY"], maxTotalHours: 40, fastTrack: true },
+      { id: "r-fast-track", orgId: ORG, name: "Fast track small, easy ideas", position: 1, active: false, difficulties: ["EASY"], maxTotalHours: 40, fastTrack: true },
     ],
   });
 
@@ -80,9 +97,27 @@ export async function seed(db: PrismaClient, { allClear }: Options) {
   await writeSeedAttachment();
   await seedResolvedQuestions(db);
   await seedProjects(db, allClear);
+  await seedSpine2(db, allClear);
+  await seedOtherOrganisation(db);
 }
 
 async function wipe(db: PrismaClient) {
+  await db.session.deleteMany();
+  await db.invitation.deleteMany();
+  await db.rateLimit.deleteMany();
+  await db.auditLog.deleteMany();
+  await db.aiCall.deleteMany();
+  await db.checkIn.deleteMany();
+  await db.discovery.deleteMany();
+  await db.priority.deleteMany();
+  await db.tool.deleteMany();
+  await db.guide.deleteMany();
+  await db.projectInvite.deleteMany();
+  await db.projectApproval.deleteMany();
+  await db.draftStep.deleteMany();
+  await db.recommendation.deleteMany();
+  await db.assistantMessage.deleteMany();
+  await db.assistantThread.deleteMany();
   await db.opportunity.deleteMany();
   await db.approvalRule.deleteMany();
   await db.leadershipReport.deleteMany();
@@ -101,6 +136,7 @@ async function wipe(db: PrismaClient) {
   await db.topic.deleteMany();
   await db.settings.deleteMany();
   await db.user.deleteMany();
+  await db.organization.deleteMany();
 }
 
 // ---------------------------------------------------------------------------
@@ -123,11 +159,13 @@ async function createQuestion(
     claimedAt?: Date;
     resolvedAt?: Date;
     messages?: Msg[];
+    orgId?: string;
   },
 ) {
   const status = q.resolvedAt ? "RESOLVED" : q.claimer ? "IN_PROGRESS" : "UNCLAIMED";
   await db.question.create({
     data: {
+      orgId: q.orgId ?? ORG,
       id: q.id,
       title: q.title,
       body: q.body,
@@ -384,6 +422,7 @@ async function linkRelated(db: PrismaClient) {
 async function createProject(db: PrismaClient, p: ProjectSeed) {
   await db.project.create({
     data: {
+      orgId: ORG,
       id: p.id,
       title: p.title,
       problem: p.problem,
@@ -980,4 +1019,164 @@ function supplierResearch(): ProjectSeed {
       { type: "AI_REVIEWED", actor: null, at: "2026-09-30T16:05" },
     ],
   };
+}
+
+// ---------------------------------------------------------------------------
+// Spine 2.0: playbook, shared answers, discoveries, check-ins, verified outcomes
+// ---------------------------------------------------------------------------
+
+async function seedSpine2(db: PrismaClient, allClear: boolean) {
+  await db.priority.createMany({
+    data: [
+      { orgId: ORG, position: 0, title: "Faster client turnaround", description: "Cut the time from client request to first draft in Sales and Operations, without changing who signs off." },
+      { orgId: ORG, position: 1, title: "Less manual finance admin", description: "Remove repetitive invoice and expense checking so Finance spends time on exceptions, not routine." },
+      { orgId: ORG, position: 2, title: "Safe use of client data", description: "Every AI use of client information follows the data rules below. When in doubt, ask the Help Desk first." },
+    ],
+  });
+  await db.tool.createMany({
+    data: [
+      { orgId: ORG, position: 0, name: "Claude (company workspace)", status: "APPROVED", purpose: "Drafting, summarising, analysing documents and spreadsheets.", dataGuidance: "Internal and client data are allowed in the company workspace. Never paste passwords or bank details.", url: "https://claude.ai" },
+      { orgId: ORG, position: 1, name: "Microsoft 365 Copilot", status: "LIMITED", purpose: "Summaries in Outlook, Teams and Word for people with a licence.", dataGuidance: "Internal data only for now. Client data is allowed once Legal signs off the pilot." },
+      { orgId: ORG, position: 2, name: "Personal AI accounts", status: "NOT_APPROVED", purpose: "Free or personal accounts of any AI tool.", dataGuidance: "Don't use them for any company or client data. Use the company workspace instead." },
+    ],
+  });
+  await db.guide.createMany({
+    data: [
+      {
+        orgId: ORG,
+        position: 0,
+        title: "AI acceptable use policy (summary)",
+        updatedById: "u-alex",
+        body: "Use approved tools only (see AI tools above).\nYou are responsible for anything you send or publish, even if AI drafted it: read it first.\nDon't put personal data about colleagues into AI tools unless HR has approved the use.\nIf a client contract forbids AI processing, don't use AI on that client's documents.\nQuestions? Ask the Help Desk: a Champion will reply privately.",
+      },
+      {
+        orgId: ORG,
+        position: 1,
+        title: "Working with client data",
+        updatedById: "u-alex",
+        body: "Anonymise where you can: replace names and account numbers with placeholders before you start.\nKeep files in the company workspace, not on personal devices.\nDelete working copies when the task is done.",
+      },
+    ],
+  });
+
+  // Answers the askers agreed to share become the company's knowledge (the threads stay private).
+  const shared: [number, string][] = [
+    [3, "Ask for a table with one row per file and the same columns for each. Paste or attach the files together and name the columns you want compared."],
+    [7, "Paste the text, then ask for a plain-English summary in five bullets with the key dates and amounts first. Ask it to flag anything it isn't sure about."],
+    [12, "Give it the template first, then the facts. Ask it to keep the headings and only fill the gaps, so the format stays consistent."],
+    [18, "Remove names and account numbers first (replace them with Client A, Account 1). Then ask your question. The Playbook has the full data rules."],
+    [25, "Ask for the formula and an explanation of each part, then test it on five rows you can check by hand before using it on the whole sheet."],
+    [31, "Paste the meeting notes and ask for an email with three sections: what we agreed, what happens next, and who owns each action."],
+  ];
+  for (const [n, summary] of shared) {
+    const q = await db.question.findUnique({ where: { id: `q-resolved-${n}` } });
+    if (q) await db.question.update({ where: { id: q.id }, data: { answerSummary: summary, sharedAt: new Date(q.resolvedAt!.getTime() + 30 * MIN), sharedById: q.askerId } });
+  }
+
+  await db.discovery.createMany({
+    data: [
+      { orgId: ORG, authorId: "u-sarah", title: "Turned 40 supplier emails into one comparison table", body: "I exported the email thread to a document and asked Claude for a table with supplier, price, delivery time and any conditions, one row each. It took five minutes instead of an afternoon. I checked three rows by hand and they were right.", toolName: "Claude (company workspace)", topicId: topicId("Procurement"), at: ago(2 * DAY) },
+      { orgId: ORG, authorId: "u-ben", title: "First drafts of client status reports in two minutes", body: "I keep a short template with the headings our clients expect. I paste it with this week's notes and ask Claude to fill each section in two sentences. I still edit, but I start from 80% instead of a blank page.", toolName: "Claude (company workspace)", topicId: topicId("Sales"), at: ago(5 * DAY) },
+      { orgId: ORG, authorId: "u-priya", title: "Checking a policy update against the old version", body: "I gave it both versions and asked for a list of what changed, what was removed, and anything that contradicts the old one. It caught a changed notice period I'd missed.", toolName: "Claude (company workspace)", topicId: topicId("People"), projectId: "p-onboarding-guide", at: ago(9 * DAY) },
+    ],
+  });
+
+  // Momentum: a due check-in, a blocked build and a check-in history.
+  await db.checkIn.createMany({
+    data: [
+      { projectId: "p-ai-invoice", authorId: "u-jamie", status: "ON_TRACK", note: "Six steps done. Testing against real supplier cases next week.", at: ago(8 * DAY) },
+      { projectId: "p-ai-invoice", authorId: "u-mia", status: "AT_RISK", note: "Edge cases are taking longer than planned. Still aiming for 19 November.", at: ago(15 * DAY) },
+    ],
+  });
+  await db.project.update({ where: { id: "p-ai-invoice" }, data: { nextCheckInAt: ago(DAY), channelUrl: "https://teams.microsoft.com/l/channel/19%3Ademo%40thread.tacv2/AI%20Invoice%20Assistant" } });
+  if (!allClear) {
+    await db.checkIn.create({ data: { projectId: "p-contract-clause", authorId: "u-mia", status: "BLOCKED", note: "Waiting for Legal to share the approved clause library. We can't test without it.", at: ago(5 * DAY) } });
+    await db.project.update({ where: { id: "p-contract-clause" }, data: { blockedAt: ago(5 * DAY), blockerNote: "Waiting for Legal to share the approved clause library. We can't test without it.", nextCheckInAt: ago(-2 * DAY) } });
+    await db.projectEvent.create({ data: { projectId: "p-contract-clause", type: "BLOCKED", actorId: "u-mia", detail: "Waiting for Legal to share the approved clause library", at: ago(5 * DAY) } });
+  } else {
+    await db.project.update({ where: { id: "p-contract-clause" }, data: { nextCheckInAt: ago(-3 * DAY) } });
+  }
+
+  // Outcomes: past months measured and verified outside the team; this month reported, waiting for checks.
+  const logs = await db.impactLog.findMany();
+  const thisMonth = month(2026, 10).getTime();
+  for (const l of logs) {
+    const onboarding = l.projectId === "p-onboarding-guide";
+    const evidence = onboarding
+      ? `${l.hoursSaved} hours: new starters asked the guide instead of booking a 30-minute HR call (call bookings down by ${l.hoursSaved * 2}).`
+      : `${l.hoursSaved} hours: expense checks now take 5 minutes instead of 20, across the claims processed this month (timed on a sample of 20).`;
+    await db.impactLog.update({
+      where: { id: l.id },
+      data: {
+        evidence,
+        reportedById: onboarding ? "u-priya" : "u-ben",
+        ...(l.month.getTime() < thisMonth || allClear ? { verifiedById: onboarding ? "u-louie" : "u-alex", verifiedAt: new Date(l.month.getTime() + 25 * DAY) } : {}),
+      },
+    });
+  }
+}
+
+/** A second organisation, so every page and API can be tested for leaks across organisations. */
+async function seedOtherOrganisation(db: PrismaClient) {
+  await db.organization.create({ data: { id: OTHER_ORG, name: "Northwind Ltd", slug: "northwind" } });
+  await db.settings.create({ data: { id: "s-northwind", orgId: OTHER_ORG } });
+  await db.user.createMany({
+    data: [
+      { id: "nw-dana", orgId: OTHER_ORG, name: "Dana Reed", initials: "DR", email: emailFor("Dana Reed"), passwordHash: demoHash, isAdmin: true, isChampion: true },
+      { id: "nw-omar", orgId: OTHER_ORG, name: "Omar Haddad", initials: "OH", email: emailFor("Omar Haddad"), passwordHash: demoHash },
+    ],
+  });
+  await db.topic.create({ data: { id: "nw-t-finance", orgId: OTHER_ORG, name: "Finance" } });
+  await db.question.create({
+    data: {
+      id: "nw-q-payroll",
+      orgId: OTHER_ORG,
+      title: "Northwind payroll export question",
+      body: "Can we upload the payroll export to an AI tool?",
+      askerId: "nw-omar",
+      topicId: "nw-t-finance",
+      postedAt: ago(5 * HOUR),
+      events: { create: { type: "POSTED", actorId: "nw-omar", at: ago(5 * HOUR) } },
+    },
+  });
+  await db.question.create({
+    data: {
+      id: "nw-q-shared",
+      orgId: OTHER_ORG,
+      title: "Northwind shared answer about invoices",
+      body: "How do we check invoices with AI?",
+      askerId: "nw-omar",
+      claimerId: "nw-dana",
+      status: "RESOLVED",
+      topicId: "nw-t-finance",
+      postedAt: ago(3 * DAY),
+      claimedAt: ago(3 * DAY),
+      resolvedAt: ago(2 * DAY),
+      answerSummary: "Northwind's private knowledge: use the finance workspace.",
+      sharedAt: ago(2 * DAY),
+      sharedById: "nw-omar",
+    },
+  });
+  await db.project.create({
+    data: {
+      id: "nw-p-payroll",
+      orgId: OTHER_ORG,
+      title: "Northwind Payroll Bot",
+      problem: "Payroll queries take too long to answer for Northwind staff.",
+      whoBenefits: "Northwind payroll team",
+      topicId: "nw-t-finance",
+      teamSize: 1,
+      hoursPerWeek: 2,
+      lengthWeeks: 4,
+      difficulty: "EASY",
+      targetDate: ago(-30 * DAY),
+      ownerId: "nw-dana",
+      stage: "BUILDING",
+      lastActivityAt: ago(DAY),
+      team: { create: { userId: "nw-dana", joinedAt: ago(10 * DAY) } },
+      steps: { create: { title: "Collect payroll FAQs", activePhrase: "collecting payroll FAQs", assigneeId: "nw-dana", dueDate: ago(-5 * DAY), order: 0 } },
+    },
+  });
+  await db.priority.create({ data: { orgId: OTHER_ORG, title: "Northwind priority", description: "Only Northwind should ever see this priority." } });
+  await db.discovery.create({ data: { orgId: OTHER_ORG, authorId: "nw-omar", title: "Northwind discovery", body: "Only Northwind people should ever see this discovery about payroll prompts.", at: ago(DAY) } });
 }

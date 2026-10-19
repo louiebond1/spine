@@ -29,8 +29,8 @@ const EMPTY: RuleInput = {
 };
 
 const EXAMPLES = [
-  "Legal and Finance apps need both Alex and Louie to approve, and never auto-approve",
-  "Fast track easy Cowork-native ideas under 40 hours",
+  "Legal and Finance ideas need two named approvers and never auto-approve",
+  "Fast track easy ideas under 40 hours",
   "Anything over 200 hours goes to Alex and auto-approves after 10 days",
 ];
 
@@ -59,12 +59,12 @@ function Chips<T extends string>({ options, value, onChange }: { options: { id: 
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-4 gap-6 py-4">
+    <div className="grid gap-2 py-4 sm:grid-cols-4 sm:gap-6">
       <div>
         <p className="text-meta font-medium text-text">{label}</p>
         {hint && <p className="text-label text-text-muted">{hint}</p>}
       </div>
-      <div className="col-span-3">{children}</div>
+      <div className="sm:col-span-3">{children}</div>
     </div>
   );
 }
@@ -87,7 +87,7 @@ function Editor({ id, initial, topics, people, onDone }: { id: string | null; in
   }, [r]);
 
   return (
-    <section className="mt-5 rounded-container border border-brand bg-surface px-6 py-5">
+    <section className="mt-5 rounded-container border border-border-strong bg-surface px-4 sm:px-5 py-5">
       <SectionLabel>{id ? "Edit rule" : "New rule"}</SectionLabel>
       <div className="divide-y divide-border">
         <Field label="Name">
@@ -95,16 +95,6 @@ function Editor({ id, initial, topics, people, onDone }: { id: string | null; in
         </Field>
         <Field label="Topics" hint="None picked means any topic">
           <Chips options={topics} value={r.topicIds} onChange={(v) => set("topicIds", v)} />
-        </Field>
-        <Field label="Build path" hint="None picked means either">
-          <Chips
-            options={[
-              { id: "APP", name: "App" },
-              { id: "COWORK_NATIVE", name: "Cowork-native" },
-            ]}
-            value={r.buildPaths}
-            onChange={(v) => set("buildPaths", v)}
-          />
         </Field>
         <Field label="Difficulty" hint="None picked means any">
           <Chips
@@ -195,7 +185,7 @@ export function ApprovalRules({ rules, topics, people, defaultDays }: { rules: R
 
   return (
     <div>
-      <section className="rounded-container border border-border bg-surface px-6 py-5">
+      <section className="rounded-container border border-border bg-surface px-4 sm:px-5 py-5">
         <p className="flex items-center gap-2 text-label font-semibold text-brand">
           <Sparkles size={14} strokeWidth={ICON_STROKE} aria-hidden />
           Describe a rule and Spine writes it
@@ -238,7 +228,7 @@ export function ApprovalRules({ rules, topics, people, defaultDays }: { rules: R
         />
       )}
 
-      <section className="mt-5 rounded-container border border-border bg-surface px-6">
+      <section className="mt-5 rounded-container border border-border bg-surface px-4 sm:px-5">
         <div className="flex items-center justify-between py-4">
           <p className="text-label text-text-muted">Checked top to bottom. The first rule that matches decides.</p>
           {!editing && (

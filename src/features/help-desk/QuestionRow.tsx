@@ -6,43 +6,40 @@ import { plural, shortDate, timeAgo } from "@/lib/format";
 import type { QuestionDTO } from "@/server/questions/queries";
 import { ClaimButton } from "./ClaimButton";
 
-export function QuestionRow({ q, now }: { q: QuestionDTO; now: Date }) {
-  const third =
-    q.status === "UNCLAIMED" ? timeAgo(q.postedAt, now) : plural(q.replyCount, "reply", "replies");
-
-  let trailing: React.ReactNode = null;
-  if (q.status === "UNCLAIMED" && q.canClaim) {
-    trailing = <ClaimButton questionId={q.id} />;
-  } else if (q.status === "IN_PROGRESS" && q.claimer) {
-    trailing = q.claimer.isViewer ? (
-      <>
-        <span className="w-56 whitespace-nowrap text-meta text-text-muted">Claimed by you</span>
-        <Link href={`/help-desk/${q.id}`} className="w-14 text-right text-meta font-medium text-brand hover:text-brand-hover">
-          Reply
-        </Link>
-      </>
-    ) : (
-      <>
-        <span className="w-56 whitespace-nowrap text-meta text-text-muted">Claimed by {q.claimer.name}</span>
-        <span className="w-14" />
-      </>
-    );
-  } else if (q.status === "RESOLVED") {
-    trailing = (
-      <span className="text-meta text-text-muted">
-        Resolved by {q.claimer?.name ?? "the asker"}
-        {q.resolvedAt && ` · ${shortDate(q.resolvedAt)}`}
-      </span>
+export function QuestionRow({ q, now, view }: { q: QuestionDTO; now: Date; view: "queue" | "mine" | "answers" }) {
+  if (view === "answers") {
+    return (
+      <Row
+        density="compact"
+        title={q.title}
+        href={`/help-desk/${q.id}`}
+        meta={<MetaLine size="label" parts={[q.topic, q.claimer ? `Answered by ${q.claimer.name}` : null, q.sharedAt ? `Shared ${shortDate(q.sharedAt)}` : null]} />}
+      />
     );
   }
-
+  let trailing: React.ReactNode = null;
+  if (q.status === "UNCLAIMED" && q.canClaim) trailing = <ClaimButton questionId={q.id} />;
+  else if (q.waitingOnViewer)
+    trailing = (
+      <Link href={`/help-desk/${q.id}`} className="text-label font-medium text-brand hover:text-brand-hover">
+        Reply
+      </Link>
+    );
+  const status =
+    q.status === "UNCLAIMED"
+      ? `Asked ${timeAgo(q.postedAt, now)}`
+      : q.status === "IN_PROGRESS"
+        ? q.claimer?.isViewer
+          ? "Claimed by you"
+          : `With ${q.claimer?.name ?? "a Champion"}`
+        : `Resolved${q.resolvedAt ? ` ${shortDate(q.resolvedAt)}` : ""}${q.sharedAt ? " · shared" : ""}`;
   return (
     <Row
       density="compact"
-      leading={<Avatar initials={q.asker.initials} />}
+      leading={<Avatar initials={q.asker.initials} size="sm" />}
       title={q.title}
       href={q.canOpen ? `/help-desk/${q.id}` : undefined}
-      meta={<MetaLine parts={[q.asker.name, q.topic, third]} />}
+      meta={<MetaLine size="label" parts={[q.askedByViewer ? "You" : q.asker.name, q.topic, status, q.status !== "UNCLAIMED" ? plural(q.replyCount, "reply", "replies") : null]} />}
       trailing={trailing}
     />
   );

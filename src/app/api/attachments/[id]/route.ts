@@ -1,14 +1,16 @@
-import { db } from "@/server/db";
+import { getCtx } from "@/server/ctx";
 import { can } from "@/server/permissions";
-import { getCurrentUser } from "@/server/session";
 import { readAttachment } from "@/server/storage/attachments";
 
-/** Streams an attachment to people who can read its thread. */
+/** Streams an attachment only to the asker or claimer of its thread, in the same organisation. */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await getCtx();
+  if (!ctx) return new Response("Sign in required", { status: 401 });
   const { id } = await params;
-  const user = await getCurrentUser();
-  const attachment = await db.attachment.findUnique({ where: { id }, include: { message: { include: { question: true } } } });
-  if (!attachment || !can.readThread(user, attachment.message.question)) return new Response("Not found", { status: 404 });
+  const attachment = await ctx.db.attachment.findUnique({ where: { id }, include: { message: { include: { question: true } } } });
+  const q = attachment?.message.question;
+  // Same answer for "doesn't exist" and "not yours", so ids can't be probed.
+  if (!attachment || !q || q.orgId !== ctx.org.id || !can.readThread(ctx.user, q)) return new Response("Not found", { status: 404 });
 
   const data = await readAttachment(attachment.storageKey);
   if (!data) return new Response("Not found", { status: 404 });
@@ -17,6 +19,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       "Content-Type": "application/octet-stream",
       "Content-Disposition": `attachment; filename="${encodeURIComponent(attachment.fileName)}"`,
       "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "private, no-store",
     },
   });
 }

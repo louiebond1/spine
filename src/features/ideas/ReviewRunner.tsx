@@ -6,28 +6,21 @@ import { Container } from "@/components/ui/Container";
 import { ErrorState, SkeletonRows } from "@/components/ui/States";
 import { runReview } from "@/server/projects/actions";
 
-/** Runs the AI review when the page has none yet. Never blocks: failures show one grey sentence. */
+/** Runs the AI review when there is none yet. Never blocks: a failure says why, calmly, with a retry. */
 export function ReviewRunner({ projectId }: { projectId: string }) {
   const router = useRouter();
-  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const started = useRef(false);
-
   const run = useCallback(() => {
-    setFailed(false);
+    setError(null);
     runReview(projectId)
-      .then((r) => (r.ok ? router.refresh() : setFailed(true)))
-      .catch(() => setFailed(true));
+      .then((r) => (r.ok ? router.refresh() : setError(r.error)))
+      .catch(() => setError("The AI review couldn't run."));
   }, [projectId, router]);
-
   useEffect(() => {
     if (started.current) return;
     started.current = true;
     run();
   }, [run]);
-
-  return (
-    <Container>
-      {failed ? <ErrorState message="The AI review couldn't run." onRetry={run} /> : <SkeletonRows count={4} />}
-    </Container>
-  );
+  return <Container>{error ? <ErrorState message={`${error} You can still submit without it.`} onRetry={run} /> : <SkeletonRows count={4} leading={false} />}</Container>;
 }

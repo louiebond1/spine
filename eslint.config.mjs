@@ -23,7 +23,9 @@ export default [
     },
   },
   {
-    files: ["src/server/clock.ts"],
+    // Security timing (sessions, invitations, rate limits, audit, admin "last seen") and AI call
+    // durations must use the real clock, even when SPINE_TODAY freezes the app's business clock.
+    files: ["src/server/clock.ts", "src/server/auth/**", "src/server/people/**", "src/server/ai/client.ts", "src/app/(app)/admin/**"],
     rules: { "no-restricted-syntax": "off" },
   },
 ];

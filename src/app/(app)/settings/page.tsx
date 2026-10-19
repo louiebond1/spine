@@ -2,15 +2,15 @@ import { Page } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { YourSettings } from "@/features/settings/YourSettings";
 import { readPreferences } from "@/lib/preferences";
-import { getCurrentUser } from "@/server/session";
+import { requireCtx } from "@/server/ctx";
 
-/** Your settings: how Spine looks for you and how it tells you things. */
 export default async function SettingsPage() {
-  const user = await getCurrentUser();
+  const { user } = await requireCtx();
+  const prefs = readPreferences(user.preferences);
   return (
     <Page width="narrow">
-      <PageHeader title="Your settings" />
-      <YourSettings initial={{ ...readPreferences(user.preferences), address: user.email ?? "" }} />
+      <PageHeader title="Settings" />
+      <YourSettings initial={{ name: user.name, email: user.email ?? "", slackUserId: user.slackUserId ?? "", emailKinds: prefs.email }} />
     </Page>
   );
 }

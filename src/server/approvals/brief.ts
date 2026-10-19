@@ -2,11 +2,11 @@
 
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { askClaudeForJson, fixturesEnabled, lenient as L } from "../ai/client";
-import { db } from "../db";
+import { AI_ERROR_TEXT, askClaudeForJson, classify, fixturesEnabled, lenient as L } from "../ai/client";
 import { assert, can } from "../permissions";
-import { getCurrentUser } from "../session";
+import { requireCtx } from "../ctx";
 import { totalHours } from "./rules";
+import { playbookContext } from "../playbook/context";
 
 // Spine's approval brief: a short memo for whoever approves, written from the idea itself,
 // what's already in flight and the cost in hours. It never contains or hints at the owner's AI
@@ -21,7 +21,8 @@ const briefSchema = z.object({
 export type ApprovalBrief = z.infer<typeof briefSchema>;
 
 export async function getApprovalBrief(projectId: string): Promise<{ ok: true; brief: ApprovalBrief } | { ok: false; error: string }> {
-  const user = await getCurrentUser();
+  const ctx = await requireCtx();
+  const { db, user } = ctx;
   const p = await db.project.findUnique({ where: { id: projectId }, include: { topic: true, owner: true, team: { include: { user: true } } } });
   assert(!!p && can.approve(user, p), "Only an approver can see this.");
   const cached = briefSchema.safeParse(p.approvalBrief);
@@ -34,6 +35,7 @@ export async function getApprovalBrief(projectId: string): Promise<{ ok: true; b
     orderBy: { lastActivityAt: "desc" },
   });
   const hours = totalHours(p);
+  const playbook = await playbookContext(ctx);
 
   let brief: ApprovalBrief;
   try {
@@ -45,27 +47,29 @@ export async function getApprovalBrief(projectId: string): Promise<{ ok: true; b
           questions: ["What data does it touch, and is any of it sensitive?", "How will you know it worked a month after Live?"],
         }
       : await askClaudeForJson({
+          scope: ctx,
+          feature: "approval_brief",
           schema: briefSchema,
           maxTokens: 1200,
           system: `You write a short, neutral approval brief for a leader deciding whether to approve an internal AI project. Plain English, concrete, no hype, no em dashes.
-summary: 1 to 2 sentences on what's being asked for and the cost in people and hours.
+summary: 1 to 2 sentences on what's being asked for and the cost in people and hours, and how it fits the company's AI priorities when they are given.
 strengths: up to 3 reasons it's worth doing, grounded in the details.
 watchOuts: up to 3 risks to check, including overlap with projects already in flight (name them) and anything about data, security or scope.
 questions: up to 3 sharp questions to ask the owner before approving.
 Do not give a score, rating or verdict, and do not recommend approving or rejecting.`,
           prompt: [
-            `Idea: ${p.title} (${p.topic.name}, ${p.buildPath === "APP" ? "App: needs infrastructure" : "Cowork-native: built in workplace tools"}, ${p.difficulty.toLowerCase()})`,
+            `Idea: ${p.title} (${p.topic.name}, ${p.difficulty.toLowerCase()})`,
             `Owner: ${p.owner.name}. Problem: ${p.problem}. Who benefits: ${p.whoBenefits}.`,
             `Ask: ${p.teamSize} people, ${p.hoursPerWeek} hrs a week each, ${p.lengthWeeks} weeks, about ${hours} hours in total. Target ${p.targetDate.toISOString().slice(0, 10)}.`,
             p.successMetric ? `Success measure: ${p.successMetric}. First version: ${p.mvpScope ?? ""}.` : "",
-            p.buildCompletedAt ? "The build is already finished; this is the final sign-off before publishing." : "",
+            p.buildCompletedAt ? "The build is already finished; this is the final sign-off before launch." : "",
+            playbook ?? "",
             "Projects already in flight:",
             ...others.map((o) => `- ${o.title} (${o.topic.name}, ${o.stage.toLowerCase()}): ${o.problem.slice(0, 160)}`),
           ].join("\n"),
         });
   } catch (error) {
-    console.error("[approvals] brief failed", error);
-    return { ok: false, error: "Spine couldn't write the brief just now." };
+    return { ok: false, error: AI_ERROR_TEXT[classify(error)] };
   }
   await db.project.update({ where: { id: p.id }, data: { approvalBrief: brief as unknown as Prisma.InputJsonValue } });
   return { ok: true, brief };

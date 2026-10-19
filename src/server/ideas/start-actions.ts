@@ -1,105 +1,53 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { Prisma } from "@prisma/client";
-import { parseZoned } from "@/lib/tz";
-import { briefSchema, coachTurn, kickoffFromSentence, type CoachTurn, type IdeaBrief } from "../ai/coach";
-import { now } from "../clock";
-import { db } from "../db";
-import { getCurrentUser } from "../session";
+import { kickoffFromSentence, type IdeaBrief } from "../ai/coach";
+import { AI_ERROR_TEXT, classify } from "../ai/client";
+import { requireCtx } from "../ctx";
 import * as lifecycle from "../projects/lifecycle";
-import * as tell from "../notify/events";
 
-export async function previewKickoff(sentence: string): Promise<{ ok: true; brief: IdeaBrief } | { ok: false; error: string }> {
-  await getCurrentUser();
+export type KickoffDraft = { brief: IdeaBrief; topicId: string; invitees: { id: string; name: string }[] };
+
+/** One sentence in, a drafted proposal out: the form is filled in for the person to edit. */
+export async function previewKickoff(sentence: string): Promise<{ ok: true; draft: KickoffDraft } | { ok: false; error: string }> {
+  const ctx = await requireCtx();
   const text = sentence.trim().slice(0, 1000);
   if (text.length < 12) return { ok: false, error: "Tell Spine a little more: what you want to build, and for whom." };
   try {
-    return { ok: true, brief: await kickoffFromSentence(text) };
+    const brief = await kickoffFromSentence(ctx, text);
+    const [topics, users] = await Promise.all([ctx.db.topic.findMany({ where: { archivedAt: null } }), ctx.db.user.findMany({ where: { status: "ACTIVE" } })]);
+    const topic = topics.find((t) => t.name.toLowerCase() === brief.topic.toLowerCase());
+    const invitees = [
+      ...new Map(
+        brief.people
+          .map((name) => {
+            const n = name.trim().toLowerCase();
+            const exact = users.find((u) => u.name.toLowerCase() === n);
+            const byFirst = users.filter((u) => u.name.split(" ")[0]!.toLowerCase() === n.split(" ")[0]);
+            return exact ?? (byFirst.length === 1 ? byFirst[0] : undefined);
+          })
+          .filter((u): u is NonNullable<typeof u> => !!u && u.id !== ctx.user.id)
+          .map((u) => [u.id, { id: u.id, name: u.name }]),
+      ).values(),
+    ];
+    return { ok: true, draft: { brief, topicId: topic?.id ?? "", invitees } };
   } catch (error) {
-    console.error("[start] kickoff failed", error);
-    return { ok: false, error: "Spine couldn't read that just now. Try again." };
+    return { ok: false, error: AI_ERROR_TEXT[classify(error)] };
   }
-}
-
-export async function nextCoachTurn(transcript: { role: "spine" | "user"; text: string }[]): Promise<{ ok: true; turn: CoachTurn } | { ok: false; error: string }> {
-  await getCurrentUser();
-  const clean = transcript.slice(-20).map((t) => ({ role: t.role, text: String(t.text).slice(0, 1500) }));
-  try {
-    return { ok: true, turn: await coachTurn(clean) };
-  } catch (error) {
-    console.error("[start] coach turn failed", error);
-    return { ok: false, error: "Spine lost its train of thought. Try sending that again." };
-  }
-}
-
-/** One confirm: creates the idea with its brief and invites the people named. */
-export async function createFromBrief(raw: unknown): Promise<{ ok: true; id: string; invited: string[] } | { ok: false; error: string }> {
-  const user = await getCurrentUser();
-  const parsed = briefSchema.safeParse(raw);
-  if (!parsed.success) console.error("[start] invalid brief", parsed.error.issues);
-  if (!parsed.success) return { ok: false, error: "Something in the brief wasn't valid. Try again." };
-  const b = parsed.data;
-  let target = parseZoned(b.targetDate);
-  if (target.getTime() <= now().getTime()) target = new Date(now().getTime() + (b.lengthWeeks + 1) * 7 * 86_400_000);
-
-  const [topics, users] = await Promise.all([db.topic.findMany({ where: { archivedAt: null } }), db.user.findMany()]);
-  const topic = topics.find((t) => t.name.toLowerCase() === b.topic.toLowerCase()) ?? topics.find((t) => t.name === "Productivity") ?? topics[0];
-  if (!topic) return { ok: false, error: "There are no topics set up yet." };
-
-  // Match named people to real colleagues (full name, or an unambiguous first name).
-  const invitees = [
-    ...new Map(
-      b.people
-        .map((name) => {
-          const n = name.trim().toLowerCase();
-          const exact = users.find((u) => u.name.toLowerCase() === n);
-          const byFirst = users.filter((u) => u.name.split(" ")[0]!.toLowerCase() === n.split(" ")[0]);
-          return exact ?? (byFirst.length === 1 ? byFirst[0] : undefined);
-        })
-        .filter((u): u is NonNullable<typeof u> => !!u && u.id !== user.id)
-        .map((u) => [u.id, u]),
-    ).values(),
-  ];
-
-  const p = await db.project.create({
-    data: {
-      title: b.title,
-      problem: b.problem,
-      whoBenefits: b.whoBenefits,
-      topicId: topic.id,
-      buildPath: b.buildPath,
-      teamSize: Math.max(b.teamSize, invitees.length + 1),
-      hoursPerWeek: b.hoursPerWeek,
-      lengthWeeks: b.lengthWeeks,
-      difficulty: b.difficulty,
-      targetDate: target,
-      ownerId: user.id,
-      stage: "IDEA",
-      lastActivityAt: now(),
-      useCases: b.useCases as unknown as Prisma.InputJsonValue,
-      successMetric: b.successMetric || null,
-      mvpScope: b.mvpScope || null,
-      laterScope: b.laterScope || null,
-      hoursSavedEstimate: b.hoursSavedEstimate || null,
-      events: { create: { type: "CREATED", actorId: user.id, at: now(), detail: "Started with Spine" } },
-      invites: { create: invitees.map((u) => ({ userId: u.id, invitedById: user.id })) },
-    },
-  });
-  if (invitees.length) await tell.invited(p.id, invitees.map((u) => u.id), user.id);
-  revalidatePath("/", "layout");
-  return { ok: true, id: p.id, invited: invitees.map((u) => u.name) };
 }
 
 export async function respondToInvite(projectId: string, accept: boolean): Promise<{ ok: boolean; message: string }> {
-  const user = await getCurrentUser();
+  const ctx = await requireCtx();
+  const { db, user } = ctx;
+  const own = await db.project.findUnique({ where: { id: projectId }, select: { id: true } });
+  if (!own) return { ok: false, message: "That initiative doesn't exist." };
   const invite = await db.projectInvite.findUnique({ where: { projectId_userId: { projectId, userId: user.id } }, include: { project: { include: { team: true } } } });
   if (!invite || invite.status !== "PENDING") return { ok: false, message: "This invite has already been answered." };
   await db.projectInvite.update({ where: { id: invite.id }, data: { status: accept ? "ACCEPTED" : "DECLINED" } });
-  let message = accept ? "You're in. You'll join the team as soon as it starts recruiting." : "Declined.";
+  let message = accept ? "You're in. You'll join the team as soon as it's approved." : "Declined.";
   const p = invite.project;
   if (accept && (p.stage === "RECRUITING" || p.stage === "BUILDING") && p.team.length < p.teamSize) {
-    await lifecycle.join(projectId, user.id);
+    await lifecycle.join(ctx, projectId, user.id);
     message = "You've joined the team.";
   }
   revalidatePath("/", "layout");

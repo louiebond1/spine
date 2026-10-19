@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { longDate } from "@/lib/format";
 import { now } from "../clock";
-import { db } from "../db";
+import type { Scope } from "../ctx";
 import { askClaudeForJson, fixturesEnabled } from "./client";
 
 // CLAUDE.md section 7, Ideas & Projects rule 8: 6 to 10 concrete steps from the brief, each
@@ -23,7 +23,7 @@ const planSchema = z.object({
 });
 type Plan = z.infer<typeof planSchema>;
 
-const SYSTEM = `You write build plans for small internal AI projects. Write 6 to 10 concrete steps in order, from understanding the problem to preparing for publishing.
+const SYSTEM = `You write build plans for small internal AI projects. Write 6 to 10 concrete steps in order, from understanding the problem to preparing for launch.
 Each step has:
 - title: a short imperative task, under 8 words, sentence case (for example "Test against real supplier cases")
 - activePhrase: the same task as a short present-tense phrase that completes the sentence "Jamie is ..." (for example "testing supplier cases"), lower case, under 6 words
@@ -39,13 +39,13 @@ function fixture(team: { id: string }[]): Plan {
     ["Test with real cases", "testing with real cases"],
     ["Fix issues from testing", "fixing issues from testing"],
     ["Write a short how to guide", "writing the how to guide"],
-    ["Prepare for publishing", "preparing for publishing"],
+    ["Prepare for launch", "preparing for launch"],
   ];
   return { steps: steps.map(([title, activePhrase], i) => ({ title, activePhrase, assigneeId: team[i % team.length]!.id })) };
 }
 
-export async function generateBuildPlan(projectId: string) {
-  const p = await db.project.findUniqueOrThrow({
+export async function generateBuildPlan(scope: Scope, projectId: string) {
+  const p = await scope.db.project.findUniqueOrThrow({
     where: { id: projectId },
     include: { topic: true, team: { include: { user: true }, orderBy: { joinedAt: "asc" } } },
   });
@@ -53,12 +53,14 @@ export async function generateBuildPlan(projectId: string) {
   if (team.length === 0) return;
 
   try {
-    const drafts = await db.draftStep.findMany({ where: { projectId }, orderBy: { order: "asc" } });
+    const drafts = await scope.db.draftStep.findMany({ where: { projectId }, orderBy: { order: "asc" } });
     const plan: Plan = drafts.length
       ? { steps: drafts.map((d, i) => ({ title: d.title, activePhrase: d.activePhrase, assigneeId: team[i % team.length]!.id })) }
       : fixturesEnabled()
       ? fixture(team)
       : await askClaudeForJson({
+          scope,
+          feature: "build_plan",
           system: SYSTEM,
           schema: planSchema,
           prompt: [
@@ -66,7 +68,6 @@ export async function generateBuildPlan(projectId: string) {
             `Problem: ${p.problem}`,
             `Who benefits: ${p.whoBenefits}`,
             `Topic: ${p.topic.name}`,
-            `Build path: ${p.buildPath === "APP" ? "App" : "Cowork-native (built within approved workplace tools)"}`,
             `Effort: ${p.hoursPerWeek} hours a week each for ${p.lengthWeeks} weeks, difficulty ${p.difficulty.toLowerCase()}`,
             `Target date: ${longDate(p.targetDate)}`,
             "Team:",
@@ -80,9 +81,9 @@ export async function generateBuildPlan(projectId: string) {
     const ids = new Set(team.map((m) => m.id));
     const clean = (s: string) => s.replace(new RegExp(String.fromCharCode(0x2014), "g"), ",");
 
-    await db.$transaction([
-      db.planStep.deleteMany({ where: { projectId, generatedFromBrief: true, done: false } }),
-      db.planStep.createMany({
+    await scope.db.$transaction([
+      scope.db.planStep.deleteMany({ where: { projectId, generatedFromBrief: true, done: false } }),
+      scope.db.planStep.createMany({
         data: plan.steps.map((s, i) => ({
           projectId,
           title: clean(s.title),
@@ -93,22 +94,24 @@ export async function generateBuildPlan(projectId: string) {
           generatedFromBrief: true,
         })),
       }),
-      db.project.update({ where: { id: projectId }, data: { planStatus: "READY", lastActivityAt: now() } }),
-      db.projectEvent.create({ data: { projectId, type: "PLAN_GENERATED", actorId: null, at: now() } }),
+      scope.db.project.update({ where: { id: projectId }, data: { planStatus: "READY", lastActivityAt: now() } }),
+      scope.db.projectEvent.create({ data: { projectId, type: "PLAN_GENERATED", actorId: null, at: now() } }),
     ]);
     const { planReady } = await import("../notify/events");
-    await planReady(projectId).catch((e) => console.error("[notify] plan ready", e));
+    await planReady(scope, projectId).catch((e) => console.error("[notify] plan ready", e));
   } catch {
-    await db.project.update({ where: { id: projectId }, data: { planStatus: "FAILED" } });
+    await scope.db.project.update({ where: { id: projectId }, data: { planStatus: "FAILED" } });
   }
 }
 
 /** A present-tense phrase for a step added by hand (PLAN.md Q24). */
-export async function phraseForStep(title: string): Promise<string> {
+export async function phraseForStep(scope: Scope, title: string): Promise<string> {
   const fallback = `working on ${title.charAt(0).toLowerCase()}${title.slice(1)}`.replace(/\.$/, "");
   if (fixturesEnabled()) return fallback;
   try {
     const result = await askClaudeForJson({
+      scope,
+      feature: "step_phrase",
       system:
         'Turn a task title into a short lower-case present-tense phrase that completes "Jamie is ...", under 6 words. JSON shape: {"activePhrase":""}',
       prompt: title,
@@ -133,17 +136,19 @@ const draftSchema = z.object({
     .max(10),
 });
 
-const DRAFT_SYSTEM = `You write build plans for small internal AI projects. Write 6 to 10 concrete steps in order, from understanding the problem to preparing for publishing, specific to this idea (not generic).
+const DRAFT_SYSTEM = `You write build plans for small internal AI projects. Write 6 to 10 concrete steps in order, from understanding the problem to preparing for launch, specific to this idea (not generic).
 Each step has:
 - title: a short imperative task, under 8 words, sentence case
 - activePhrase: the same task as a short present-tense phrase that completes "Jamie is ...", lower case, under 6 words
 No em dashes. JSON shape: {"steps":[{"title":"","activePhrase":""}]}`;
 
-export async function generateDraftPlan(projectId: string) {
-  const p = await db.project.findUniqueOrThrow({ where: { id: projectId }, include: { topic: true } });
+export async function generateDraftPlan(scope: Scope, projectId: string) {
+  const p = await scope.db.project.findUniqueOrThrow({ where: { id: projectId }, include: { topic: true } });
   const plan = fixturesEnabled()
     ? { steps: fixture([{ id: "x" }]).steps.map(({ title, activePhrase }) => ({ title, activePhrase })) }
     : await askClaudeForJson({
+        scope,
+        feature: "draft_plan",
         system: DRAFT_SYSTEM,
         schema: draftSchema,
         prompt: [
@@ -151,14 +156,13 @@ export async function generateDraftPlan(projectId: string) {
           `Problem: ${p.problem}`,
           `Who benefits: ${p.whoBenefits}`,
           `Topic: ${p.topic.name}`,
-          `Build path: ${p.buildPath === "APP" ? "App (needs infrastructure, hosting or admin access)" : "Cowork-native (built within approved workplace tools)"}`,
           `Team: ${p.teamSize} people, ${p.hoursPerWeek} hours a week each, ${p.lengthWeeks} weeks, difficulty ${p.difficulty.toLowerCase()}`,
         ].join("\n"),
       });
   const clean = (t: string) => t.replace(new RegExp(String.fromCharCode(0x2014), "g"), ",");
-  await db.$transaction([
-    db.draftStep.deleteMany({ where: { projectId } }),
-    db.draftStep.createMany({
+  await scope.db.$transaction([
+    scope.db.draftStep.deleteMany({ where: { projectId } }),
+    scope.db.draftStep.createMany({
       data: plan.steps.map((st, i) => ({
         projectId,
         title: clean(st.title),

@@ -1,13 +1,12 @@
 import "server-only";
 import { Prisma, type ApprovalRule, type Project } from "@prisma/client";
-import { getSettings } from "../settings";
+import type { Tx } from "../tenant";
 
 // Approval routing. Admins write rules in Admin > Approvals; the first active rule (by position)
 // whose conditions match decides who approves, how many must sign off, when it auto-approves,
 // or whether it skips review entirely. With no matching rule the brief's default applies: any
 // admin, one approval, auto-approve after Settings.approvalTimeoutDays.
 
-type Tx = Prisma.TransactionClient;
 type Routable = Pick<Project, "id" | "topicId" | "buildPath" | "difficulty" | "teamSize" | "hoursPerWeek" | "lengthWeeks">;
 
 export type Route = {
@@ -39,7 +38,7 @@ export async function routeFor(tx: Tx, p: Routable): Promise<Route> {
   const [rules, review, settings] = await Promise.all([
     tx.approvalRule.findMany({ where: { active: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     tx.aiReview.findUnique({ where: { projectId: p.id }, select: { raisedConcerns: true } }),
-    getSettings(),
+    tx.settings.findFirstOrThrow(),
   ]);
   const rule = rules.find((r) => ruleMatches(r, p, review?.raisedConcerns ?? false));
   if (!rule) return { ruleId: null, ruleName: null, approverIds: [], approvalsNeeded: 1, autoApproveDays: settings.approvalTimeoutDays, fastTrack: false };
@@ -80,7 +79,7 @@ const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1
 const listAnd = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 
 /** The rule as one plain sentence, for the Admin list and the approval page. */
-export function describeRule(rule: Omit<ApprovalRule, "id" | "createdAt" | "updatedAt" | "position" | "active" | "name">, names: { topics: Map<string, string>; users: Map<string, string> }) {
+export function describeRule(rule: Omit<ApprovalRule, "id" | "orgId" | "createdAt" | "updatedAt" | "position" | "active" | "name">, names: { topics: Map<string, string>; users: Map<string, string> }) {
   const when: string[] = [];
   if (rule.topicIds.length) when.push(`the topic is ${list(rule.topicIds.map((t) => names.topics.get(t) ?? "a removed topic"))}`);
   if (rule.buildPaths.length) when.push(`it's ${list(rule.buildPaths.map((b) => (b === "APP" ? "an App" : "Cowork-native")))}`);

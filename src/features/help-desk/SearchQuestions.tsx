@@ -4,13 +4,12 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { TextField } from "@/components/ui/TextField";
 
-/** Filters the Help Desk by title as you type. */
-export function SearchQuestions() {
+/** Filters the list by title as you type. */
+export function SearchQuestions({ placeholder = "Search questions..." }: { placeholder?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [value, setValue] = useState(params.get("q") ?? "");
-
   useEffect(() => {
     const t = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
@@ -20,10 +19,9 @@ export function SearchQuestions() {
     }, 200);
     return () => clearTimeout(t);
   }, [value, params, pathname, router]);
-
   return (
-    <div className="w-80">
-      <TextField search placeholder="Search questions..." value={value} onChange={(e) => setValue(e.target.value)} aria-label="Search questions" />
+    <div className="w-full sm:w-72">
+      <TextField search placeholder={placeholder} value={value} onChange={(e) => setValue(e.target.value)} aria-label={placeholder} />
     </div>
   );
 }

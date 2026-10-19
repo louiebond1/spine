@@ -1,44 +1,71 @@
 import type { Config } from "tailwindcss";
 
-// Design tokens sampled from /design at 1536x1024 (see PLAN.md "Design tokens").
-// Theme keys below REPLACE Tailwind's defaults, so anything off-token fails to build.
+// Spine 2.0 design tokens. Colours are RGB channels in src/app/globals.css.
+// Theme keys REPLACE Tailwind's defaults, so anything off-token fails to build, and
+// scripts/guard.mjs rejects hex/rgb literals and arbitrary values in components.
+const c = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
-    // Colours are CSS variables (src/app/globals.css) so each person can pick light or dark and an
-    // accent in Your settings. The defaults are the values sampled from the mockups.
+    screens: {
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+    },
     colors: {
       transparent: "transparent",
       current: "currentColor",
-      background: "rgb(var(--background) / <alpha-value>)",
-      surface: "rgb(var(--surface) / <alpha-value>)",
-      border: "rgb(var(--border) / <alpha-value>)",
-      text: "rgb(var(--text) / <alpha-value>)",
-      "text-muted": "rgb(var(--text-muted) / <alpha-value>)",
-      brand: "rgb(var(--brand) / <alpha-value>)",
-      "brand-hover": "rgb(var(--brand-hover) / <alpha-value>)",
-      "brand-soft": "rgb(var(--brand-soft) / <alpha-value>)",
-      "on-brand": "rgb(var(--on-brand) / <alpha-value>)",
-      "neutral-soft": "rgb(var(--neutral-soft) / <alpha-value>)",
-      live: "rgb(var(--live) / <alpha-value>)",
-      // Logo mark only: the lighter end of the bar gradient in 01-home.png.
-      "logo-light": "rgb(var(--logo-light) / <alpha-value>)",
+      // Workspace
+      background: c("canvas"),
+      surface: c("surface"),
+      subtle: c("subtle"),
+      "neutral-soft": c("subtle"),
+      border: c("border"),
+      "border-strong": c("border-strong"),
+      text: c("text"),
+      "text-muted": c("text-muted"),
+      "text-faint": c("text-faint"),
+      // Accent
+      brand: c("brand"),
+      "brand-hover": c("brand-hover"),
+      "brand-soft": c("brand-soft"),
+      "on-brand": c("on-brand"),
+      // Navigation (dark navy sidebar)
+      nav: c("nav"),
+      "nav-raised": c("nav-raised"),
+      "nav-border": c("nav-border"),
+      "nav-text": c("nav-text"),
+      "nav-strong": c("nav-strong"),
+      "nav-muted": c("nav-muted"),
+      // Status, used sparingly and always with words
+      positive: c("positive"),
+      "positive-soft": c("positive-soft"),
+      warning: c("warning"),
+      "warning-soft": c("warning-soft"),
+      critical: c("critical"),
+      "critical-soft": c("critical-soft"),
+      live: c("live"),
+      "logo-light": c("logo-light"),
+      scrim: c("scrim"),
     },
     fontFamily: {
       sans: ["var(--font-inter)", "system-ui", "sans-serif"],
     },
     fontSize: {
-      tiny: ["calc(12px * var(--text-scale, 1))", { lineHeight: "calc(16px * var(--text-scale, 1))" }],
-      eyebrow: ["calc(12px * var(--text-scale, 1))", { lineHeight: "calc(16px * var(--text-scale, 1))", letterSpacing: "0.08em" }],
-      label: ["calc(13px * var(--text-scale, 1))", { lineHeight: "calc(18px * var(--text-scale, 1))" }],
-      meta: ["calc(15px * var(--text-scale, 1))", { lineHeight: "calc(22px * var(--text-scale, 1))" }],
-      date: ["calc(15px * var(--text-scale, 1))", { lineHeight: "calc(22px * var(--text-scale, 1))" }],
-      body: ["calc(15px * var(--text-scale, 1))", { lineHeight: "calc(24px * var(--text-scale, 1))" }],
-      "row-title": ["calc(16px * var(--text-scale, 1))", { lineHeight: "calc(24px * var(--text-scale, 1))" }],
-      section: ["calc(20px * var(--text-scale, 1))", { lineHeight: "calc(28px * var(--text-scale, 1))" }],
-      score: ["calc(32px * var(--text-scale, 1))", { lineHeight: "calc(36px * var(--text-scale, 1))" }],
-      logo: ["calc(26px * var(--text-scale, 1))", { lineHeight: "calc(32px * var(--text-scale, 1))", letterSpacing: "-0.02em" }],
-      headline: ["calc(34px * var(--text-scale, 1))", { lineHeight: "calc(42px * var(--text-scale, 1))", letterSpacing: "-0.02em" }],
+      tiny: ["12px", { lineHeight: "16px" }],
+      eyebrow: ["11px", { lineHeight: "16px", letterSpacing: "0.06em" }],
+      label: ["13px", { lineHeight: "18px" }],
+      meta: ["14px", { lineHeight: "20px" }],
+      date: ["14px", { lineHeight: "20px" }],
+      body: ["14px", { lineHeight: "22px" }],
+      "row-title": ["15px", { lineHeight: "22px" }],
+      section: ["16px", { lineHeight: "24px", letterSpacing: "-0.005em" }],
+      score: ["28px", { lineHeight: "32px", letterSpacing: "-0.02em" }],
+      logo: ["19px", { lineHeight: "24px", letterSpacing: "-0.02em" }],
+      title: ["24px", { lineHeight: "30px", letterSpacing: "-0.02em" }],
+      headline: ["28px", { lineHeight: "34px", letterSpacing: "-0.025em" }],
     },
     fontWeight: {
       normal: "400",
@@ -49,7 +76,7 @@ const config: Config = {
     borderRadius: {
       none: "0",
       sm: "4px",
-      control: "10px",
+      control: "8px",
       container: "12px",
       full: "9999px",
     },
@@ -60,37 +87,36 @@ const config: Config = {
     },
     boxShadow: {
       none: "none",
+      // Dropdowns, the palette and dialogs only: they float above the page.
+      popover: "0 1px 2px rgb(var(--shadow) / 0.06), 0 8px 24px rgb(var(--shadow) / 0.12)",
     },
     extend: {
       spacing: {
-        sidebar: "248px",
-        "search-inset": "160px",
-        "new-button": "128px",
-        topbar: "68px",
-        control: "42px",
-        tile: "52px",
-        action: "116px",
-        avatar: "40px",
-        "avatar-sm": "32px",
-        rail: "296px",
+        sidebar: "244px",
+        topbar: "56px",
+        control: "36px",
+        tile: "36px",
+        avatar: "32px",
+        "avatar-sm": "24px",
+        rail: "300px",
         panel: "420px",
-        "step-title": "420px",
+        drawer: "280px",
       },
       gridTemplateColumns: {
-        // Propose form RESOURCES row: four selects and a wider target date (04).
-        resources: "repeat(4, minmax(0, 1fr)) 15rem",
-        // Ideas & Projects List view: title, owner, stage, build path, next action.
-        projects: "minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 2fr)",
-      },
-      maxHeight: {
-        // Start with Spine coaching conversation.
-        coach: "60vh",
+        resources: "repeat(4, minmax(0, 1fr)) 12rem",
+        // Main column plus a slim right rail (Home, thread, approval, workspace).
+        "main-rail": "minmax(0, 1fr) 300px",
+        projects: "minmax(0, 1.6fr) minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 1.7fr)",
       },
       maxWidth: {
-        content: "1180px",
-        narrow: "900px",
-        search: "560px",
-        modal: "640px",
+        content: "1120px",
+        narrow: "760px",
+        search: "520px",
+        modal: "600px",
+        prose: "68ch",
+      },
+      maxHeight: {
+        menu: "70vh",
       },
     },
   },

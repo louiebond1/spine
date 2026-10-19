@@ -2,7 +2,8 @@ import "server-only";
 import type { Prisma, User } from "@prisma/client";
 import { startOfMonth } from "@/lib/tz";
 import { now } from "../clock";
-import { db } from "../db";
+import type { Ctx } from "../ctx";
+import { forecast } from "./forecast";
 import { nextAction, type NextAction } from "./nextAction";
 
 /** Everything a list, card or row needs to describe a project. */
@@ -49,8 +50,9 @@ export function involvesUser(userId: string): Prisma.ProjectWhereInput {
  * Home "Your work": the three most recently active projects past Approval that involve the
  * viewer, leaving out anything already in the needs-you list. CLAUDE.md section 7, Home.
  */
-export async function getYourWork(viewer: User, excludeIds: string[]): Promise<ProjectSummary[]> {
-  const rows = await db.project.findMany({
+export async function getYourWork(ctx: Ctx, excludeIds: string[]): Promise<ProjectSummary[]> {
+  const viewer = ctx.user;
+  const rows = await ctx.db.project.findMany({
     where: {
       AND: [involvesUser(viewer.id), { stage: { in: ["RECRUITING", "BUILDING", "PUBLISHING", "LIVE"] } }, { id: { notIn: excludeIds } }],
     },
@@ -64,8 +66,9 @@ export async function getYourWork(viewer: User, excludeIds: string[]): Promise<P
 export type ProjectFilter = { personId?: string };
 
 /** Ideas & Projects: every submitted project, plus the viewer's own drafts. */
-export async function listProjects(viewer: User, filter: ProjectFilter): Promise<ProjectSummary[]> {
-  const rows = await db.project.findMany({
+export async function listProjects(ctx: Ctx, filter: ProjectFilter): Promise<ProjectSummary[]> {
+  const viewer = ctx.user;
+  const rows = await ctx.db.project.findMany({
     where: {
       AND: [
         { OR: [{ stage: { not: "IDEA" } }, { ownerId: viewer.id }] },
@@ -78,8 +81,9 @@ export async function listProjects(viewer: User, filter: ProjectFilter): Promise
   return rows.map((p) => summarise(p, viewer));
 }
 
-export async function getWorkspace(id: string, viewer: User) {
-  const p = await db.project.findUnique({
+export async function getWorkspace(ctx: Ctx, id: string) {
+  const viewer = ctx.user;
+  const p = await ctx.db.project.findUnique({
     where: { id },
     include: {
       ...projectSummaryInclude,
@@ -89,15 +93,18 @@ export async function getWorkspace(id: string, viewer: User) {
       messages: { include: { author: true }, orderBy: [{ sentAt: "asc" }, { createdAt: "asc" }] },
       events: { include: { actor: true }, orderBy: [{ at: "desc" }, { createdAt: "desc" }] },
       draftSteps: { orderBy: { order: "asc" }, select: { id: true, title: true } },
+      checkIns: { include: { author: true }, orderBy: { at: "desc" }, take: 20 },
+      impact: { orderBy: { month: "desc" } },
     },
   });
   // Drafts are private to their owner and the people they invited.
   if (!p) return null;
   if (p.stage === "IDEA" && p.ownerId !== viewer.id) {
-    const invited = await db.projectInvite.findFirst({ where: { projectId: id, userId: viewer.id, status: { not: "DECLINED" } } });
+    const invited = await ctx.db.projectInvite.findFirst({ where: { projectId: id, userId: viewer.id, status: { not: "DECLINED" } } });
     if (!invited) return null;
   }
-  return { ...p, summary: summarise(p, viewer) };
+  const reporters = await ctx.db.user.findMany({ where: { id: { in: p.impact.flatMap((i) => [i.reportedById, i.verifiedById]).filter((x): x is string => !!x) } }, select: { id: true, name: true } });
+  return { ...p, summary: summarise(p, viewer), forecast: forecast({ ...p, steps: p.steps, events: p.events }), people: new Map(reporters.map((r) => [r.id, r.name])) };
 }
 
 export type Workspace = NonNullable<Awaited<ReturnType<typeof getWorkspace>>>;

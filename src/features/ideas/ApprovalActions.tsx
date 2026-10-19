@@ -20,7 +20,7 @@ export function ApprovalActions({ projectId }: { projectId: string }) {
     });
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <Button variant="primary" fullWidth disabled={pending} onClick={() => start(() => approveIdea(projectId))}>
         Approve
       </Button>
@@ -38,7 +38,7 @@ export function ApprovalActions({ projectId }: { projectId: string }) {
         }
       >
         <TextArea id="return-note" rows={5} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What should the owner change?" />
-        {error && <p className="mt-3 text-label text-text-muted">{error}</p>}
+        {error && <p className="mt-3 text-label text-critical">{error}</p>}
       </Modal>
     </div>
   );

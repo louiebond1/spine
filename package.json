@@ -11,11 +11,13 @@
     "db:local": "node scripts/local-db.mjs",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "seed": "tsx --env-file=.env prisma/seed/index.ts",
-    "seed:all-clear": "tsx --env-file=.env prisma/seed/all-clear.ts",
-    "job:daily": "tsx --conditions=react-server --env-file=.env scripts/daily-job.ts",
-    "seed:if-empty": "tsx prisma/seed/if-empty.ts",
-    "job:daily:prod": "tsx --conditions=react-server scripts/daily-job.ts"
+    "seed": "tsx --env-file-if-exists=.env prisma/seed/index.ts",
+    "seed:all-clear": "tsx --env-file-if-exists=.env prisma/seed/all-clear.ts",
+    "job:daily": "tsx --conditions=react-server --env-file-if-exists=.env scripts/daily-job.ts",
+    "job:daily:prod": "tsx --conditions=react-server scripts/daily-job.ts",
+    "bootstrap": "tsx --conditions=react-server scripts/bootstrap.ts",
+    "test": "node --test --test-concurrency=1 tests/",
+    "test:unit": "tsx --conditions=react-server --test tests/unit/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

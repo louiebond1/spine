@@ -3,13 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Composer } from "@/components/ui/Composer";
-import { joinProject, markLive, sendProjectMessage } from "@/server/projects/actions";
+import { joinProject, markLive } from "@/server/projects/actions";
 import { respondToInvite } from "@/server/ideas/start-actions";
-
-export function ProjectComposer({ projectId }: { projectId: string }) {
-  return <Composer onSend={(data) => sendProjectMessage(projectId, data)} />;
-}
 
 export function JoinButton({ projectId }: { projectId: string }) {
   const [pending, start] = useTransition();
@@ -18,6 +13,7 @@ export function JoinButton({ projectId }: { projectId: string }) {
   if (missed) return <p className="text-label text-text-muted">The team filled up just before you joined.</p>;
   return (
     <Button
+      size="sm"
       disabled={pending}
       onClick={() =>
         start(async () => {
@@ -30,7 +26,7 @@ export function JoinButton({ projectId }: { projectId: string }) {
         })
       }
     >
-      Join project
+      Join the team
     </Button>
   );
 }
@@ -55,14 +51,14 @@ export function InviteAnswer({ projectId, inviter }: { projectId: string; invite
       router.refresh();
     });
   return (
-    <div className="mb-5 flex items-center justify-between gap-6 rounded-container border border-brand-soft bg-surface px-6 py-4">
-      <p className="text-meta text-text">{message ?? `${inviter} invited you to join this project.`}</p>
+    <div className="mb-4 flex flex-col gap-3 rounded-container border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-meta text-text">{message ?? `${inviter} invited you to join this initiative.`}</p>
       {!message && (
-        <div className="flex items-center gap-4">
-          <Button variant="text" disabled={pending} onClick={() => answer(false)}>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" disabled={pending} onClick={() => answer(false)}>
             Decline
           </Button>
-          <Button disabled={pending} onClick={() => answer(true)}>
+          <Button size="sm" disabled={pending} onClick={() => answer(true)}>
             Accept
           </Button>
         </div>

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { ProjectEventType } from "@prisma/client";
+import { AlertOctagon, CalendarPlus } from "lucide-react";
 import { Page } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetaLine } from "@/components/ui/MetaLine";
@@ -8,27 +9,27 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Container } from "@/components/ui/Container";
 import { Row } from "@/components/ui/Row";
 import { Avatar } from "@/components/ui/Avatar";
-import { ChatMessage } from "@/components/ui/ChatMessage";
 import { EmptyState } from "@/components/ui/States";
+import { StatusPill } from "@/components/ui/StatusPill";
+import { ICON_STROKE } from "@/components/ui/icons";
 import { NextActionLine } from "@/features/home/YourWork";
 import { PlanTab } from "@/features/ideas/PlanTab";
 import { DraftPlan } from "@/features/ideas/DraftPlan";
 import { ProjectBrief } from "@/features/ideas/ProjectBrief";
-import { SpineRecommends, type RecommendationView } from "@/features/ideas/SpineRecommends";
-import { db } from "@/server/db";
-import { canApply, type ActionKind } from "@/server/autopilot/engine";
-import { forecast, loadAutopilotProject } from "@/server/autopilot/signals";
-import { InviteAnswer, JoinButton, MarkLiveButton, ProjectComposer } from "@/features/ideas/WorkspaceTabs";
-import { clockTime, dayMonth, longDate, shortDate, timeAgo } from "@/lib/format";
-import { startOfDay, zonedParts } from "@/lib/tz";
+import { CadenceSelect, CheckInForm } from "@/features/ideas/CheckIns";
+import { ReportOutcomeForm, VerifyButton } from "@/features/ideas/Outcomes";
+import { ChannelLink } from "@/features/ideas/ChannelLink";
+import { InviteAnswer, JoinButton, MarkLiveButton } from "@/features/ideas/WorkspaceTabs";
+import { clockTime, dayMonth, longDate, monthName, shortDate } from "@/lib/format";
+import { startOfDay, startOfMonth, zonedParts } from "@/lib/tz";
 import { now } from "@/server/clock";
+import { requireCtx } from "@/server/ctx";
 import { can } from "@/server/permissions";
-import { STAGE_LABEL, STAGE_ORDER } from "@/server/projects/lifecycle";
+import { channelPlatform } from "@/server/integrations/channels";
+import { STAGE_LABEL, STAGES } from "@/server/projects/lifecycle";
 import { getWorkspace, type Workspace } from "@/server/projects/queries";
-import { getCurrentUser } from "@/server/session";
 
-type Tab = "plan" | "chat" | "team" | "timeline";
-const TABS: Tab[] = ["plan", "chat", "team", "timeline"];
+type Tab = "plan" | "checkins" | "team" | "outcomes" | "activity";
 
 const iso = (d: Date) => {
   const p = zonedParts(d);
@@ -38,224 +39,240 @@ const iso = (d: Date) => {
 const EVENT_TEXT: Record<ProjectEventType, (actor: string, detail: string | null) => string> = {
   CREATED: (a) => `${a} created the idea`,
   AI_REVIEWED: () => "AI review completed",
-  SUBMITTED: (a) => `${a} submitted the idea`,
+  SUBMITTED: (a) => `${a} submitted it for approval`,
   RETURNED: (a) => `${a} returned it with a note`,
   APPROVED: (a) => `${a} approved it`,
-  AUTO_APPROVED: () => "Auto-approved",
+  AUTO_APPROVED: () => "Auto-approved after the approval window",
   PARTIALLY_APPROVED: (a, d) => `${a} approved${d ? ` (${d})` : ""}`,
   FAST_TRACKED: (_a, d) => d ?? "Fast-tracked",
-  APPROVAL_NUDGED: () => "Spine reminded the approvers",
+  APPROVAL_NUDGED: () => "Approvers were reminded",
   APPROVAL_ESCALATED: () => "Approval escalated to any admin",
   IDEA_MERGED: (a, d) => `${a} joined instead of proposing ${d ?? "a similar idea"}`,
   JOINED: (a) => `${a} joined the team`,
   RECRUITED: () => "Team complete, building started",
-  PLAN_GENERATED: () => "Build plan generated from the project brief",
+  PLAN_GENERATED: () => "Plan drafted by AI from the brief",
   STEP_ADDED: (a, d) => `${a} added ${d ?? "a step"}`,
   STEP_EDITED: (a, d) => `${a} edited ${d ?? "a step"}`,
   STEP_COMPLETED: (a, d) => `${a} completed ${d ?? "a step"}`,
   STEP_REOPENED: (a, d) => `${a} reopened ${d ?? "a step"}`,
   BUILD_COMPLETED: () => "Build completed",
-  PUBLISHER_ASSIGNED: (_a, d) => `Assigned to ${d ?? "a publishing specialist"} to publish`,
-  WENT_LIVE: (a) => `${a} published it. It went Live`,
-  HOURS_LOGGED: (a, d) => `${a} logged ${d ?? "some"} hours saved`,
+  PUBLISHER_ASSIGNED: (_a, d) => `${d ?? "A publishing specialist"} was assigned to launch it`,
+  WENT_LIVE: (a) => `${a} launched it. It's Live`,
+  HOURS_LOGGED: (a, d) => `${a} reported ${d ?? "an outcome"}`,
+  CHECKED_IN: (a) => `${a} checked in`,
+  BLOCKED: (a, d) => `${a} reported a blocker${d ? `: ${d}` : ""}`,
+  UNBLOCKED: (a) => `${a} cleared the blocker`,
+  OUTCOME_VERIFIED: (a, d) => `${a} verified ${d ?? "an outcome"}`,
+  CHANNEL_LINKED: (a, d) => `${a} ${d === "Removed the channel link" ? "removed the channel link" : "linked the team's channel"}`,
 };
 
-function TimelineTab({ p, viewerId }: { p: Workspace; viewerId: string }) {
-  const days = new Map<number, Workspace["events"]>();
-  for (const e of p.events) {
-    const key = startOfDay(e.at).getTime();
-    days.set(key, [...(days.get(key) ?? []), e]);
+function ActivityTab({ p, viewerId }: { p: Workspace; viewerId: string }) {
+  type Item = { key: string; at: Date; text: string; quiet: boolean };
+  const items: Item[] = [
+    ...p.events.map((e) => ({ key: e.id, at: e.at, text: EVENT_TEXT[e.type](e.actor ? (e.actor.id === viewerId ? "You" : e.actor.name) : "", e.detail), quiet: true })),
+    // Notes the team kept before 2.0 (and meeting summaries) stay readable here.
+    ...p.messages.filter((m) => !m.isSystem && m.author).map((m) => ({ key: m.id, at: m.sentAt, text: `${m.author!.id === viewerId ? "You" : m.author!.name}: ${m.body}`, quiet: false })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
+  const days = new Map<number, Item[]>();
+  for (const it of items) {
+    const key = startOfDay(it.at).getTime();
+    days.set(key, [...(days.get(key) ?? []), it]);
   }
   return (
     <Container>
-      {[...days.entries()].map(([day, events]) => (
-        <div key={day} className="py-4">
-          <p className="mb-2 text-label font-medium text-text-muted">{longDate(new Date(day))}</p>
-          {events.map((e) => {
-            const actor = e.actor ? (e.actor.id === viewerId ? "You" : e.actor.name) : "";
-            return (
-              <p key={e.id} className="flex gap-4 py-1 text-meta text-text-muted">
-                <span className="w-14 shrink-0">{clockTime(e.at)}</span>
-                <span>{EVENT_TEXT[e.type](actor, e.detail)}</span>
-              </p>
-            );
-          })}
+      {items.length === 0 && <EmptyState>Nothing yet.</EmptyState>}
+      {[...days.entries()].map(([day, list]) => (
+        <div key={day} className="py-3">
+          <p className="mb-1.5 text-label font-medium text-text-muted">{longDate(new Date(day))}</p>
+          {list.map((it) => (
+            <p key={it.key} className="flex gap-3 py-0.5 text-label">
+              <span className="w-12 shrink-0 text-text-faint">{clockTime(it.at)}</span>
+              <span className={it.quiet ? "text-text-muted" : "whitespace-pre-line text-text"}>{it.text}</span>
+            </p>
+          ))}
         </div>
       ))}
     </Container>
   );
 }
 
-function TeamTab({ p, canJoin, invited }: { p: Workspace; canJoin: boolean; invited: { name: string; status: string }[] }) {
-  const recruiting = p.stage === "RECRUITING" || (p.stage === "BUILDING" && p.team.length < p.teamSize);
-  return (
-    <Container
-      heading={recruiting ? `${p.team.length} of ${p.teamSize} people` : undefined}
-      action={canJoin ? <JoinButton projectId={p.id} /> : undefined}
-    >
-      {p.team.length === 0 ? (
-        <EmptyState>The team forms once the idea is approved.</EmptyState>
-      ) : (
-        p.team.map((m) => (
-          <Row
-            key={m.id}
-            density="compact"
-            leading={<Avatar initials={m.user.initials} />}
-            title={m.user.name}
-            trailing={<span className="text-meta text-text-muted">{m.userId === p.ownerId ? "Owner" : "Member"}</span>}
-          />
-        ))
-      )}
-      {invited.map((i) => (
-        <Row
-          key={i.name}
-          density="compact"
-          leading={<Avatar initials={i.name.split(" ").map((w) => w[0]).join("")} />}
-          title={i.name}
-          trailing={<span className="text-meta text-text-muted">{i.status === "ACCEPTED" ? "Accepted, joins when recruiting starts" : "Invited"}</span>}
-        />
-      ))}
-    </Container>
-  );
-}
-
-function ChatTab({ p, viewerId, canPost }: { p: Workspace; viewerId: string; canPost: boolean }) {
-  const t = now();
-  return (
-    <div className="space-y-5">
-      <Container>
-        <div className="space-y-6 py-6">
-          {p.messages.length === 0 && <EmptyState>No messages yet.</EmptyState>}
-          {p.messages.map((m) =>
-            m.isSystem || !m.author ? (
-              <ChatMessage key={m.id} system author="" initials={null} time="" body={m.body} />
-            ) : (
-              <ChatMessage
-                key={m.id}
-                author={m.author.name}
-                initials={m.author.initials}
-                time={timeAgo(m.sentAt, t)}
-                body={m.body}
-                mine={m.authorId === viewerId}
-              />
-            ),
-          )}
-        </div>
-      </Container>
-      {canPost && <ProjectComposer projectId={p.id} />}
-    </div>
-  );
-}
-
-/** Project workspace (08). */
-export default async function ProjectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
+export default async function InitiativePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const [{ id }, { tab: rawTab }] = await Promise.all([params, searchParams]);
-  const user = await getCurrentUser();
-  const p = await getWorkspace(id, user);
+  const ctx = await requireCtx();
+  const { db, user } = ctx;
+  const p = await getWorkspace(ctx, id);
   if (!p) notFound();
-  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "plan";
+  const t = now();
 
-  const order = STAGE_ORDER[p.buildPath];
   const isTeam = can.onTeam(user, p.team);
   const canJoin = can.joinProject(user, p, p.team, p.teamSize);
-  const canPublish = can.publish(user, p);
-  const t = now();
+  const canCheckIn = can.checkIn(user, p, p.team);
+  const showOutcomes = p.stage === "LIVE" || p.impact.length > 0;
+  const tabs: Tab[] = ["plan", "checkins", "team", ...(showOutcomes ? (["outcomes"] as Tab[]) : []), "activity"];
+  const tab: Tab = tabs.includes(rawTab as Tab) ? (rawTab as Tab) : "plan";
+  const LABEL: Record<Tab, string> = { plan: "Plan", checkins: "Check-ins", team: "Team", outcomes: "Outcomes", activity: "Activity" };
+
   const inviteRows = await db.projectInvite.findMany({ where: { projectId: p.id, status: { in: ["PENDING", "ACCEPTED"] } } });
-  const inviteUsers = await db.user.findMany({ where: { id: { in: inviteRows.map((i) => i.userId) } }, select: { id: true, name: true } });
+  const inviteUsers = await db.user.findMany({ where: { id: { in: inviteRows.map((i) => i.userId) } }, select: { id: true, name: true, initials: true } });
   const myInvite = inviteRows.find((i) => i.userId === user.id && i.status === "PENDING") ?? null;
-  const invitedPeople = inviteRows
-    .filter((i) => !p.team.some((m) => m.userId === i.userId))
-    .map((i) => ({ name: inviteUsers.find((u) => u.id === i.userId)?.name ?? "Someone", status: i.status }));
-  // Spine Autopilot: forecast plus open and recently applied recommendations.
-  const autopilot = await loadAutopilotProject(p.id);
-  const fc = autopilot ? forecast(autopilot) : null;
-  const recRows = await db.recommendation.findMany({
-    where: { projectId: p.id, OR: [{ status: "OPEN" }, { status: "APPLIED", appliedAt: { gte: new Date(t.getTime() - 24 * 3_600_000) } }] },
-    orderBy: [{ status: "asc" }, { createdAt: "asc" }],
-    take: 5,
-  });
-  const appliers = await db.user.findMany({ where: { id: { in: recRows.map((r) => r.appliedById).filter((x): x is string => !!x) } }, select: { id: true, name: true } });
-  const steerable = { ...p, team: p.team.map((m) => ({ ...m })), steps: p.steps };
-  const recs: RecommendationView[] = recRows.map((r) => ({
-    id: r.id,
-    headline: r.headline,
-    reason: r.reason,
-    status: r.status === "APPLIED" ? "APPLIED" : "OPEN",
-    canApply: canApply(user, steerable, r.kind as ActionKind),
-    canUndo: r.status === "APPLIED" && !!r.undo && canApply(user, steerable, r.kind as ActionKind),
-    appliedBy: appliers.find((a) => a.id === r.appliedById)?.name ?? null,
-  }));
+  const invitedPeople = inviteRows.filter((i) => !p.team.some((m) => m.userId === i.userId)).map((i) => ({ user: inviteUsers.find((u) => u.id === i.userId), status: i.status }));
   const defaultDue = iso(new Date(Math.min(p.targetDate.getTime(), t.getTime() + 7 * 86_400_000)));
+  const checkInDue = p.stage === "BUILDING" && !!p.nextCheckInAt && p.nextCheckInAt <= t;
+  const thisMonth = p.impact.find((i) => i.month.getTime() === startOfMonth(t).getTime());
+  const fc = p.forecast;
 
   return (
     <Page>
       <PageHeader
-        breadcrumb={[
-          { href: "/ideas", label: "Ideas & Projects" },
-          { href: `/ideas/${p.id}`, label: p.title },
-        ]}
+        breadcrumb={[{ href: "/ideas", label: "Initiatives" }]}
         title={p.title}
-        meta={<MetaLine parts={[p.owner.name, p.topic.name, p.buildPath === "APP" ? "App" : "Cowork-native", `Target ${dayMonth(p.targetDate)}`]} />}
+        meta={<MetaLine size="label" parts={[p.owner.name, p.topic.name, `Target ${dayMonth(p.targetDate)}`]} />}
+        aside={
+          <>
+            <ChannelLink projectId={p.id} url={p.channelUrl} platform={channelPlatform(p.channelUrl)} canEdit={can.linkChannel(user, p, p.team)} />
+            {p.stage !== "IDEA" && (
+              <a href={`/api/ideas/${p.id}/calendar`} className="inline-flex h-8 items-center gap-1.5 rounded-control px-2 text-label text-text-muted hover:bg-subtle hover:text-text" title="Add milestones and check-ins to your calendar">
+                <CalendarPlus size={15} strokeWidth={ICON_STROKE} aria-hidden />
+                <span className="sr-only sm:not-sr-only">Calendar</span>
+              </a>
+            )}
+          </>
+        }
       />
-      <div className="-mt-2 mb-7">
-        <Stepper steps={order.map((s) => STAGE_LABEL[s])} current={p.stage === "LIVE" ? order.length : order.indexOf(p.stage)} />
+      <div className="mb-5">
+        <Stepper steps={STAGES.map((s) => STAGE_LABEL[s])} current={p.stage === "LIVE" ? STAGES.length : STAGES.indexOf(p.stage)} />
       </div>
-      <div className="mb-7 flex min-h-control items-center justify-between gap-6">
+      {p.blockedAt && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-control border border-critical/30 bg-critical-soft px-4 py-3">
+          <AlertOctagon size={16} strokeWidth={ICON_STROKE} className="mt-0.5 shrink-0 text-critical" aria-hidden />
+          <p className="text-meta text-text">
+            <span className="font-medium">Blocked since {shortDate(p.blockedAt)}: </span>
+            {p.blockerNote}
+          </p>
+        </div>
+      )}
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <NextActionLine next={p.summary.next} strong />
           {fc && (
-            <p className="mt-1 text-label text-text-muted">
-              Forecast at the current pace:{" "}
+            <p className="mt-0.5 text-label text-text-muted">
+              At the current pace:{" "}
               {fc.daysLate > 0 ? (
-                <>
-                  <strong className="font-semibold text-text">about {fc.daysLate} {fc.daysLate === 1 ? "day" : "days"} late</strong> ({shortDate(fc.finishDate)})
-                </>
+                <strong className="font-semibold text-text">
+                  about {fc.daysLate} {fc.daysLate === 1 ? "day" : "days"} late ({shortDate(fc.finishDate)})
+                </strong>
               ) : (
                 <>on track, finishing around {shortDate(fc.finishDate)}</>
               )}
             </p>
           )}
         </div>
-        {canPublish && <MarkLiveButton projectId={p.id} />}
+        {can.publish(user, p) && <MarkLiveButton projectId={p.id} />}
       </div>
-      {["RECRUITING", "BUILDING"].includes(p.stage) && <SpineRecommends projectId={p.id} recs={recs} />}
-      <Tabs
-        bordered
-        className="mb-5"
-        active={tab}
-        tabs={TABS.map((key) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), href: `/ideas/${p.id}?tab=${key}` }))}
-      />
+      <Tabs className="mb-4" active={tab} tabs={tabs.map((key) => ({ key, label: LABEL[key], href: `/ideas/${p.id}?tab=${key}` }))} />
+
       {tab === "plan" && (
-        <ProjectBrief useCases={p.useCases} successMetric={p.successMetric} mvpScope={p.mvpScope} laterScope={p.laterScope} hoursSavedEstimate={p.hoursSavedEstimate} />
+        <div className="space-y-4">
+          <ProjectBrief useCases={p.useCases} successMetric={p.successMetric} mvpScope={p.mvpScope} laterScope={p.laterScope} hoursSavedEstimate={p.hoursSavedEstimate} />
+          {["IDEA", "APPROVAL", "RECRUITING"].includes(p.stage) ? (
+            <DraftPlan projectId={p.id} steps={p.draftSteps} canGenerate={p.ownerId === user.id} />
+          ) : (
+            <PlanTab
+              projectId={p.id}
+              stage={p.stage}
+              planStatus={p.planStatus}
+              canEdit={isTeam}
+              defaultDue={defaultDue}
+              team={p.team.map((m) => ({ id: m.userId, name: m.user.name }))}
+              steps={p.steps.map((s) => ({ id: s.id, title: s.title, done: s.done, assigneeId: s.assigneeId, assigneeInitials: s.assignee.initials, dueLabel: shortDate(s.dueDate), dueIso: iso(s.dueDate), generatedFromBrief: s.generatedFromBrief }))}
+            />
+          )}
+        </div>
       )}
-      {tab === "plan" && ["IDEA", "APPROVAL", "RECRUITING"].includes(p.stage) && (
-        <DraftPlan projectId={p.id} steps={p.draftSteps} canGenerate={p.ownerId === user.id} />
+
+      {tab === "checkins" && (
+        <div className="space-y-4">
+          {canCheckIn && <CheckInForm projectId={p.id} due={checkInDue} />}
+          <Container
+            heading="Check-ins"
+            description={p.stage === "BUILDING" ? (p.checkInEveryDays ? `Next due ${p.nextCheckInAt ? shortDate(p.nextCheckInAt) : "soon"}` : "Check-ins are off") : "Check-ins run while the team is building."}
+            action={p.ownerId === user.id && p.stage === "BUILDING" ? <CadenceSelect projectId={p.id} days={p.checkInEveryDays} /> : undefined}
+          >
+            {p.checkIns.length === 0 ? (
+              <EmptyState>No check-ins yet.</EmptyState>
+            ) : (
+              p.checkIns.map((c) => (
+                <div key={c.id} className="py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusPill status={c.status} />
+                    <span className="text-label text-text-muted">
+                      {c.author.id === user.id ? "You" : c.author.name} · {shortDate(c.at)}
+                    </span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-line text-meta text-text">{c.note}</p>
+                </div>
+              ))
+            )}
+          </Container>
+        </div>
       )}
-      {tab === "plan" && !["IDEA", "APPROVAL", "RECRUITING"].includes(p.stage) && (
-        <PlanTab
-          projectId={p.id}
-          stage={p.stage}
-          planStatus={p.planStatus}
-          canEdit={isTeam}
-          defaultDue={defaultDue}
-          team={p.team.map((m) => ({ id: m.userId, name: m.user.name }))}
-          hours={{ show: p.stage === "LIVE", canLog: isTeam, value: p.summary.hoursThisMonth }}
-          steps={p.steps.map((s) => ({
-            id: s.id,
-            title: s.title,
-            done: s.done,
-            assigneeId: s.assigneeId,
-            assigneeInitials: s.assignee.initials,
-            dueLabel: shortDate(s.dueDate),
-            dueIso: iso(s.dueDate),
-            generatedFromBrief: s.generatedFromBrief,
-          }))}
-        />
+
+      {tab === "team" && (
+        <div>
+          {myInvite && <InviteAnswer projectId={p.id} inviter={p.owner.name} />}
+          <Container heading={`${p.team.length} of ${p.teamSize} people`} action={canJoin && !myInvite ? <JoinButton projectId={p.id} /> : undefined}>
+            {p.team.length === 0 && invitedPeople.length === 0 ? (
+              <EmptyState>The team forms once the idea is approved.</EmptyState>
+            ) : (
+              <>
+                {p.team.map((m) => (
+                  <Row key={m.id} density="compact" leading={<Avatar initials={m.user.initials} size="sm" />} title={m.user.name} trailing={<span className="text-label text-text-muted">{m.userId === p.ownerId ? "Owner" : "Member"}</span>} />
+                ))}
+                {invitedPeople.map((i, n) => (
+                  <Row key={n} density="compact" leading={<Avatar initials={i.user?.initials ?? null} size="sm" />} title={i.user?.name ?? "Someone"} trailing={<span className="text-label text-text-muted">{i.status === "ACCEPTED" ? "Joins once approved" : "Invited"}</span>} />
+                ))}
+              </>
+            )}
+          </Container>
+        </div>
       )}
-      {tab === "chat" && <ChatTab p={p} viewerId={user.id} canPost={isTeam} />}
-      {tab === "team" && myInvite && <InviteAnswer projectId={p.id} inviter={p.owner.name} />}
-      {tab === "team" && <TeamTab p={p} canJoin={canJoin && !myInvite} invited={invitedPeople} />}
-      {tab === "timeline" && <TimelineTab p={p} viewerId={user.id} />}
+
+      {tab === "outcomes" && (
+        <div className="space-y-4">
+          {p.successMetric && (
+            <p className="text-meta text-text">
+              <span className="font-medium">Success measure: </span>
+              {p.successMetric}
+            </p>
+          )}
+          {p.stage === "LIVE" && isTeam && <ReportOutcomeForm projectId={p.id} current={thisMonth && thisMonth.evidence ? { hours: thisMonth.hoursSaved, evidence: thisMonth.evidence } : null} />}
+          <Container heading="Reported outcomes" description="Only verified figures count in leadership reports.">
+            {p.impact.length === 0 ? (
+              <EmptyState>No outcomes reported yet.</EmptyState>
+            ) : (
+              p.impact.map((i) => (
+                <Row
+                  key={i.id}
+                  density="compact"
+                  title={`${monthName(i.month)} ${zonedParts(i.month).year}: ${i.hoursSaved} hours saved`}
+                  meta={
+                    <div className="text-label text-text-muted">
+                      {i.evidence ? <p className="whitespace-pre-line">{i.evidence}</p> : <p>Logged before verification existed: no measurement given.</p>}
+                      <p className="mt-0.5">
+                        {i.reportedById ? `Reported by ${p.people.get(i.reportedById) ?? "the team"}` : "Reported by the team"}
+                        {i.verifiedAt ? ` · Verified by ${p.people.get(i.verifiedById ?? "") ?? "an approver"} on ${shortDate(i.verifiedAt)}` : " · Not verified yet"}
+                      </p>
+                    </div>
+                  }
+                  trailing={!i.verifiedAt && i.evidence && can.verifyOutcome(user, p, p.team, i.reportedById) ? <VerifyButton impactId={i.id} /> : i.verifiedAt ? <span className="text-label font-medium text-positive">Verified</span> : undefined}
+                />
+              ))
+            )}
+          </Container>
+        </div>
+      )}
+
+      {tab === "activity" && <ActivityTab p={p} viewerId={user.id} />}
     </Page>
   );
 }

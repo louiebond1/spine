@@ -28,12 +28,12 @@ export function AlreadyInFlight({ title, problem, draftId }: { title: string; pr
 
   if (matches.length === 0) return null;
   return (
-    <div className="rounded-control bg-neutral-soft px-5 py-4">
+    <div className="rounded-control border border-border bg-subtle px-4 py-3">
       <p className="text-label font-semibold text-text">Already in flight</p>
-      <p className="text-label text-text-muted">Joining an existing project gets this built sooner than starting a new one.</p>
+      <p className="text-label text-text-muted">Joining an existing initiative gets this built sooner than starting a new one.</p>
       <ul className="mt-2 divide-y divide-border">
         {matches.map((m) => (
-          <li key={m.id} className="flex items-center justify-between gap-4 py-3">
+          <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
             <div className="min-w-0">
               <Link href={`/ideas/${m.id}`} className="text-meta font-medium text-text hover:text-brand">
                 {m.title}
@@ -42,6 +42,7 @@ export function AlreadyInFlight({ title, problem, draftId }: { title: string; pr
             </div>
             {m.canJoin && (
               <Button
+                size="sm"
                 disabled={pending}
                 onClick={() =>
                   start(async () => {

@@ -1,114 +1,77 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { SectionLabel } from "@/components/ui/SectionLabel";
+import { Container } from "@/components/ui/Container";
 import { TextField } from "@/components/ui/TextField";
-import { NOTIFY_KINDS, type Preferences } from "@/lib/preferences";
+import { NOTIFY_KINDS } from "@/lib/preferences";
 import { savePreferences } from "@/server/settings-actions";
+import { changePassword } from "@/server/auth/actions";
 
-const THEME_LABEL = { light: "Light", dark: "Dark", system: "Match my computer" } as const;
-const ACCENT_LABEL = { cobalt: "Cobalt", teal: "Teal", violet: "Violet", graphite: "Graphite" } as const;
-const SIZE_LABEL = { compact: "Smaller", default: "Default", large: "Larger" } as const;
-
-function Choice<T extends string>({ label, options, value, onChange, swatch }: { label: string; options: Record<T, string>; value: T; onChange: (v: T) => void; swatch?: boolean }) {
+export function YourSettings({ initial }: { initial: { name: string; email: string; slackUserId: string; emailKinds: Record<string, boolean> } }) {
+  const router = useRouter();
+  const [v, setV] = useState(initial);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
   return (
-    <div className="flex items-center justify-between gap-6 py-5">
-      <p className="text-row-title font-medium text-text">{label}</p>
-      <div className="flex gap-2" role="radiogroup" aria-label={label}>
-        {(Object.keys(options) as T[]).map((k) => (
-          <button
-            key={k}
-            type="button"
-            role="radio"
-            aria-checked={value === k}
-            onClick={() => onChange(k)}
-            className={cx(
-              "flex h-control items-center gap-2 rounded-control border px-4 text-meta",
-              value === k ? "border-brand bg-brand-soft text-brand" : "border-border text-text hover:border-brand",
-            )}
+    <div className="space-y-6">
+      <div>
+        <Container heading="Profile" variant="plain">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField id="name" label="Name" value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
+            <TextField id="email" label="Sign-in email" value={v.email} disabled hint="Ask an admin to change it." />
+            <TextField id="slack" label="Slack member ID (optional)" placeholder="U012AB3CD" value={v.slackUserId} onChange={(e) => setV({ ...v, slackUserId: e.target.value })} hint="Lets Spine @mention you in Slack posts. Slack profile > More > Copy member ID." />
+          </div>
+        </Container>
+        <Container heading="Email me when" className="mt-4" variant="plain">
+          <div className="space-y-2.5">
+            {Object.entries(NOTIFY_KINDS).map(([k, label]) => (
+              <Checkbox key={k} label={label} checked={v.emailKinds[k] !== false} onChange={(e) => setV({ ...v, emailKinds: { ...v.emailKinds, [k]: e.target.checked } })} />
+            ))}
+          </div>
+          <p className="mt-3 text-tiny text-text-muted">Everything also appears under the bell in Spine.</p>
+        </Container>
+        <div className="mt-3 flex items-center gap-3">
+          <Button
+            variant="primary"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const r = await savePreferences({ name: v.name, slackUserId: v.slackUserId, emailKinds: v.emailKinds });
+                setMsg(r.ok ? { ok: true, text: "Saved." } : { ok: false, text: r.error });
+                router.refresh();
+              })
+            }
           >
-            {swatch && (
-              <span className="spine-app h-3 w-3 rounded-full" data-accent={k} aria-hidden>
-                <span className="block h-3 w-3 rounded-full bg-brand" />
-              </span>
-            )}
-            {options[k]}
-          </button>
-        ))}
+            Save changes
+          </Button>
+          {msg && <p className={msg.ok ? "text-label text-text-muted" : "text-label text-critical"}>{msg.text}</p>}
+        </div>
       </div>
+      <PasswordForm />
     </div>
   );
 }
 
-export function YourSettings({ initial }: { initial: Preferences & { address: string } }) {
-  const router = useRouter();
-  const [theme, setTheme] = useState(initial.theme);
-  const [accent, setAccent] = useState(initial.accent);
-  const [size, setSize] = useState(initial.size);
-  const [address, setAddress] = useState(initial.address);
-  const [kinds, setKinds] = useState<Record<string, boolean>>(() => Object.fromEntries(Object.keys(NOTIFY_KINDS).map((k) => [k, initial.email[k] !== false])));
-  const [message, setMessage] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  // Preview straight away: the shell reads these attributes.
-  useEffect(() => {
-    const app = document.querySelector<HTMLElement>(".spine-app[data-theme]");
-    if (!app) return;
-    app.dataset.theme = theme;
-    app.dataset.accent = accent;
-    app.dataset.size = size;
-  }, [theme, accent, size]);
-
+function PasswordForm() {
+  const [state, action, pending] = useActionState(changePassword, {});
   return (
-    <div className="space-y-5">
-      <section className="rounded-container border border-border bg-surface px-6">
-        <div className="pt-5">
-          <SectionLabel>Appearance</SectionLabel>
+    <form action={action}>
+      <Container heading="Password" description="Changing it signs you out everywhere else." variant="plain">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField id="current" name="current" type="password" label="Current password" autoComplete="current-password" required />
+          <TextField id="next" name="next" type="password" label="New password" hint="At least 12 characters." autoComplete="new-password" required minLength={12} />
         </div>
-        <div className="divide-y divide-border">
-          <Choice label="Theme" options={THEME_LABEL} value={theme} onChange={setTheme} />
-          <Choice label="Accent" options={ACCENT_LABEL} value={accent} onChange={setAccent} swatch />
-          <Choice label="Text size" options={SIZE_LABEL} value={size} onChange={setSize} />
-        </div>
-      </section>
-
-      <section className="rounded-container border border-border bg-surface px-6">
-        <div className="pt-5">
-          <SectionLabel>Notifications</SectionLabel>
-          <p className="mt-2 text-meta text-text-muted">Everything shows in the bell. Add an email address to get these by email too.</p>
-        </div>
-        <div className="py-4">
-          <TextField aria-label="Email address" type="email" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="you@company.com" />
-        </div>
-        <div className="divide-y divide-border border-t border-border">
-          {(Object.keys(NOTIFY_KINDS) as (keyof typeof NOTIFY_KINDS)[]).map((k) => (
-            <div key={k} className="py-4">
-              <Checkbox checked={kinds[k] ?? true} disabled={!address} onChange={(e) => setKinds({ ...kinds, [k]: e.target.checked })} label={<span className="text-meta text-text">{NOTIFY_KINDS[k]}</span>} />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="flex items-center justify-end gap-5">
-        {message && <p className="text-label text-text-muted">{message}</p>}
-        <Button
-          variant="primary"
-          disabled={pending}
-          onClick={() =>
-            start(async () => {
-              const r = await savePreferences({ theme, accent, size, email: address, emailKinds: kinds });
-              setMessage(r.ok ? "Saved." : r.error);
-              if (r.ok) router.refresh();
-            })
-          }
-        >
-          Save changes
+      </Container>
+      <div className="mt-3 flex items-center gap-3">
+        <Button type="submit" disabled={pending}>
+          Change password
         </Button>
+        {state.error && <p className="text-label text-critical">{state.error}</p>}
+        {state.saved && <p className="text-label text-text-muted">Password changed.</p>}
       </div>
-    </div>
+    </form>
   );
 }

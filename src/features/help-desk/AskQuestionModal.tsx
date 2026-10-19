@@ -9,8 +9,7 @@ import { TextField } from "@/components/ui/TextField";
 import { TextArea } from "@/components/ui/TextArea";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { askQuestion, reopenQuestion } from "@/server/questions/actions";
-import { suggestSimilar } from "@/server/questions/similar-actions";
+import { askQuestion, reopenQuestion, suggestSimilar } from "@/server/questions/actions";
 
 type Suggestion = { id: string; title: string; isMine: boolean; resolvedBy: string | null };
 
@@ -85,7 +84,7 @@ export function AskQuestionModal({ topics }: { topics: { id: string; name: strin
         </Button>
       }
     >
-      <div className="space-y-5">
+      <div className="space-y-4">
         <div>
           <TextField id="ask-title" label="Title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
           {similar.length > 0 && (
@@ -117,7 +116,8 @@ export function AskQuestionModal({ topics }: { topics: { id: string; name: strin
           options={[{ value: "", label: "Choose a topic" }, ...topics.map((t) => ({ value: t.id, label: t.name }))]}
         />
         <Checkbox label="Ask anonymously" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
-        {error && <p className="text-label text-text-muted">{error}</p>}
+        <p className="text-label text-text-muted">Only you and the Champion who picks this up can see the conversation.{anonymous ? " The Champion won't see your name." : ""}</p>
+        {error && <p className="text-label text-critical">{error}</p>}
       </div>
     </Modal>
   );

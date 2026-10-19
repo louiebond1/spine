@@ -1,32 +1,30 @@
 import "server-only";
 import { after } from "next/server";
-import type { BuildPath, Prisma, ProjectEventType, ProjectStage } from "@prisma/client";
+import type { ProjectEventType, ProjectStage, Prisma } from "@prisma/client";
 import { firstName } from "@/lib/format";
 import { now } from "../clock";
-import { db } from "../db";
+import type { Scope } from "../ctx";
+import type { Tx } from "../tenant";
 import { assignPublisher } from "./publishing";
 import { enterApproval } from "../approvals/rules";
 import * as tell from "../notify/events";
 
-// The only module that changes Project.stage. CLAUDE.md section 7, Ideas & Projects rules 1 to 11.
+// The only module that changes Project.stage. Spine 2.0 has one lifecycle for every initiative:
+// Draft > Approval > Forming team > Building > Launching > Live. Initiatives created before 2.0
+// as "Cowork-native" and already built keep their place: approving them goes straight to Launching.
 
-export const STAGE_ORDER: Record<BuildPath, ProjectStage[]> = {
-  APP: ["IDEA", "APPROVAL", "RECRUITING", "BUILDING", "PUBLISHING", "LIVE"],
-  COWORK_NATIVE: ["IDEA", "RECRUITING", "BUILDING", "APPROVAL", "PUBLISHING", "LIVE"],
-};
+export const STAGES: ProjectStage[] = ["IDEA", "APPROVAL", "RECRUITING", "BUILDING", "PUBLISHING", "LIVE"];
 
 export const STAGE_LABEL: Record<ProjectStage, string> = {
-  IDEA: "Idea",
+  IDEA: "Draft",
   APPROVAL: "Approval",
-  RECRUITING: "Recruiting",
+  RECRUITING: "Forming team",
   BUILDING: "Building",
-  PUBLISHING: "Publishing",
+  PUBLISHING: "Launching",
   LIVE: "Live",
 };
 
 const DAY = 24 * 3_600_000;
-
-type Tx = Prisma.TransactionClient;
 
 export async function logEvent(tx: Tx, projectId: string, type: ProjectEventType, actorId: string | null, detail?: string) {
   await tx.projectEvent.create({ data: { projectId, type, actorId, detail: detail ?? null, at: now() } });
@@ -44,7 +42,7 @@ export async function touch(tx: Tx, projectId: string) {
 /** Moves a project only if it is still in the expected stage (guards double clicks and races). */
 async function move(tx: Tx, projectId: string, from: ProjectStage, data: Prisma.ProjectUncheckedUpdateManyInput) {
   const { count } = await tx.project.updateMany({ where: { id: projectId, stage: from }, data: { ...data, lastActivityAt: now() } });
-  if (count !== 1) throw new Error("This project has already moved on.");
+  if (count !== 1) throw new Error("This initiative has already moved on.");
 }
 
 /** Row lock so concurrent joins and approvals on one project run one at a time. */
@@ -52,7 +50,6 @@ async function lockProject(tx: Tx, projectId: string) {
   await tx.$queryRaw`SELECT id FROM "Project" WHERE id = ${projectId} FOR UPDATE`;
 }
 
-/** People who accepted a "Start with Spine" invite join as soon as recruiting starts. */
 async function addAcceptedInvitees(tx: Tx, projectId: string, teamSize: number) {
   const invites = await tx.projectInvite.findMany({ where: { projectId, status: "ACCEPTED" }, orderBy: { updatedAt: "asc" } });
   for (const inv of invites) {
@@ -73,63 +70,51 @@ async function ensureOwnerOnTeam(tx: Tx, projectId: string, ownerId: string) {
   });
 }
 
-/** Rule 5: App ideas go to Approval with an auto-approve deadline; Cowork-native ideas go straight to Recruiting. */
-export async function submit(projectId: string, actorId: string) {
-  let startBuild = false;
+/** Submitting sends every initiative to Approval, routed by the matching approval rule. */
+export async function submit(scope: Scope, projectId: string, actorId: string) {
   let fastTrack: string | null = null;
-  await db.$transaction(async (tx) => {
+  await scope.db.$transaction(async (tx) => {
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
     const t = now();
-    if (p.buildPath === "APP") {
-      const { route, data } = await enterApproval(tx, p, t);
-      await move(tx, p.id, "IDEA", { stage: "APPROVAL", submittedAt: t, returnNote: null, ...data });
-      if (route.fastTrack) fastTrack = route.ruleName;
-    } else {
-      await move(tx, p.id, "IDEA", { stage: "RECRUITING", submittedAt: t, returnNote: null });
-      await ensureOwnerOnTeam(tx, p.id, p.ownerId);
-      await addAcceptedInvitees(tx, p.id, p.teamSize);
-      startBuild = (await tx.teamMember.count({ where: { projectId } })) >= p.teamSize;
-    }
+    const { route, data } = await enterApproval(tx, p, t);
+    await move(tx, p.id, "IDEA", { stage: "APPROVAL", submittedAt: t, returnNote: null, buildPath: "APP", ...data });
+    if (route.fastTrack) fastTrack = route.ruleName;
     await logEvent(tx, p.id, "SUBMITTED", actorId);
   });
-  if (fastTrack !== null) return approve(projectId, null, `Fast-tracked by the rule "${fastTrack}"`);
-  await tell.approvalNeeded(projectId);
-  if (startBuild) await startBuilding(projectId);
+  if (fastTrack !== null) return approve(scope, projectId, null, `Fast-tracked by the rule "${fastTrack}"`);
+  await tell.approvalNeeded(scope, projectId);
 }
 
 /**
- * Rules 6, 7 and 10. Approving an App idea opens Recruiting. Approving a Cowork-native build
- * (already built) moves it to Publishing. `approverId` null means auto-approved.
+ * Approving opens team forming. A pre-2.0 Cowork-native initiative that was already built goes
+ * straight to Launching. `approverId` null means auto-approved or fast-tracked.
  */
-export async function approve(projectId: string, approverId: string | null, fastTrackedBy?: string) {
+export async function approve(scope: Scope, projectId: string, approverId: string | null, fastTrackedBy?: string) {
   let startBuild = false;
-  await db.$transaction(async (tx) => {
+  await scope.db.$transaction(async (tx) => {
     await lockProject(tx, projectId);
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
     const approval = { approvedAt: now(), approvedById: approverId, autoApproveAt: null };
     await tx.projectApproval.deleteMany({ where: { projectId } });
+    const type = approverId ? "APPROVED" : fastTrackedBy ? "FAST_TRACKED" : "AUTO_APPROVED";
     if (p.buildCompletedAt) {
-      // Cowork-native, already built: approval and publisher assignment happen together.
-      await logEvent(tx, p.id, approverId ? "APPROVED" : fastTrackedBy ? "FAST_TRACKED" : "AUTO_APPROVED", approverId, fastTrackedBy);
+      await logEvent(tx, p.id, type, approverId, fastTrackedBy);
       await publishWithin(tx, p.id, "APPROVAL", approval);
     } else {
       await move(tx, p.id, "APPROVAL", { stage: "RECRUITING", ...approval });
-      await logEvent(tx, p.id, approverId ? "APPROVED" : fastTrackedBy ? "FAST_TRACKED" : "AUTO_APPROVED", approverId, fastTrackedBy);
+      await logEvent(tx, p.id, type, approverId, fastTrackedBy);
       await ensureOwnerOnTeam(tx, p.id, p.ownerId);
       await addAcceptedInvitees(tx, p.id, p.teamSize);
       startBuild = (await tx.teamMember.count({ where: { projectId } })) >= p.teamSize;
     }
   });
-  await tell.decision(projectId, "approved");
-  if (startBuild) await startBuilding(projectId);
+  await tell.decision(scope, projectId, "approved");
+  if (startBuild) await startBuilding(scope, projectId);
 }
 
-/**
- * Records one approver's sign-off. When a rule needs several approvers, the idea stays in
- * Approval until enough have approved; the last one moves it on. Returns how many are in.
- */
-export async function recordApproval(projectId: string, userId: string): Promise<{ complete: boolean; count: number; needed: number }> {
-  const result = await db.$transaction(async (tx) => {
+/** Records one approver's sign-off; the last required approval moves it on. */
+export async function recordApproval(scope: Scope, projectId: string, userId: string): Promise<{ complete: boolean; count: number; needed: number }> {
+  const result = await scope.db.$transaction(async (tx) => {
     await lockProject(tx, projectId);
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
     if (p.stage !== "APPROVAL") throw new Error("This idea isn't waiting for approval any more.");
@@ -150,104 +135,74 @@ export async function recordApproval(projectId: string, userId: string): Promise
     }
     return { complete: count >= needed, count, needed };
   });
-  if (result.complete) await approve(projectId, userId);
+  if (result.complete) await approve(scope, projectId, userId);
   return result;
 }
 
-/**
- * Rule 6: Return with note. App ideas (and Cowork-native ideas before building) go back to the
- * owner as a draft with the note. A Cowork-native build returned after building goes back to
- * Building with the note in Chat, so the team and plan are kept (PLAN.md Q17).
- */
-export async function returnToOwner(projectId: string, actorId: string, note: string) {
-  await db.$transaction(async (tx) => {
-    const p = await tx.project.findUniqueOrThrow({ where: { id: projectId }, include: { approvedBy: true } });
+/** Return with note: back to the owner as a draft (or, for an already-built initiative, back to Building). */
+export async function returnToOwner(scope: Scope, projectId: string, actorId: string, note: string) {
+  await scope.db.$transaction(async (tx) => {
+    const p = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
     if (p.buildCompletedAt) {
-      await move(tx, p.id, "APPROVAL", { stage: "BUILDING", autoApproveAt: null, buildCompletedAt: null, returnNote: note });
+      await move(tx, p.id, "APPROVAL", { stage: "BUILDING", autoApproveAt: null, buildCompletedAt: null, returnNote: note, nextCheckInAt: new Date(now().getTime() + 7 * DAY) });
       const actor = await tx.user.findUniqueOrThrow({ where: { id: actorId } });
       await systemMessage(tx, p.id, `${firstName(actor.name)} returned this with a note: ${note}`);
-      // Every step is already done, so add one open step for the note. Ticking it finishes the
-      // build again and sends it back to Approval.
       const last = await tx.planStep.findFirst({ where: { projectId: p.id }, orderBy: { order: "desc" } });
       await tx.planStep.create({
-        data: {
-          projectId: p.id,
-          title: "Address the approval note",
-          activePhrase: "addressing the approval note",
-          assigneeId: p.ownerId,
-          dueDate: new Date(now().getTime() + 3 * DAY),
-          order: (last?.order ?? -1) + 1,
-        },
+        data: { projectId: p.id, title: "Address the approval note", activePhrase: "addressing the approval note", assigneeId: p.ownerId, dueDate: new Date(now().getTime() + 3 * DAY), order: (last?.order ?? -1) + 1 },
       });
     } else {
       await move(tx, p.id, "APPROVAL", { stage: "IDEA", autoApproveAt: null, submittedAt: null, returnNote: note });
     }
     await logEvent(tx, p.id, "RETURNED", actorId, note);
   });
-  await tell.decision(projectId, "returned", note);
+  await tell.decision(scope, projectId, "returned", note);
 }
 
-/** Rule 8: join while recruiting; when the team is full the build starts. */
-export async function join(projectId: string, userId: string) {
+/** Join while forming the team (or into an open spot while building); a full team starts the build. */
+export async function join(scope: Scope, projectId: string, userId: string) {
   let full = false;
-  await db.$transaction(async (tx) => {
-    // Lock first so two people can't both take the last place.
+  await scope.db.$transaction(async (tx) => {
     await lockProject(tx, projectId);
     const p = await tx.project.findUniqueOrThrow({ where: { id: projectId }, include: { team: true } });
-    if (p.stage !== "RECRUITING" && p.stage !== "BUILDING") throw new Error("This project isn't taking new members.");
+    if (p.stage !== "RECRUITING" && p.stage !== "BUILDING") throw new Error("This initiative isn't taking new members.");
     if (p.team.length >= p.teamSize) throw new Error("This team is full.");
     if (p.team.some((m) => m.userId === userId)) return;
     await tx.teamMember.create({ data: { projectId, userId, joinedAt: now() } });
     await logEvent(tx, projectId, "JOINED", userId);
     await touch(tx, projectId);
-    // Joining an open spot during Building just adds the person; the plan is already running.
     full = p.stage === "RECRUITING" && p.team.length + 1 >= p.teamSize;
   });
-  if (full) await startBuilding(projectId);
+  if (full) await startBuilding(scope, projectId);
 }
 
-/** Rule 8: team full, so Building starts and Claude writes the plan in the background. */
-export async function startBuilding(projectId: string) {
-  await db.$transaction(async (tx) => {
-    await move(tx, projectId, "RECRUITING", { stage: "BUILDING", planStatus: "GENERATING" });
+/** Team complete: Building starts, check-ins are scheduled, and Claude drafts the plan in the background. */
+export async function startBuilding(scope: Scope, projectId: string) {
+  await scope.db.$transaction(async (tx) => {
+    const p = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { checkInEveryDays: true } });
+    await move(tx, projectId, "RECRUITING", {
+      stage: "BUILDING",
+      planStatus: "GENERATING",
+      nextCheckInAt: p.checkInEveryDays ? new Date(now().getTime() + p.checkInEveryDays * DAY) : null,
+    });
     await logEvent(tx, projectId, "RECRUITED", null);
   });
   const { generateBuildPlan } = await import("../ai/buildPlan");
   try {
-    // Inside a request: generate after the response so joining never waits on the AI.
-    after(() => generateBuildPlan(projectId));
+    after(() => generateBuildPlan(scope, projectId));
   } catch {
-    // Outside a request (the daily job): generate now.
-    await generateBuildPlan(projectId);
+    await generateBuildPlan(scope, projectId);
   }
 }
 
-/** Rule 10: called after any plan change. When every step is done the build is finished. */
-export async function onStepsChanged(projectId: string) {
-  const p = await db.project.findUniqueOrThrow({ where: { id: projectId }, include: { steps: { select: { done: true } } } });
+/** Called after any plan change. When every step is done the build is finished and goes to Launching. */
+export async function onStepsChanged(scope: Scope, projectId: string) {
+  const p = await scope.db.project.findUniqueOrThrow({ where: { id: projectId }, include: { steps: { select: { done: true } } } });
   if (p.stage !== "BUILDING" || p.steps.length === 0 || p.steps.some((s) => !s.done)) return;
-  await completeBuild(projectId);
-}
-
-async function completeBuild(projectId: string) {
-  const p = await db.project.findUniqueOrThrow({ where: { id: projectId } });
-  if (p.buildPath === "APP") {
-    await db.$transaction(async (tx) => {
-      await logEvent(tx, projectId, "BUILD_COMPLETED", null);
-      await publishWithin(tx, projectId, "BUILDING", { buildCompletedAt: now() });
-    });
-    return;
-  }
-  let fastTrack: string | null = null;
-  await db.$transaction(async (tx) => {
-    const t = now();
-    const { route, data } = await enterApproval(tx, p, t);
-    await move(tx, projectId, "BUILDING", { stage: "APPROVAL", buildCompletedAt: t, ...data });
+  await scope.db.$transaction(async (tx) => {
     await logEvent(tx, projectId, "BUILD_COMPLETED", null);
-    if (route.fastTrack) fastTrack = route.ruleName;
+    await publishWithin(tx, projectId, "BUILDING", { buildCompletedAt: now(), blockedAt: null, blockerNote: null, nextCheckInAt: null });
   });
-  if (fastTrack !== null) await approve(projectId, null, `Fast-tracked by the rule "${fastTrack}"`);
-  else await tell.approvalNeeded(projectId);
 }
 
 /** Serialises publisher choice so two projects can't both see the same lightest load. */
@@ -255,46 +210,30 @@ async function lockPublishing(tx: Tx) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7311)`;
 }
 
-/** Rule 11: publishing goes to the specialist with the lightest load, inside the caller's transaction. */
 async function publishWithin(tx: Tx, projectId: string, from: ProjectStage, extra: Prisma.ProjectUncheckedUpdateManyInput = {}) {
   await lockPublishing(tx);
   const publisher = await assignPublisher(tx);
-  await move(tx, projectId, from, {
-    ...extra,
-    stage: "PUBLISHING",
-    publisherId: publisher?.id ?? null,
-    publishingAssignedAt: publisher ? now() : null,
-  });
+  await move(tx, projectId, from, { ...extra, stage: "PUBLISHING", publisherId: publisher?.id ?? null, publishingAssignedAt: publisher ? now() : null });
   if (publisher) await logEvent(tx, projectId, "PUBLISHER_ASSIGNED", null, publisher.name);
 }
 
-/**
- * Projects that reached Publishing while nobody was a publishing specialist wait unassigned;
- * this hands them out as soon as someone is given the role.
- */
-export async function assignUnassignedPublishing() {
-  const waiting = await db.project.findMany({
-    where: { stage: "PUBLISHING", publisherId: null },
-    orderBy: { lastActivityAt: "asc" },
-    select: { id: true },
-  });
+/** Hands out initiatives that reached Launching while nobody held the publishing role. */
+export async function assignUnassignedPublishing(scope: Scope) {
+  const waiting = await scope.db.project.findMany({ where: { stage: "PUBLISHING", publisherId: null }, orderBy: { lastActivityAt: "asc" }, select: { id: true } });
   for (const p of waiting) {
-    await db.$transaction(async (tx) => {
+    await scope.db.$transaction(async (tx) => {
       await lockPublishing(tx);
       const publisher = await assignPublisher(tx);
       if (!publisher) return;
-      const { count } = await tx.project.updateMany({
-        where: { id: p.id, stage: "PUBLISHING", publisherId: null },
-        data: { publisherId: publisher.id, publishingAssignedAt: now() },
-      });
+      const { count } = await tx.project.updateMany({ where: { id: p.id, stage: "PUBLISHING", publisherId: null }, data: { publisherId: publisher.id, publishingAssignedAt: now() } });
       if (count === 1) await logEvent(tx, p.id, "PUBLISHER_ASSIGNED", null, publisher.name);
     });
   }
 }
 
-/** Rule 11: the assigned specialist marks it Live. */
-export async function markLive(projectId: string, actorId: string) {
-  await db.$transaction(async (tx) => {
+/** The assigned publisher marks it Live. */
+export async function markLive(scope: Scope, projectId: string, actorId: string) {
+  await scope.db.$transaction(async (tx) => {
     await move(tx, projectId, "PUBLISHING", { stage: "LIVE", liveAt: now() });
     await logEvent(tx, projectId, "WENT_LIVE", actorId);
   });

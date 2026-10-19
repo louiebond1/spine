@@ -3,27 +3,29 @@
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { ACCENTS, NOTIFY_KINDS, SIZES, THEMES, readPreferences } from "@/lib/preferences";
-import { db } from "./db";
-import { getCurrentUser } from "./session";
+import { NOTIFY_KINDS, readPreferences } from "@/lib/preferences";
+import { requireCtx } from "./ctx";
 
 const input = z.object({
-  theme: z.enum(THEMES),
-  accent: z.enum(ACCENTS),
-  size: z.enum(SIZES),
-  email: z.string().trim().max(200).email("That email address doesn't look right.").or(z.literal("")),
+  name: z.string().trim().min(2, "Add your name.").max(80),
+  slackUserId: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^$|^[UW][A-Z0-9]{2,20}$/, "Slack member IDs look like U012AB3CD (Slack profile > More > Copy member ID)."),
   emailKinds: z.record(z.string(), z.boolean()),
 });
 
-/** Your settings: appearance and notifications for the signed-in person only. */
+/** Settings for the signed-in person only: name, Slack identity and which emails they get. */
 export async function savePreferences(raw: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
-  const user = await getCurrentUser();
+  const { db, user } = await requireCtx();
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check your settings." };
   const d = parsed.data;
   const email = Object.fromEntries(Object.keys(NOTIFY_KINDS).map((k) => [k, d.emailKinds[k] !== false]));
-  const prefs = { ...readPreferences(user.preferences), theme: d.theme, accent: d.accent, size: d.size, email };
-  await db.user.update({ where: { id: user.id }, data: { email: d.email || null, preferences: prefs as unknown as Prisma.InputJsonValue } });
+  const prefs = { ...readPreferences(user.preferences), email };
+  const initials = d.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  await db.user.update({ where: { id: user.id }, data: { name: d.name, initials, slackUserId: d.slackUserId || null, preferences: prefs as unknown as Prisma.InputJsonValue } });
   revalidatePath("/", "layout");
   return { ok: true };
 }

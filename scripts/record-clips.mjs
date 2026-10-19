@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { chromium } from "playwright";
-import { BASE, PASSWORD, email } from "../tests/helpers.mjs";
+import { BASE, PASSWORD, email, db } from "../tests/helpers.mjs";
 
 const OUT = process.argv[2];
 const ONLY = process.argv.slice(3);
@@ -127,6 +127,15 @@ async function clip(name, who, run) {
 }
 
 
+// One story, start to finish, so a trailer can follow a single idea: a company-specific
+// question answered and reused, then Supplier Research Assistant from approval to verified hours.
+// Between clips the demo data moves forward the way a few days of real work would.
+const DAY = 86_400_000;
+const today = new Date(process.env.SPINE_TODAY ?? Date.now());
+const days = (n) => new Date(today.getTime() + n * DAY);
+const P = "p-supplier-research";
+const QUESTION = "Can I put client contract data into Copilot?";
+
 await clip("01-home-what-needs-you", "Alex Morgan", async (h) => {
   await h.page.goto("/");
   await h.ready();
@@ -139,62 +148,118 @@ await clip("01-home-what-needs-you", "Alex Morgan", async (h) => {
   await h.wait(1200);
 });
 
-await clip("02-search", "Alex Morgan", async (h) => {
-  await h.page.goto("/");
-  await h.ready();
-  await h.wait(700);
-  await h.page.keyboard.press("Control+k");
-  await h.wait(400);
-  await h.page.keyboard.type("supplier", { delay: 90 });
-  await h.wait(2000);
-});
-
-await clip("03-ask-a-question", "Ben Carter", async (h) => {
+await clip("02-ask-a-question", "Priya Shah", async (h) => {
   await h.page.goto("/help-desk");
   await h.ready();
   await h.wait(600);
-  await h.click(h.page.getByRole("link", { name: "Ask a question" }).or(h.page.getByRole("button", { name: "Ask a question" })).first());
+  await h.click(h.page.getByRole("link", { name: "Ask a question" }).first());
   const title = h.page.locator("#ask-title");
   await title.waitFor();
   await h.wait(400);
-  await h.type(title, "Can Claude compare several Excel files?");
-  await h.page.getByText("Already answered?").waitFor({ timeout: 5000 }).catch(() => {});
-  await h.wait(1600);
-  await h.type(h.page.locator("#ask-body"), "I get a sales report from each region every month and want one table comparing them.", 22);
+  await h.type(title, QUESTION);
+  await h.wait(800);
+  await h.type(h.page.locator("#ask-body"), "A client sent their contract as a PDF and I'd like Copilot to summarise the key terms.", 22);
   await h.wait(300);
   await h.click(h.page.locator("#ask-topic"));
-  await h.page.locator("#ask-topic").selectOption({ label: "Excel" });
+  await h.page.locator("#ask-topic").selectOption({ label: "Security" });
   await h.wait(500);
   await h.click(h.page.getByRole("button", { name: "Ask", exact: true }));
   await h.wait(2200);
 });
 
-await clip("04-champion-replies", "Alex Morgan", async (h) => {
-  await h.page.goto("/help-desk/q-excel");
+await clip("03-champion-answers", "Mia Thompson", async (h) => {
+  await h.page.goto("/help-desk");
   await h.ready();
-  await h.wait(1000);
-  await h.scroll(300);
+  await h.wait(900);
+  const row = h.page.locator("main div").filter({ hasText: QUESTION }).filter({ has: h.page.getByRole("button", { name: "Claim" }) }).last();
+  await h.to(h.page.getByText(QUESTION).first(), 800);
   await h.wait(400);
-  await h.type(h.page.getByLabel("Message"), "Attach all the regional files in one message, then ask for one table with a column per region.", 26);
+  await h.click(row.getByRole("button", { name: "Claim" }), 700);
+  await h.page.waitForURL(/\/help-desk\/[^?]+/);
+  await h.ready();
+  await h.wait(900);
+  await h.type(h.page.getByLabel("Message"), "Not in Copilot yet: it's approved for internal data only until Legal signs off. Use the company Claude workspace, and replace client names first. It's all in the Playbook.", 20);
   await h.wait(400);
   await h.click(h.page.getByRole("button", { name: "Send", exact: true }));
+  await h.wait(2400);
+});
+
+// The asker marks it answered and shares a summary, so it can help the next person.
+{
+  const q = await db.question.findFirst({ where: { title: QUESTION } });
+  if (q) {
+    await db.question.update({
+      where: { id: q.id },
+      data: { status: "RESOLVED", resolvedAt: today, answerSummary: "Not in Copilot yet: it's approved for internal data only until Legal signs off. Use the company Claude workspace and replace client names first.", sharedAt: today, sharedById: q.askerId },
+    });
+  }
+}
+
+await clip("04-answer-helps-someone-else", "Ben Carter", async (h) => {
+  await h.page.goto("/help-desk");
+  await h.ready();
+  await h.wait(600);
+  await h.click(h.page.getByRole("link", { name: "Ask a question" }).first());
+  const title = h.page.locator("#ask-title");
+  await title.waitFor();
+  await h.wait(300);
+  await h.type(title, "Is client contract data OK in Copilot?");
+  await h.page.getByText("Already answered?").waitFor({ timeout: 8000 });
+  await h.wait(700);
+  await h.to(h.page.getByRole("dialog").getByText(QUESTION).first(), 900);
   await h.wait(2200);
 });
 
-await clip("05-plan-moves-forward", "Jamie Chen", async (h) => {
-  await h.page.goto("/ideas/p-ai-invoice?tab=plan");
+await clip("05-approve-the-idea", "Alex Morgan", async (h) => {
+  await h.page.goto(`/ideas/${P}/approve`);
   await h.ready();
-  await h.wait(1000);
-  await h.to(h.page.getByText("Jamie is testing supplier cases").first(), 700);
-  await h.wait(600);
-  await h.click(h.page.getByRole("checkbox", { name: "Test against real supplier cases" }), 900);
   await h.wait(1200);
-  await h.to(h.page.locator("main").getByText(/^Mia is /).first(), 700).catch(() => {});
+  await h.to(h.page.getByText("Problem").first(), 700);
+  await h.wait(900);
+  await h.click(h.page.getByRole("button", { name: "Approve", exact: true }), 900);
+  await h.page.waitForURL(new RegExp(`/ideas/${P}(\\?|$)`)).catch(() => {});
+  await h.ready();
+  await h.wait(2000);
+});
+
+await clip("06-someone-joins", "Jamie Chen", async (h) => {
+  await h.page.goto(`/ideas/${P}?tab=team`);
+  await h.ready();
+  await h.wait(1100);
+  await h.click(h.page.getByRole("button", { name: "Join the team" }), 900);
+  await h.wait(2400);
+});
+
+// A third person joins and the team's plan is ready (Spine drafts it from the brief).
+{
+  await db.teamMember.upsert({ where: { projectId_userId: { projectId: P, userId: "u-sarah" } }, update: {}, create: { projectId: P, userId: "u-sarah", joinedAt: today } });
+  await db.planStep.deleteMany({ where: { projectId: P } });
+  const steps = [
+    ["List the supplier sources Procurement trusts", "listing trusted supplier sources", "u-louie", 2],
+    ["Build the research prompt and output template", "building the research template", "u-jamie", 6],
+    ["Test on ten recent supplier requests", "testing on recent supplier requests", "u-sarah", 12],
+    ["Add checks for missing certificates", "adding certificate checks", "u-jamie", 18],
+    ["Write the one-page guide for buyers", "writing the buyer guide", "u-louie", 26],
+    ["Prepare for launch", "preparing for launch", "u-sarah", 34],
+  ];
+  await db.planStep.createMany({ data: steps.map(([title, activePhrase, assigneeId, d], order) => ({ projectId: P, title, activePhrase, assigneeId, dueDate: days(d), order, generatedFromBrief: true })) });
+  await db.project.update({ where: { id: P }, data: { stage: "BUILDING", planStatus: "READY", lastActivityAt: today, nextCheckInAt: days(7) } });
+}
+
+await clip("07-plan-moves-forward", "Louie Morris", async (h) => {
+  await h.page.goto(`/ideas/${P}?tab=plan`);
+  await h.ready();
+  await h.wait(1100);
+  await h.to(h.page.getByText(/^Louie is listing/).first(), 700).catch(() => {});
+  await h.wait(500);
+  await h.click(h.page.getByRole("checkbox", { name: "List the supplier sources Procurement trusts" }), 900);
+  await h.wait(1300);
+  await h.to(h.page.locator("main").getByText(/^Jamie is /).first(), 700).catch(() => {});
   await h.wait(1800);
 });
 
-await clip("06-check-in-blocked", "Jamie Chen", async (h) => {
-  await h.page.goto("/ideas/p-ai-invoice?tab=checkins");
+await clip("08-blocked", "Louie Morris", async (h) => {
+  await h.page.goto(`/ideas/${P}?tab=checkins`);
   await h.ready();
   await h.wait(900);
   const group = h.page.getByRole("radiogroup", { name: "Status" });
@@ -202,38 +267,76 @@ await clip("06-check-in-blocked", "Jamie Chen", async (h) => {
   await h.wait(250);
   await h.click(group.getByText("Blocked", { exact: true }), 700);
   await h.wait(400);
-  await h.type(h.page.getByLabel("Note"), "Waiting on Finance for real supplier invoices to test with.", 28);
+  await h.type(h.page.getByLabel("Note"), "We need the approved supplier list exported from SAP. Who can get it for us?", 26);
   await h.wait(400);
   await h.click(h.page.getByRole("button", { name: "Check in" }));
   await h.page.getByText("Checked in. Thanks.").waitFor();
   await h.wait(1600);
 });
 
-await clip("07-pulse-whats-stuck", "Alex Morgan", async (h) => {
+await clip("09-pulse-catches-it", "Alex Morgan", async (h) => {
   await h.page.goto("/pulse");
   await h.ready();
-  await h.wait(1200);
-  await h.to(h.page.getByText("AI Invoice Assistant").first(), 900);
-  await h.wait(600);
-  await h.scroll(420, 1400);
-  await h.wait(900);
-  await h.scroll(-420, 1000);
-  await h.wait(800);
-});
-
-await clip("08-approve-an-idea", "Alex Morgan", async (h) => {
-  await h.page.goto("/ideas/p-supplier-research/approve");
-  await h.ready();
-  await h.wait(1200);
-  await h.to(h.page.getByText("Problem").first(), 700);
-  await h.wait(800);
-  await h.click(h.page.getByRole("button", { name: "Approve", exact: true }), 900);
-  await h.page.waitForURL(/\/ideas\/p-supplier-research(\?|$)/).catch(() => {});
+  await h.wait(1300);
+  await h.to(h.page.getByText("Supplier Research Assistant").first(), 900);
+  await h.wait(1000);
+  await h.click(h.page.getByRole("link", { name: "Open" }).first(), 700);
+  await h.page.waitForURL(new RegExp(`/ideas/${P}`)).catch(() => {});
   await h.ready();
   await h.wait(2200);
 });
 
-await clip("09-leadership-proof", "Alex Morgan", async (h) => {
+await clip("10-unblocked", "Louie Morris", async (h) => {
+  await h.page.goto(`/ideas/${P}?tab=checkins`);
+  await h.ready();
+  await h.wait(1200);
+  const group = h.page.getByRole("radiogroup", { name: "Status" });
+  await h.click(group.getByText("On track", { exact: true }), 800);
+  await h.wait(300);
+  await h.type(h.page.getByLabel("Note"), "Alex got us the SAP export. Back on track.", 28);
+  await h.wait(400);
+  await h.click(h.page.getByRole("button", { name: "Check in" }));
+  await h.page.getByText("Checked in. Thanks.").waitFor();
+  await h.wait(2000);
+});
+
+// The rest of the build gets done and Spine hands it to a publishing specialist.
+{
+  await db.planStep.updateMany({ where: { projectId: P }, data: { done: true, doneAt: today } });
+  await db.project.update({ where: { id: P }, data: { stage: "PUBLISHING", buildCompletedAt: today, publisherId: "u-alex", publishingAssignedAt: today, blockedAt: null, blockerNote: null, nextCheckInAt: null, lastActivityAt: today } });
+}
+
+await clip("11-goes-live", "Alex Morgan", async (h) => {
+  await h.page.goto(`/ideas/${P}`);
+  await h.ready();
+  await h.wait(1200);
+  await h.click(h.page.getByRole("button", { name: "Mark Live" }), 900);
+  await h.wait(2600);
+});
+
+await clip("12-team-reports-hours", "Louie Morris", async (h) => {
+  await h.page.goto(`/ideas/${P}?tab=outcomes`);
+  await h.ready();
+  await h.wait(1000);
+  await h.type(h.page.locator("#evidence"), "Six buyers used it on 18 supplier requests; each one took 15 minutes instead of 55 (timed in October).", 20);
+  await h.wait(300);
+  await h.type(h.page.locator("#hours"), "12", 120);
+  await h.wait(400);
+  await h.click(h.page.getByRole("button", { name: "Report" }));
+  await h.wait(2200);
+});
+
+await clip("13-verified-outside-the-team", "Alex Morgan", async (h) => {
+  await h.page.goto(`/ideas/${P}?tab=outcomes`);
+  await h.ready();
+  await h.wait(1200);
+  await h.to(h.page.getByText(/Six buyers used it/).first(), 900);
+  await h.wait(900);
+  await h.click(h.page.getByRole("button", { name: "Verify" }), 800);
+  await h.wait(2400);
+});
+
+await clip("14-leadership-sees-it", "Alex Morgan", async (h) => {
   await h.page.goto("/leadership");
   await h.ready();
   await h.wait(1200);
@@ -243,21 +346,22 @@ await clip("09-leadership-proof", "Alex Morgan", async (h) => {
   const b = await chart.boundingBox().catch(() => null);
   if (b) {
     await h.glide(b.x + b.width * 0.08, b.y + b.height * 0.75, 700);
-    await h.glide(b.x + b.width * 0.92, b.y + b.height * 0.3, 1800);
+    await h.glide(b.x + b.width * 0.92, b.y + b.height * 0.25, 1800);
   }
-  await h.wait(1500);
+  await h.wait(600);
+  await h.to(h.page.getByText("Supplier Research Assistant").first(), 900).catch(() => {});
+  await h.wait(1800);
 });
 
-await clip("10-playbook", "Ben Carter", async (h) => {
+await clip("15-playbook", "Ben Carter", async (h) => {
   await h.page.goto("/playbook");
   await h.ready();
   await h.wait(1000);
   await h.to(h.page.getByText("Claude (company workspace)").first(), 800);
   await h.wait(500);
-  await h.to(h.page.getByText("Personal AI accounts").first(), 700);
-  await h.wait(700);
-  await h.click(h.page.getByText("Working with client data").first(), 800);
-  await h.wait(1800);
+  await h.to(h.page.getByText("Microsoft 365 Copilot").first(), 700);
+  await h.wait(1500);
 });
 
 await browser.close();
+await db.$disconnect();

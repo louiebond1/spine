@@ -1,78 +1,89 @@
-# Spine trailer, take two
+# Spine trailer: the rebuild
 
-Everything you need is in this one document. Every clip and screenshot is linked below, and each link opens the full-resolution file.
+Everything you need is in this one document. Every clip and screenshot is linked at the end, and each link opens the full-resolution file.
 
-## How version 1 landed: honestly
+## What we learned from version 1
 
-Thank you for version 1. The story order was right: problem, help, ideas, team, plan, momentum, Live, proof, then what's next. The "Coming next · Concept" labels and the "Illustrative demo data" note were exactly right. Keep all of that. Some lines were good too: "A question shouldn't stop your day", "A good answer goes further", "Only what you choose to send".
+Two separate reviews (mine and another AI's) came to the same conclusion. The story order and the people-centred idea were right. The "Coming next" and "Illustrative demo data" labels were right. But as a launch trailer it's about 5/10. It reads as a friendly internal explainer and undersells what makes Spine valuable. Slowing it down wouldn't fix it. It needs a structural rebuild, not a polish. The specific problems:
 
-But as a viewer it wasn't fun, it wasn't cool, and it didn't hook you. You left with more questions than answers. The reasons:
+1. **The opening was too narrow.** "Same questions. Different desks." positions Spine as an internal Q&A tool. Introduce the whole company-wide problem first.
+2. **The headlines were vague** ("Put it out there", "Someone sees the possibility") and left tiny screenshots to do the explaining.
+3. **The UI was unreadable.** Whole screens were shrunk into panels, impossible to read, especially on a phone. The file was also only 910 x 512.
+4. **The help looked basic.** "Can Claude analyse my Excel files?" made it feel like something a search engine could answer.
+5. **It didn't follow one project.** The AI review showed one project and the plan showed another, which makes the story hard to follow.
+6. **Unflattering frames.** An AI score card showing 4/10, and a plan area still loading. AI scores are also private to the idea's owner, so never feature them.
+7. **The best parts were missed.** Finding the right people and keeping work moving (Pulse) were glossed over. Pulse should show: work goes quiet, Spine flags it, someone responds, work resumes.
+8. **Weak payoff.** "Something people can use" doesn't say what became useful or for whom. "Independently verified" also suggests an outside auditor. It means **verified by someone outside the team**, so say that.
+9. **The future features crowded the ending.** Five new concepts right before the end made the unbuilt parts more memorable than the real product.
+10. **A generic ending with no call to action.** "Help each other. Build something together." could advertise a charity.
+11. **The look was predictable.** Big headline, small screenshot, character beside it, repeated. The characters were decorative rather than doing anything. Half the footage was also the old version of Spine, recorded from the public website.
 
-1. **It was a feature tour, not a story.** Every feature got the same weight. There was no tension, no character to care about, and no moment that makes you go "oh".
-2. **Half the product footage was the old version of Spine.** The white sidebar, "Ideas & Projects", "Leaderboard", "Programme", "Ask Spine", "Spotted by Spine" and the AI score card don't exist any more. The public website is still the old version, so never record from it. **Use only the clips and screenshots linked below.**
-3. **The cartoon people.** Flat, colourful explainer characters made Spine feel small and generic, like every startup video from 2019.
-4. **The UI was too small to read.** Whole screens were shrunk into frames.
-5. **The colours wandered:** bright blue full-screen slides, green text, multicoloured characters.
-6. **The best idea was buried.** "Spine lives where you work" was a small coda at the end.
-7. **No hook at the start and no call to action at the end.** It never said plainly what Spine is or who it's for.
-8. **72 seconds felt like a slideshow.** It needs to be shorter and faster.
+## The new footage solves most of this
+
+Below are **15 real recordings of Spine 2.0** (2880 x 1620, with a visible cursor) that **follow one story from start to finish.** A company-specific question is answered and then reused. One project, **Supplier Research Assistant**, goes from approval, to finding its team, a plan, a blocker caught by Pulse, back on track, Live, hours reported, verified by someone outside the team, and finally on the Leadership screen. Use only this footage and these screenshots. Never record the public website; it's the old version.
 
 ## Your freedom
 
-You still have full creative freedom over concept, length, music, voice, pacing, style, live action or not, typography, and anything else. What's below is a strong recommendation, not a script. If you have a better idea, do that instead. Just don't make version 1 again.
+You have full creative freedom over concept, music, voice, pacing, style, typography, and whether to use real people, illustration or neither. The structure below is a strong recommendation built from both reviews. If you find something better, do that.
 
-## The direction I'd push
+## Recommended structure: about 60 seconds
 
-**Core idea: "Most AI ideas quietly die."** Every company has them: the question nobody answered, the clever workflow one person built that never spread, the pilot that went silent after a month. That pain is the hook. People recognise it instantly, and it's a little funny because it's true.
+| Time | Beat | Footage | The one thing to read |
+| --- | --- | --- | --- |
+| 0 to 6s | **The problem, company-wide.** Everyone's experimenting with AI, but questions, tips and ideas are scattered and quietly die: an unanswered Teams message, a clever workflow nobody else knows about, a pilot nobody's touched in weeks | Mock chat moments or real screens (not Spine) | *"Most AI ideas quietly die."* |
+| 6 to 9s | **The turn.** Calm. Spine. | clip 01 | *"3 things need you"* |
+| 9 to 18s | **Help Desk.** A question only your company can answer, a Champion's answer with your rules, and then it helps the next person automatically | clips 02, 03, 04 | *"Already answered?"* |
+| 18 to 33s | **Ideas & Projects.** One idea is approved, the right person joins, and a plan with an owner for every step | clips 05, 06, 07 | *"Jamie is building the research template"* |
+| 33 to 43s | **Pulse.** It stalls, Spine flags it, someone helps, and it moves again | clips 08, 09, 10 | *"Blocked"*, then *"Back on track"* |
+| 43 to 53s | **Live and proven.** It goes live, the team shows what it saved, and someone outside the team verifies it. Leadership sees it | clips 11, 12, 13, 14 | *"12 hours saved, verified by someone outside the team"* |
+| 53 to 60s | **The promise and the next step** | Logo and end card | One specific line plus a call to action |
 
-**Feel:** confident, fast, rhythmic and premium. Think of a Linear, Arc, Apple or Notion launch film, not a corporate explainer. Cuts land on the music. Dry wit, not jokes. Real UI, big and sharp.
+**End card:** say specifically what Spine is, then give one action. A starting point to improve on: *"Spine. Where your company's AI ideas get answered, built and proven."* For the action, use "Book a demo", with a placeholder URL we'll fill in.
 
-**Suggested shape (about 45 seconds, plus a 15-second cut):**
+**The future (Teams, Slack, Claude):** keep it out of the main trailer, or use **one** short, clearly labelled beat at most (for example *"Coming soon: Spine in Teams, Slack and Claude"*). It works better as a separate short teaser. Concept for that teaser: "@Spine is Copilot OK for client data?" answered in Teams; "Send to Spine" on a Slack message; Claude offering "This could save your team hours every week. Propose it as an initiative?" Always label it coming soon.
 
-1. **Cold open, 0 to 8 seconds: the graveyard.** Fast and a little funny. A Teams or Slack message, "Anyone know if we can use AI for this?", sinks unanswered under other messages. A "Great idea, let's discuss next week" reply. An "AI pilot" document last edited 47 days ago. A thumbs-up reaction, then silence. Text: *"Every company has AI ideas like this. Most quietly die."* You can build these chat moments as clean mock interfaces or film them on real screens. They show the problem, not Spine, so they don't need to be real Spine footage.
-2. **The turn, 8 to 12 seconds:** a hard cut to calm. The navy Spine sidebar, then **"3 things need you."** (clip 01). Quiet confidence: *"Spine makes sure they don't."*
-3. **Four fast beats, about 5 seconds each, each one moment from the clips, zoomed in close:**
-   - *Ask, and get a person:* the question asked (clip 03), then the Champion's reply (clip 04).
-   - *Ideas get an owner and a plan:* approve (clip 08), then the step ticked and "Mia is fixing edge cases" (clip 05).
-   - *Nothing stalls quietly:* "Blocked" picked (clip 06), then it's top of Pulse (clip 07).
-   - *Prove it:* the verified hours line climbing (clip 09).
-4. **The climax, about 10 seconds: "And it lives where you already work."** Teams: "@Spine is Copilot OK for client data?" with the company's answer in the thread. Slack: "Send to Spine". Claude: "This could save your team hours every week. Propose it as an initiative?", then "Yes", then the initiative appears in Spine. **This is the moment to make people go "wow".** It's not built yet, so it must read clearly as coming soon (see the rules).
-5. **End card:** the Spine logo, one line, and a call to action. Suggested line: *"Spine. Where good AI ideas don't die."* (find a better one if you can). Add a call to action such as "Book a demo", with a placeholder URL we'll fill in.
+## Craft notes from both reviews
 
-**Visual rules I'd strongly suggest:**
-- **No cartoon people.** If you want humans, use a few real, natural shots (a phone lighting up with a Teams message, hands on a laptop, a manager reading a dashboard), or none at all.
-- **Product shots fill the frame.** Zoom into the one thing that matters in each shot (a headline, a button, a row, a number) and let the rest blur or fall away.
-- **Brand colours only:** deep navy (#0F1733 area, the sidebar), warm off-white workspace, and one cobalt blue for the thing you want people to look at. A green dot means Live. Red is only for "Blocked". No bright full-screen blue or green slides.
-- **Type:** large, tight and confident, a few words at a time.
+- **One thing to read and one action to understand per scene.** Crop tightly into the part of the screen that matters (a sentence, a button, a number), hold it long enough to register, and use movement to direct attention, not just to change slides.
+- **Type hierarchy:** don't put huge headlines next to unreadable UI. Bring the UI up to readable size instead.
+- **People:** if you show people, they must be *doing something in Spine* (asking, answering, joining, unblocking), not standing beside screens. Real, natural footage (a phone lighting up, hands on a laptop, a manager reading the result) usually reads as more premium than generic illustration. If you prefer illustration, make it distinctive, not stock.
+- **Colours:** deep navy, warm off-white and one cobalt blue for the thing to look at. Green only for Live. Red only for Blocked.
 - **Logo:** the wordmark "Spine" beside three offset rounded blue bars (top left of any desktop screenshot).
+- **Masters:** at least 1920 x 1080, ideally 4K. The recordings are 2880 x 1620, so you can crop in a lot.
 
-## What Spine is (for the voice and the end card)
+## What Spine is (for the voice)
 
-Spine is where a company runs its AI adoption. Employees ask AI questions privately and a colleague who knows (a Champion) answers. Good answers can be shared. Ideas become initiatives with an owner, an approval, a team and a plan. One-minute check-ins catch anything blocked or going quiet. Leaders see hours saved that only count once someone outside the team has verified them. It's for the person leading AI adoption at a company, and everyone they're trying to bring along.
+Spine is where a company runs its AI adoption. People ask AI questions privately and a colleague who knows (a Champion) answers with the company's own rules. Good answers are shared, so the next person gets them instantly. Ideas become initiatives with an owner, an approval, the right team and a plan. One-minute check-ins catch anything blocked or going quiet before it dies. Leaders see what was delivered, and hours saved only count once someone outside the team has verified them. It's for whoever is leading AI adoption at a company, and everyone they're bringing along.
 
-## The only rules (so it's safe to publish)
+## The rules (so it's safe to publish)
 
-- **Only real Spine 2.0 footage:** the clips and screenshots below. Never record the public website; it's the old version.
-- **The Teams, Slack and Claude moments aren't built yet.** Show them as coming soon, clearly signposted (for example a "Coming soon" label, or a "Next" chapter). How you signpost it is your call. The first customer who types "@Spine" after watching has to find it works, or we lose their trust.
-- **No invented customers, logos, testimonials, statistics, prices or certifications.** The demo company Acme Group and its numbers ("94 verified hours saved") are fictional. Show them inside the product with a small "Demo data" note, never as claims about real results.
-- **Never show Spine reading people's messages or calendars, or AI running things on its own.** AI drafts and suggests; people decide. Spine only sees what someone deliberately sends it.
+- Only the real Spine 2.0 footage and screenshots below.
+- The Teams, Slack and Claude features aren't built yet. Show them only as clearly labelled coming soon.
+- No invented customers, logos, testimonials, statistics, prices or certifications. Acme Group and its numbers are fictional demo data: show them inside the product with a small "Demo data" note, never as claims about real results.
+- Never show AI scores, Spine reading people's messages or calendars, or AI running things on its own. AI drafts and suggests; people decide.
+- Say "verified by someone outside the team", not "independently verified".
 
 ## What I'd like back
 
-The main trailer (about 45 seconds, 16:9), a 15-second cut, a vertical 9:16 version for social, and three stills for static ads. Include the script and voiceover text.
+The main trailer (about 60 seconds, 16:9, 1080p or 4K), a 15-second cut, a vertical 9:16 version, three stills, and the script with voiceover. Optionally, a separate 15 to 20 second "Coming soon" teaser for the Teams, Slack and Claude features.
 
-## Screen recordings (real Spine 2.0, 2880 x 1620, 30 fps, with a visible cursor)
+## The story footage (real Spine 2.0, 2880 x 1620, 30 fps, visible cursor)
 
-- **[01-home-what-needs-you.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/01-home-what-needs-you.mp4)**: Home: "3 things need you". The cursor moves down the list to the one primary button, Review.
-- **[02-search.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/02-search.mp4)**: Ctrl+K search: typing "supplier" finds questions and initiatives instantly.
-- **[03-ask-a-question.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/03-ask-a-question.mp4)**: An employee asks the Help Desk a question: title, details, topic, Ask.
-- **[04-champion-replies.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/04-champion-replies.mp4)**: A Champion replies in the private thread and sends.
-- **[05-plan-moves-forward.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/05-plan-moves-forward.mp4)**: A step is ticked off, and the next-action line changes from "Jamie is testing supplier cases" to "Mia is fixing edge cases from testing".
-- **[06-check-in-blocked.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/06-check-in-blocked.mp4)**: A one-minute check-in: the team picks Blocked, writes why, and checks in.
-- **[07-pulse-whats-stuck.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/07-pulse-whats-stuck.mp4)**: Pulse: the blocked initiative is now at the top, followed by decisions waiting and unanswered questions.
-- **[08-approve-an-idea.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/08-approve-an-idea.mp4)**: A leader reads an idea and approves it, and it moves to Forming team.
-- **[09-leadership-proof.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/09-leadership-proof.mp4)**: Leadership: 94 verified hours saved, with the cursor tracing the line climbing month by month.
-- **[10-playbook.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/10-playbook.mp4)**: The Playbook: priorities, approved tools with green, amber and red status, and guidance opening.
+- **[01-home-what-needs-you.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/01-home-what-needs-you.mp4)**: The calm moment. Home says "3 things need you", and the cursor moves to the one primary button.
+- **[02-ask-a-question.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/02-ask-a-question.mp4)**: Priya asks a question only the company can answer: "Can I put client contract data into Copilot?"
+- **[03-champion-answers.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/03-champion-answers.mp4)**: Mia, a Champion, claims it and replies with the company's own rule: "Not in Copilot yet... use the company Claude workspace... it's all in the Playbook."
+- **[04-answer-helps-someone-else.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/04-answer-helps-someone-else.mp4)**: Later, Ben starts asking almost the same thing, and Spine shows "Already answered?" with Priya's question before he even sends it. The answer now helps everyone.
+- **[05-approve-the-idea.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/05-approve-the-idea.mp4)**: The hero project, **Supplier Research Assistant**: a leader reads the idea and approves it. It moves to "Forming team" and needs 2 more people.
+- **[06-someone-joins.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/06-someone-joins.mp4)**: Jamie opens the team and clicks "Join the team": 1 of 3 becomes 2 of 3.
+- **[07-plan-moves-forward.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/07-plan-moves-forward.mp4)**: The team has a plan. Louie ticks the first step, and the next-action line changes to "Jamie is building the research template".
+- **[08-blocked.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/08-blocked.mp4)**: A one-minute check-in: Louie picks Blocked: "We need the approved supplier list exported from SAP. Who can get it for us?"
+- **[09-pulse-catches-it.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/09-pulse-catches-it.mp4)**: Pulse puts the blocked project at the top for a leader, who opens it and sees the blocker banner.
+- **[10-unblocked.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/10-unblocked.mp4)**: Louie checks in again, "Alex got us the SAP export. Back on track.", and the blocker clears.
+- **[11-goes-live.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/11-goes-live.mp4)**: The build is done. "You're launching this": Mark Live, and the green Live dot appears.
+- **[12-team-reports-hours.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/12-team-reports-hours.mp4)**: The team reports what it saved, with how they measured it: 18 supplier requests, 15 minutes instead of 55 each, 12 hours this month.
+- **[13-verified-outside-the-team.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/13-verified-outside-the-team.mp4)**: Someone outside the team checks it and clicks Verify: "Verified by Alex Morgan".
+- **[14-leadership-sees-it.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/14-leadership-sees-it.mp4)**: Leadership: 106 verified hours, the line climbing, and Supplier Research Assistant at the top of "Went live".
+- **[15-playbook.mp4](https://raw.githubusercontent.com/louiebond1/spine/spine-2/marketing/clips/15-playbook.mp4)**: Optional: the Playbook's approved tools (green, amber, red), the rule Mia's answer came from.
 
 ## Screenshots (real Spine 2.0; desktop 2880 x 1800, phone 1170 x 2532)
 

@@ -114,11 +114,11 @@ function StepRow({ step, team, canEdit, first, last }: { step: PlanStepView; tea
         }}
       />
       {canEdit ? (
-        <button type="button" onClick={() => setEditing(true)} className={cx("min-w-0 flex-1 truncate text-left text-meta hover:text-brand", done ? "text-text-muted line-through" : "text-text")}>
+        <button type="button" onClick={() => setEditing(true)} className={cx("min-w-0 flex-1 break-words text-left sm:truncate text-meta hover:text-brand", done ? "text-text-muted line-through" : "text-text")}>
           {step.title}
         </button>
       ) : (
-        <span className={cx("min-w-0 flex-1 truncate text-meta", done ? "text-text-muted line-through" : "text-text")}>{step.title}</span>
+        <span className={cx("min-w-0 flex-1 break-words text-meta sm:truncate", done ? "text-text-muted line-through" : "text-text")}>{step.title}</span>
       )}
       <Avatar initials={step.assigneeInitials} size="sm" />
       <span className="w-16 shrink-0 text-right text-label text-text-muted">{step.dueLabel}</span>

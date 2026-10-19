@@ -29,6 +29,15 @@ export const AI_ERROR_TEXT: Record<AiErrorKind, string> = {
   other: "AI couldn't run just now. Try again.",
 };
 
+/** What an admin can do about each failure (Admin > AI & health). */
+export const AI_ADMIN_FIX: Partial<Record<AiErrorKind, string>> = {
+  credit: "Add credit to the Anthropic account behind ANTHROPIC_API_KEY (Anthropic Console, Billing). Spine tries again automatically after 5 minutes.",
+  auth: "Check ANTHROPIC_API_KEY in the server's environment variables: it may have been revoked or mistyped. Spine tries again automatically after 5 minutes.",
+  limit_reached: "Raise the monthly AI allowance in Admin > Settings, or wait for next month.",
+  rate_limit: "The provider is limiting requests. This usually clears within minutes.",
+  overloaded: "The provider is busy. This usually clears within minutes.",
+};
+
 export const lenient = {
   text: (max: number) => z.preprocess((v) => (v == null ? "" : String(v)), z.string()).transform((s) => s.trim().slice(0, max)),
   int: (min: number, max: number, fallback: number) =>
@@ -45,6 +54,7 @@ export const lenient = {
 };
 
 let client: Anthropic | null = null;
+const HARD_FAILURE_COOLDOWN_MS = 5 * 60_000;
 
 function getClient(): Anthropic {
   if (!process.env.ANTHROPIC_API_KEY || !process.env.ANTHROPIC_MODEL) throw new AiUnavailableError("not_configured");
@@ -105,12 +115,15 @@ export async function askClaudeForJson<T>(opts: {
     await record(opts.scope, opts.feature, false, "limit_reached", started);
     throw new AiUnavailableError("limit_reached");
   }
-  let anthropic: Anthropic;
-  try {
-    anthropic = getClient();
-  } catch (error) {
-    await record(opts.scope, opts.feature, false, "not_configured", started);
-    throw error;
+  // Not recorded: health already reports a missing key, and every page view would add a row.
+  const anthropic = getClient();
+  // Billing and key failures won't fix themselves within minutes, so don't call again on every page view.
+  const recentHardFailure = await opts.scope.db.aiCall.findFirst({
+    where: { orgId: opts.scope.org.id, at: { gte: new Date(Date.now() - HARD_FAILURE_COOLDOWN_MS) } },
+    orderBy: { at: "desc" },
+  });
+  if (recentHardFailure && !recentHardFailure.ok && (recentHardFailure.errorKind === "credit" || recentHardFailure.errorKind === "auth")) {
+    throw new AiUnavailableError(recentHardFailure.errorKind);
   }
   let lastKind: AiErrorKind = "other";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -156,6 +169,7 @@ export async function aiHealth(scope: Pick<Scope, "db" | "org">) {
     lastCall: last,
     lastFailure,
     lastFailureText: lastFailure?.errorKind ? AI_ERROR_TEXT[lastFailure.errorKind as AiErrorKind] ?? AI_ERROR_TEXT.other : null,
+    lastFailureFix: lastFailure?.errorKind ? AI_ADMIN_FIX[lastFailure.errorKind as AiErrorKind] ?? null : null,
     week: { ok, failed },
     usedThisMonth: used,
     monthlyLimit: settings?.aiMonthlyLimit ?? 1000,

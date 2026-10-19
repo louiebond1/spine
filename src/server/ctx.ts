@@ -24,10 +24,4 @@ export async function requireCtx(): Promise<Ctx> {
   return ctx;
 }
 
-/** A context for scheduled work in one organisation (no person signed in). */
-export function systemCtx(org: Organization): Omit<Ctx, "user" | "sessionId"> {
-  return { org, db: forOrg(org.id) };
-}
-
-/** What domain code needs: the organisation and its scoped client (people optional). */
-export type Scope = { db: OrgDb; org: Organization };
+export { systemCtx, type Scope } from "./scope";

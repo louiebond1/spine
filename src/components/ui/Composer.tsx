@@ -55,8 +55,8 @@ export function Composer({ onSend, allowAttach, trailing, placeholder = "Write a
             <input ref={fileInput} type="file" multiple hidden onChange={(e) => setFiles([...files, ...Array.from(e.target.files ?? [])])} />
           </>
         )}
-        <input name="body" placeholder={placeholder} className={controlClass + " min-w-0 flex-1 border-transparent focus:ring-0"} autoComplete="off" disabled={pending} aria-label="Message" />
-        <div className="flex items-center gap-2">
+        <input name="body" placeholder={placeholder} className={controlClass + " min-w-0 flex-1 basis-48 border-transparent focus:ring-0"} autoComplete="off" disabled={pending} aria-label="Message" />
+        <div className="ml-auto flex items-center gap-2">
           <Button type="submit" variant="primary" size="sm" disabled={pending}>
             Send
           </Button>

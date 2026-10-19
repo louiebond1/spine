@@ -5,19 +5,27 @@ import "server-only";
 
 export type IcsEvent = { uid: string; date: Date; title: string; description?: string; url?: string };
 
-const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 const day = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "");
 const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 
-/** Folds lines at 75 octets as the standard requires. */
+/** Folds lines at 75 octets as the standard requires, never splitting a multi-byte character. */
 function fold(line: string) {
   const out: string[] = [];
-  let rest = line;
-  while (rest.length > 74) {
-    out.push(rest.slice(0, 74));
-    rest = ` ${rest.slice(74)}`;
+  let current = "";
+  let octets = 0;
+  for (const ch of line) {
+    const size = Buffer.byteLength(ch, "utf8");
+    // Continuation lines start with a space, which counts towards their 75.
+    if (octets + size > 75) {
+      out.push(current);
+      current = " ";
+      octets = 1;
+    }
+    current += ch;
+    octets += size;
   }
-  out.push(rest);
+  out.push(current);
   return out.join("\r\n");
 }
 

@@ -159,7 +159,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           const features = [...new Set(byFeature.map((f) => f.feature))];
           return (
             <div className="space-y-4">
-              {health.status === "failing" && <Notice tone="critical">{health.lastFailureText} Last failure {health.lastFailure ? dayAtTime(health.lastFailure.at, new Date()) : ""}.</Notice>}
+              {health.status === "failing" && (
+                <Notice tone="critical">
+                  {health.lastFailureText} Last failure {health.lastFailure ? dayAtTime(health.lastFailure.at, new Date()) : ""}.
+                  {health.lastFailureFix && <span className="mt-1 block font-medium">{health.lastFailureFix}</span>}
+                </Notice>
+              )}
               {health.status === "off" && <Notice tone="warning">{health.configured ? "AI is turned off for your organisation (monthly allowance is 0)." : "AI isn't configured on this server (ANTHROPIC_API_KEY and ANTHROPIC_MODEL). Everything else in Spine works without it."}</Notice>}
               <section className="grid grid-cols-2 gap-px overflow-hidden rounded-container border border-border bg-border sm:grid-cols-4">
                 {(

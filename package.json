@@ -16,8 +16,8 @@
     "job:daily": "tsx --conditions=react-server --env-file-if-exists=.env scripts/daily-job.ts",
     "job:daily:prod": "tsx --conditions=react-server scripts/daily-job.ts",
     "bootstrap": "tsx --conditions=react-server scripts/bootstrap.ts",
-    "test": "node --test --test-concurrency=1 tests/",
-    "test:unit": "tsx --conditions=react-server --test tests/unit/*.test.ts"
+    "test": "node --env-file-if-exists=.env --test --test-concurrency=1 \"tests/*.test.mjs\"",
+    "test:unit": "tsx --conditions=react-server --env-file-if-exists=.env --test tests/unit/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

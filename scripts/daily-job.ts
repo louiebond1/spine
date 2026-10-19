@@ -4,7 +4,7 @@
 // npm run job:daily            normal run
 // npm run job:daily -- --force send the digest now, ignoring the schedule
 import { rootDb } from "../src/server/db";
-import { systemCtx } from "../src/server/ctx";
+import { systemCtx } from "../src/server/scope";
 import { runDueAutoApprovals } from "../src/server/projects/autoApprove";
 import { remindDueCheckIns } from "../src/server/projects/checkinReminders";
 import { chaseApprovals } from "../src/server/approvals/escalate";
@@ -13,6 +13,7 @@ import { runDigest } from "../src/server/digest/digest";
 import { scanOpportunities } from "../src/server/ai/opportunities";
 import { getSettings } from "../src/server/settings";
 import { now } from "../src/server/clock";
+import { AiUnavailableError } from "../src/server/ai/client";
 
 const DAY = 86_400_000;
 
@@ -21,6 +22,10 @@ async function step<T>(label: string, fn: () => Promise<T>) {
     const r = await fn();
     console.log(`[job] ${label}: ${typeof r === "object" ? JSON.stringify(r) : r}`);
   } catch (error) {
+    if (error instanceof AiUnavailableError && error.kind === "not_configured") {
+      console.log(`[job] ${label}: skipped, AI isn't set up`);
+      return;
+    }
     // One failing step (for example AI being unavailable) never stops the others.
     console.error(`[job] ${label} failed:`, error instanceof Error ? error.message : error);
     process.exitCode = 1;

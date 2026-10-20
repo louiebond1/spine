@@ -1,0 +1,28 @@
+name: Spine trailer render
+on:
+  push:
+    branches: [spine-trailer-render]
+  workflow_dispatch:
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install render dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          pip install pillow numpy
+      - name: Render trailer
+        run: python marketing/trailer_render/render.py
+      - name: Upload trailer
+        uses: actions/upload-artifact@v4
+        with:
+          name: spine-gone-quiet-preview
+          path: marketing/trailer_render/output/*.mp4
+          retention-days: 30

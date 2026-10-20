@@ -1,0 +1,392 @@
+[
+  {
+    "id": "home",
+    "source": "01-home-what-needs-you.mp4",
+    "startFrame": 120,
+    "frames": 1,
+    "crop": [
+      550,
+      210,
+      900,
+      120
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "question",
+    "source": "02-ask-a-question.mp4",
+    "startFrame": 699,
+    "frames": 1,
+    "crop": [
+      550,
+      235,
+      1100,
+      130
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "private",
+    "source": "03-champion-answers.mp4",
+    "startFrame": 235,
+    "frames": 1,
+    "crop": [
+      550,
+      390,
+      1300,
+      70
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "reply",
+    "source": "03-champion-answers.mp4",
+    "startFrame": 583,
+    "frames": 1,
+    "crop": [
+      630,
+      635,
+      1040,
+      180
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "suggestion",
+    "source": "04-answer-helps-someone-else.mp4",
+    "startFrame": 310,
+    "frames": 1,
+    "crop": [
+      870,
+      450,
+      700,
+      110
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "idea",
+    "source": "05-approve-the-idea.mp4",
+    "startFrame": 180,
+    "frames": 1,
+    "crop": [
+      550,
+      280,
+      1150,
+      65
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "forming",
+    "source": "05-approve-the-idea.mp4",
+    "startFrame": 261,
+    "frames": 1,
+    "crop": [
+      550,
+      380,
+      1040,
+      160
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "one-count",
+    "source": "06-someone-joins.mp4",
+    "startFrame": 105,
+    "frames": 1,
+    "crop": [
+      590,
+      675,
+      300,
+      75
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "two-count",
+    "source": "06-someone-joins.mp4",
+    "startFrame": 171,
+    "frames": 1,
+    "crop": [
+      590,
+      675,
+      300,
+      75
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "one",
+    "source": "06-someone-joins.mp4",
+    "startFrame": 105,
+    "frames": 1,
+    "crop": [
+      590,
+      675,
+      740,
+      210
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "join-result",
+    "source": "06-someone-joins.mp4",
+    "startFrame": 171,
+    "frames": 1,
+    "crop": [
+      590,
+      675,
+      740,
+      270
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "next",
+    "source": "07-plan-moves-forward.mp4",
+    "startFrame": 249,
+    "frames": 1,
+    "crop": [
+      550,
+      470,
+      850,
+      100
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "plan-result",
+    "source": "07-plan-moves-forward.mp4",
+    "startFrame": 249,
+    "frames": 1,
+    "crop": [
+      590,
+      765,
+      1120,
+      110
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "blocked",
+    "source": "08-blocked.mp4",
+    "startFrame": 492,
+    "frames": 1,
+    "crop": [
+      590,
+      1115,
+      1220,
+      150
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "pulse",
+    "source": "09-pulse-catches-it.mp4",
+    "startFrame": 60,
+    "frames": 1,
+    "crop": [
+      590,
+      450,
+      1100,
+      240
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "recovered",
+    "source": "10-unblocked.mp4",
+    "startFrame": 396,
+    "frames": 1,
+    "crop": [
+      590,
+      1130,
+      1100,
+      130
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "live",
+    "source": "11-goes-live.mp4",
+    "startFrame": 162,
+    "frames": 1,
+    "crop": [
+      550,
+      470,
+      300,
+      90
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "report",
+    "source": "12-team-reports-hours.mp4",
+    "startFrame": 414,
+    "frames": 1,
+    "crop": [
+      590,
+      1300,
+      1330,
+      160
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "verified",
+    "source": "13-verified-outside-the-team.mp4",
+    "startFrame": 279,
+    "frames": 1,
+    "crop": [
+      600,
+      820,
+      1350,
+      130
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "leadership",
+    "source": "14-leadership-sees-it.mp4",
+    "startFrame": 300,
+    "frames": 1,
+    "crop": [
+      590,
+      1180,
+      1100,
+      240
+    ],
+    "kind": "hold"
+  },
+  {
+    "id": "claim",
+    "source": "03-champion-answers.mp4",
+    "startFrame": 195,
+    "frames": 27,
+    "crop": [
+      1870,
+      605,
+      280,
+      100
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "suggest-appear",
+    "source": "04-answer-helps-someone-else.mp4",
+    "startFrame": 270,
+    "frames": 42,
+    "crop": [
+      870,
+      450,
+      700,
+      110
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "approve",
+    "source": "05-approve-the-idea.mp4",
+    "startFrame": 225,
+    "frames": 19,
+    "crop": [
+      2230,
+      820,
+      540,
+      74
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "join",
+    "source": "06-someone-joins.mp4",
+    "startFrame": 123,
+    "frames": 26,
+    "crop": [
+      2520,
+      670,
+      270,
+      100
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "complete",
+    "source": "07-plan-moves-forward.mp4",
+    "startFrame": 216,
+    "frames": 30,
+    "crop": [
+      590,
+      745,
+      1120,
+      154
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "blocked-post",
+    "source": "08-blocked.mp4",
+    "startFrame": 432,
+    "frames": 60,
+    "crop": [
+      550,
+      460,
+      1320,
+      120
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "open",
+    "source": "09-pulse-catches-it.mp4",
+    "startFrame": 237,
+    "frames": 25,
+    "crop": [
+      2600,
+      545,
+      190,
+      90
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "recover",
+    "source": "10-unblocked.mp4",
+    "startFrame": 357,
+    "frames": 15,
+    "crop": [
+      2550,
+      1300,
+      240,
+      90
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "launch",
+    "source": "11-goes-live.mp4",
+    "startFrame": 125,
+    "frames": 22,
+    "crop": [
+      2530,
+      460,
+      260,
+      94
+    ],
+    "kind": "normal-speed action"
+  },
+  {
+    "id": "verify",
+    "source": "13-verified-outside-the-team.mp4",
+    "startFrame": 240,
+    "frames": 23,
+    "crop": [
+      2580,
+      830,
+      204,
+      100
+    ],
+    "kind": "normal-speed action"
+  }
+]

@@ -1,53 +1,40 @@
-# Spine launch trailer — QA record
+# Spine rebuild — visual revisions and verification
 
-## Source access
+## What changed
 
-All 15 linked Spine 2.0 MP4s, all 18 linked PNGs and ASTRA-BRIEF.md downloaded successfully. No broken source URLs. The attached DOCX was extracted with Python's ZIP/XML libraries and read, including the detailed scene instructions. The final DOCX takes priority over the older linked creative brief.
+The rejected edit was rebuilt in a separate project. New reusable SVG characters have faces, hands, poses and controlled gestures. Two separate work surfaces come together after Jamie's recorded join; the result remains2of3 with an empty place. Real source clicks are retained at normal speed, with explicit verified result frames. British narration, an original110BPM instrumental and restrained selection/arrival/Live sounds are included. The authentic app logo is now vector, rather than a screenshot box.
 
-Inspected five sampled states per recording, all linked screenshot contact sheets, and finer action samples around claiming, approval, joining, plan completion, recovery, launch and verification. Native-size frames were used to locate crops. Only the supplied product footage and a direct logo crop from a supplied screenshot are used as current product imagery. The separate future teaser contains explicitly labelled editorial concepts.
+## Review performed
 
-## Revisions from visual checks
+- Read the complete final brief and inspected all supplied source recordings during production. The preserved source inventory and frame/crop manifest document access and usage.
+- Inspected11 composed storyboard frames, then160 half-second samples spanning the actual encoded80-second export. Inspected full-resolution evidence frames and small playback-size contact sheets. Inspected the before/action/result sequence for claim, approval, joining, plan completion, recovery, Live and Verify.
+- Played the encoded master from0to80seconds at normal speed in Chromium with the video audio track enabled. The automated playback record reports2400 decoded frames,0 dropped frames, no media error and ended=true. This is an automated playback check, not a claim that an agent watched and heard the video like a human.
+- Encoded-file checks cover dimensions, exact frame counts,30fps,H.264,yuv420p,AAC,fast-start metadata and full decoding. Results are in review/technical-validation.json.
+- Measured loudness on the encoded AAC, not only the pre-encode WAV. The first AAC export overshot the true-peak limit; the pre-encode ceiling was lowered to−2.5dBTP and the delivered AAC was remeasured. See final-encoded-loudness.txt for exact final values.
+- Inspected the short cut at half-second intervals, the concept teaser at one-second intervals, and vertical keyframes plus encoded captions.
+- Checked subtitle placement on encoded frames. Main captions use the reserved bottom area. Vertical captions are rewrapped and timed within the corresponding spoken phrases.
 
-1. Recovery crop initially included the old blocked note and cut off the posted recovery. Moved it to the final On track row and checked the full 'Alex got us the SAP export. Back on track.' text.
-2. Approval crop included the auto-approval timer. Tightened it to the human Approve button.
-3. Full launch header had a partly cropped stage row. Replaced it with a tight crop of the actual green Live state, retaining the project title outside it.
-4. Collaboration table touched the disclosure. Raised the table and open-seat outline.
-5. Encoded action-end frames showed blank crops when the page changed after Claim, Approve, Join and Check in. Shortened the advancing source window and held its last action frame until the cut to the verified result. No footage was accelerated.
-6. Membership disclosure initially said two of three before joining. Made it one of three before the action and two of three afterwards. Jamie's Member label now appears after the join.
-7. Removed the recorded 'waiting for your decision' heading after approval; the subsequent title and Forming team state are consistent.
-8. Added the opening line convergence and closing mark-to-real-logo crossfades.
-9. Vertical layout was separately recomposed. Moved the two desks above the disclosure and corrected the illustrative characters for Ben's suggestion and Louie's idea scenes.
+## Corrections made during review
 
-10. Caption inspection found libass scaling the initial 26-point style to oversized text. Reduced its script-resolution font size to produce approximately 52 px captions in the 1080p export.
+1. Replaced a shared-answer freeze containing a large pointer with the earlier, identical completed suggestion state before the pointer entered it. The suggestion appearance uses the corresponding earlier actual video window.
+2. Replaced the Pulse hold with an earlier cursor-free source frame.
+3. Moved the blocker crop down to include the actual blocked check-in note.
+4. Removed the obsolete “Waiting for your decision” heading from the persistent idea crop after approval.
+5. Moved a connector below the shared-answer label to stop it crossing text.
+6. Added separate work surfaces and legs before the joining transformation; kept the third chair empty.
+7. Removed an Alex portrait during the final leadership reveal where it overlapped the contextual label.
+8. Corrected subtitle backing colour from ASS's BGR interpretation to the specified navy.
+9. Added audio headroom after measuring AAC overshoot. Final encoded master:−16.26LUFS integrated,−1.91dBTP.
+10. Final format validation caught a full-range pixel-format flag and microsecond timebase introduced by segment assembly. The delivery files were normalised to limited-range BT.709,yuv420p and an exact30fps video timebase, then revalidated.
 
-## Checks performed
+## Product accuracy
 
-- Remotion source type-checked with TypeScript.
-- Eleven storyboard frames rendered and visually inspected.
-- First 10-second sequence rendered before the full master.
-- Encoded master frames inspected at all scene boundaries, midpoints and key internal cuts. Contact sheets are in output/qa. These are frame inspections, not a claim of full-speed playback.
-- Vertical storyboard inspected as 390-pixel-wide thumbnails. Headline and editorial focal text are readable; underlying source text is supporting evidence and can be smaller. The export does not claim every recorded UI label meets the brief's minimum text size.
-- Short and future-concept keyframes visually inspected.
-- Character continuity: Priya asks; Mia answers; Ben gets the suggestion; Louie owns; Jamie joins; Alex helps with recovery and verifies from outside the team. No Alex join event.
-- One project throughout: Supplier Research Assistant. One-of-three to two-of-three is preserved. No fabricated third join.
-- Private conversation is not animated into a public thread. The editorial 'Once shared' bridge is retained.
-- No private AI scores, public-website captures, invented SAP connector, 106-hour project claim, customer endorsement, fake URL or QR code.
-- Acme Group demo disclosure retained beside the outcome and in the outcome still.
-- Music is original procedural synthesis. Measured WAV: -16.10 LUFS integrated, -2.09 dBTP. No external samples or commercial songs.
-- Full-file decoding, dimensions, frame rate, frame count and stream checks are recorded in output/qa/technical-results.json after export.
+Priya asks; Mia claims and answers; Ben receives a later shared suggestion. The private-to-shared gap is bridged editorially, without fabricated consent. Supplier Research Assistant is the sole project. Louie owns it; Jamie voluntarily joins; Alex does not join. Alex's help obtaining the SAP export is human help, not an integration. Live uses the real recorded status, not an invented supplier-tool screen. The demo report18×40minutes=12hours becomes verified only after the recorded Verify action. The wider106-hour total is excluded. The isolated metric retains “Acme Group · Demo data”. Unbuilt integrations appear only in the separate persistent “Coming next · Concept” teaser.
 
-## Final technical results
+## Limits — not passed off as completed review
 
-All five final MP4s passed full-file decoding. Both landscape masters and the vertical master are exactly 80 seconds and 2400 frames. The cutdown is 15 seconds/450 frames and the concept teaser is 18 seconds/540 frames. All are 30 fps H.264, yuv420p, with AAC audio. The vertical master is 1080×1920; the others are 1920×1080. Full-range renderer output was converted to limited-range yuv420p for delivery.
+No human audiovisual or phone-speaker listening test was available. The agent's perceptual inspection used exported stills and temporal contact sheets; automated browser playback does not replace a human watch-through. Therefore the brief's subjective full playback and phone-speaker quality gates remain unverified.
 
-## Actual limitations
+Reading holds intentionally contain genuine freeze frames, as the brief specifies. Brief, purposeful original cursors remain during recorded clicks; obstructing cursors on the reviewed shared-answer and Pulse reading holds were removed by selecting clean original frames, not repainting product text. Some secondary source context remains smaller than the enlarged editorial messages and is not intended as a separate reading task. No claim is made that every tiny source metadata line is phone-readable.
 
-**No voice layer:** no authorised voice-generation capability was available. Exports have original instrumental audio. The captioned landscape version displays the timed narration script; the SRT is a provisional recording script, not alignment to an existing performance. Voice recording, scene-by-scene fitting and final dialogue/music ducking remain outstanding.
-
-**No audiovisual playback claim:** the available inspection tool displays still images, not video or audio. I could inspect decoded exported frames and verify full-file decoding, but could not watch the film at normal speed with sound, listen on a phone speaker, or validate subjective musical feel. Those checks remain open. Contact sheets do not replace them.
-
-**Creative execution:** this is a deterministic vector-and-recording edit. The illustrations are deliberately simple and reuse a compact set of poses. The collaboration transformation uses translated desks and an appearing shared table; it is not a detailed hand-animated performance. Some contextual UI text and disclosure labels will be small in 390-pixel-wide landscape playback; essential messages are enlarged separately. Further craft review may be warranted before publishing.
-
-No independently verified demo destination was provided. The end card uses 'Book a demo' without a URL, as permitted by the brief. A standalone logo vector was not linked, so the genuine logo is cropped from the approved screenshot and will be less sharp than a vector master.
-
-Nothing was published externally. These exports and editable source are delivered for review; the missing voice and full-playback checks prevent a claim that every final-production gate passed.
+The CTA is “Book a demo” without a URL because no verified destination was supplied. All footage assets were available; no product imagery was invented to cover an access failure.

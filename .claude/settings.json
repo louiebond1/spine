@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Runway__get_task",
+      "mcp__Runway__list_recent",
+      "mcp__Runway__show_plans_and_credits",
+      "mcp__Runway__search_voices",
+      "mcp__Runway__whoami",
+      "mcp__Runway__generate_speech",
+      "mcp__Runway__generate_sound_effect"
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 """Choreography for the Spine launch trailer (polished cut).
 
-The six logo segments are tracked by index for the whole film:
+The film opens on three intact bars. Each snaps in two as its problem is spoken, giving the
+six logo segments, which are tracked by index for the rest of the film:
   pair A = segments 0, 1  -> Answers  -> top bar of the logo
   pair B = segments 2, 3  -> Ideas    -> middle bar of the logo
   pair C = segments 4, 5  -> Impact   -> bottom bar of the logo
@@ -36,11 +37,15 @@ HAND_X = [305.05 + 260 * i for i in range(6)]
 HAND_Y, HAND_L, HAND_T = 491.25, 250.5, 13.3
 FINAL_CX = 2200.0
 
-# Opening cluster: offsets (x, y, z) and resting rotation (rx, ry, rz) per segment.
-CLUSTER_C = np.array([1440.0, 540.0, 0.0])
-CLUSTER = [(-110, -250, 140, 8, 25, -6), (115, -165, -90, -5, -20, 4), (-95, -55, 70, 4, 30, -3),
-           (125, 45, -130, -6, -25, 5), (-85, 150, 10, 6, 18, -4), (135, 255, 100, -4, -28, 3)]
+# Opening: three intact bars, offsets (x, y, z) and resting rotation (rx, ry, rz).
+# Each snaps in two when its problem is spoken: 3 bars become the 6 logo segments.
+BARS_C = np.array([1440.0, 540.0, 0.0])
+BARS = [(70, -175, 110, 6, 22, -5), (-10, 0, -80, -4, -18, 4), (-60, 175, 60, 5, 26, -3)]
 ROWS_Y = [330.0, 540.0, 750.0]
+ROW_X0, ROW_X1 = 1140.0, 1650.0   # a whole problem bar; its halves keep these outer ends
+# Snap times: the start of the second voice burst in each problem phrase, measured from the
+# soundtrack's energy (the voiceover was not transcribed). Audio cues in audio.py match these.
+SNAPS = [3.88, 6.00, 7.62]
 
 # World layout of the three stations after the row splits (pair centres).
 SPLIT_B, SPLIT_C = 976.0, 2452.0          # B: 960 -> 1936, C: 1384 -> 3836
@@ -110,34 +115,68 @@ def screen_to_world(cam_xy, zoom, sx, sy):
 
 # ---------------------------------------------------------------- segment states
 
-def cluster_state(i, t):
-    ox, oy, oz, rx, ry, rz = CLUSTER[i]
+def bar_state(k, t):
+    ox, oy, oz, rx, ry, rz = BARS[k]
     yaw = lerp(-24, 16, clamp(t / 3.4))
-    G = rot_matrix(8, yaw, 0)
-    off = G @ np.array([ox, oy, oz], float)
-    s = e_out_expo((t - 0.06 * i) / 1.25)
-    far = CLUSTER_C + np.array([ox * 2.5, oy * 2.5, 9000.0])
-    pos = far + (CLUSTER_C + off - far) * s
+    off = rot_matrix(8, yaw, 0) @ np.array([ox, oy, oz], float)
+    s = e_out_expo((t - 0.1 * k) / 1.3)
+    far = BARS_C + np.array([ox * 2.5, oy * 2.5, 9000.0])
+    pos = far + (BARS_C + off - far) * s
     spin = 1 - s
-    sign = 1 if i % 2 else -1
-    return default_seg(x=pos[0], y=pos[1], z=pos[2], L=180, T=26,
+    sign = 1 if k % 2 else -1
+    return default_seg(x=pos[0], y=pos[1], z=pos[2], L=360, T=28,
                        rx=rx + 140 * spin * sign, ry=ry + yaw + 80 * spin, rz=rz + 60 * spin * (-sign),
                        alpha=prog(t, 0.0, 0.2, e_lin))
 
 
-def problem_state(i, t):
-    x = 1255.0 if i % 2 == 0 else 1535.0
-    d = default_seg(x=x, y=ROWS_Y[i // 2], L=230, T=22)
-    if i == 1:   # Questions: the answer half reaches, never connects, and drifts off
-        d["x"] += -40 * prog(t, 3.85, 4.25) + 100 * prog(t, 4.25, 4.8, e_out_cubic)
-        d["rz"] = -3 * prog(t, 4.25, 4.8, e_out_cubic)
+def whole_row(k):
+    return default_seg(x=(ROW_X0 + ROW_X1) / 2, y=ROWS_Y[k], L=ROW_X1 - ROW_X0, T=22)
+
+
+def recoil(u, amp):
+    """A sharp kick at the moment of the snap that settles without bouncing."""
+    if u < 0:
+        return 0.0
+    return amp * min(u / 0.04, 1.0) * math.exp(-max(u - 0.04, 0) / 0.11)
+
+
+def half_state(i, t):
+    """One half of a snapped problem bar. The crack opens at the bar's centre."""
+    k, side = i // 2, i % 2
+    u = t - SNAPS[k]
+    g = e_out_expo(u / 0.35) if u > 0 else 0.0
+    mid = (ROW_X0 + ROW_X1) / 2
+    inner = lerp(mid, mid - 25 if side == 0 else mid + 25, g)
+    x0, x1 = (ROW_X0, inner) if side == 0 else (inner, ROW_X1)
+    d = default_seg(x=(x0 + x1) / 2, y=ROWS_Y[k], L=x1 - x0, T=22)
+    d["rr" if side == 0 else "rl"] = g
+    sgn = -1 if side == 0 else 1
+    d["rz"] = recoil(u, 2.5 * sgn)
+    d["y"] += recoil(u, 3.0 * sgn)
+    if i == 1:   # Questions: the answer half drifts away
+        p = prog(t, SNAPS[0] + 0.35, SNAPS[0] + 1.0)
+        d["x"] += 60 * p
+        d["rz"] -= 3 * p
     if i == 3:   # Ideas: the second half loses momentum and droops
-        p = prog(t, 5.9, 6.45, e_out_cubic)
-        d["rz"], d["y"], d["x"] = 7 * p, d["y"] + 16 * p, d["x"] - 6 * p
+        p = prog(t, SNAPS[1] + 0.25, SNAPS[1] + 0.8, e_out_cubic)
+        d["rz"] += 7 * p
+        d["y"] += 16 * p
+        d["x"] -= 6 * p
     if i == 5:   # Impact: the proof half drains to an empty outline
-        d["fill"] = 1 - prog(t, 7.5, 8.2)
-        d["outline"] = prog(t, 7.42, 7.6, e_lin)
+        d["fill"] = 1 - prog(t, SNAPS[2] + 0.3, SNAPS[2] + 0.95)
+        d["outline"] = prog(t, SNAPS[2] + 0.2, SNAPS[2] + 0.35, e_lin)
     return d
+
+
+def problem_segments(t):
+    """Three bars until each snaps, then their halves."""
+    out = []
+    for k in range(3):
+        if t < SNAPS[k]:
+            out.append(whole_row(k))
+        else:
+            out += [half_state(2 * k, t), half_state(2 * k + 1, t)]
+    return out
 
 
 def row_state(i, t, sp):
@@ -188,19 +227,20 @@ def final_target(i):
 
 
 def segments_at(t):
-    if t < 3.4:
+    if t < 3.5:
         out = []
-        for i in range(6):
-            m = prog(t, 2.72 + 0.035 * i, 3.34 + 0.035 * i)
-            a = cluster_state(i, t)
-            out.append(mix(a, problem_state(i, t), m) if m > 0 else a)
-            out[-1]["alpha"] = a["alpha"] if m <= 0 else 1.0
+        for k in range(3):
+            a = bar_state(k, t)
+            m = prog(t, 2.72 + 0.07 * k, 3.34 + 0.07 * k)
+            out.append(mix(a, whole_row(k), m) if m > 0 else a)
         return out
+    if t < 8.62:
+        return problem_segments(t)
     if t < 9.54 + 1e-6:
         out = []
         for i in range(6):
             m = prog(t, 8.62 + 0.03 * i, 9.39 + 0.03 * i, e_io_quint)
-            a = problem_state(i, t)
+            a = half_state(i, t)
             b = row_state(i, t, 240)
             d = mix(a, b, m)
             if i == 5:
@@ -357,8 +397,9 @@ def draw_texts(c, t, cam, segs):
         T(c, t, "has AI.", SEMI, 112, WHITE, 150, 549, 0.62, 2.72)
     # 2. Questions / Ideas / Impact.
     if 3.0 <= t < 9.2:
-        rows = [("Questions.", "Unanswered.", 3.20, 3.74), ("Ideas.", "Stalled.", 5.29, 5.82),
-                ("Impact.", "Unproven.", 6.77, 7.44)]
+        # Each issue word lands with its bar's snap.
+        rows = [("Questions.", "Unanswered.", 3.20, SNAPS[0] - 0.08), ("Ideas.", "Stalled.", 5.29, SNAPS[1] - 0.08),
+                ("Impact.", "Unproven.", 6.77, SNAPS[2] - 0.08)]
         for r, (w1, w2, ta, tb) in enumerate(rows):
             base = ROWS_Y[r] + 27
             out = 8.55 + 0.06 * r

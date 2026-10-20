@@ -53,12 +53,26 @@ def tap():
     return thud(220.0, 160.0, 0.14, 0.04)
 
 
-KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": join, "tap": tap}
+def snap(seed=0):
+    """A bar breaking: a dry crack (filtered noise burst) with a bright click and a small knock."""
+    n = int(SR * 0.16)
+    rng = np.random.default_rng(100 + seed)
+    noise = rng.standard_normal(n)
+    crack = np.diff(np.r_[0, noise]) * env(n, 0.0004, 0.012)
+    t = np.arange(n) / SR
+    click = np.sin(2 * np.pi * 3100 * t) * env(n, 0.0005, 0.006) * 0.6
+    knock = thud(260.0, 140.0, 0.16, 0.03)[:n] * 0.5
+    return crack + click + knock
+
+
+KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": join, "tap": tap,
+         "snap0": lambda: snap(0), "snap1": lambda: snap(1), "snap2": lambda: snap(2)}
 
 # (time s, kind, peak dBFS, pan -1..1). Times match landings in timeline.py.
 CUES = [
-    (4.22, "tick", -36, 0.3),       # answer half almost touches, then drifts away
-    (6.05, "tap", -34, 0.3),        # idea half droops
+    (3.88, "snap0", -21, 0.25),     # Questions bar snaps (timeline.SNAPS)
+    (6.00, "snap1", -21, 0.25),     # Ideas bar snaps
+    (7.62, "snap2", -21, 0.25),     # Impact bar snaps
     (9.54, "land", -27, 0.0),       # six pieces land in one row as the light opens
     (10.26, "tick", -32, 0.0),      # row tightens: connected
     (14.54, "join", -25, 0.0),      # Company rules + Champion join: Answered

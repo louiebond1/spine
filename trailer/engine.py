@@ -94,12 +94,18 @@ def rot_matrix(rx, ry, rz):
 class Camera:
     """Looks at world point (cx, cy, 0). World units equal screen pixels at zoom 1."""
 
-    def __init__(self, cx=960.0, cy=540.0, zoom=1.0, yaw=0.0, pitch=0.0, focal=2200.0):
+    def __init__(self, cx=960.0, cy=540.0, zoom=1.0, yaw=0.0, pitch=0.0, focal=2200.0, cz=0.0):
         self.cx, self.cy, self.zoom, self.yaw, self.pitch, self.focal = cx, cy, zoom, yaw, pitch, focal
+        self.cz = cz
         self.R = rot_matrix(pitch, yaw, 0)
 
+    def depth(self, pts):
+        """Camera-space depth of world points (0 at the look-at plane, positive = further away)."""
+        p = np.asarray(pts, np.float64).reshape(-1, 3) - np.array([self.cx, self.cy, self.cz])
+        return (p @ self.R.T)[:, 2]
+
     def project(self, pts):
-        p = np.asarray(pts, np.float64) - np.array([self.cx, self.cy, 0.0])
+        p = np.asarray(pts, np.float64) - np.array([self.cx, self.cy, self.cz])
         p = p @ self.R.T
         s = self.focal / np.maximum(self.focal + p[:, 2], 1.0) * self.zoom
         return np.stack([W / 2 + p[:, 0] * s, H / 2 + p[:, 1] * s], 1)
@@ -468,3 +474,68 @@ def draw_backlight(canvas, cx, cy, strength, color=(40, 62, 125)):
     g = glow_sprite()
     rad = g.shape[0] // 2
     blend(canvas, int(cx) - rad, int(cy) - rad, g * strength, color)
+
+
+# ---------------------------------------------------------------- network: dots and connections
+
+@lru_cache(maxsize=256)
+def _dot_sprite(r10, b10):
+    """Disc of radius r with a soft edge of width b (both in tenths of a pixel), as an alpha map."""
+    r, b = r10 / 10.0, max(b10 / 10.0, 0.6)
+    ext = int(math.ceil(r + 3 * b)) + 1
+    yy, xx = np.mgrid[-ext:ext + 1, -ext:ext + 1].astype(np.float32)
+    d = np.sqrt(xx ** 2 + yy ** 2)
+    return np.clip(0.5 - (d - r) / (2 * b), 0, 1)
+
+
+def draw_dot(canvas, x, y, r, color, alpha=1.0, blur=0.0, ring=0.0):
+    """Dot at sub-pixel precision; blur softens it (depth of field); ring > 0 draws an outline of that width."""
+    if alpha <= 0.004 or r <= 0.05:
+        return
+    r10, b10 = int(round(r * 10)), int(round((0.6 + blur) * 10))
+    spr = _dot_sprite(r10, b10)
+    if ring > 0:
+        inner = _dot_sprite(max(1, int(round((r - ring) * 10))), b10)
+        pad = (spr.shape[0] - inner.shape[0]) // 2
+        spr = spr.copy()
+        spr[pad:pad + inner.shape[0], pad:pad + inner.shape[1]] -= inner
+        spr = np.clip(spr, 0, 1)
+    ext = spr.shape[0] // 2
+    ix, iy = int(math.floor(x)), int(math.floor(y))
+    m = _shift(spr, x - ix, y - iy)
+    blend(canvas, ix - ext, iy - ext, m * alpha, color)
+
+
+class LineLayer:
+    """Anti-aliased lines drawn at 2x and composited in one pass per colour."""
+
+    def __init__(self, scale=2):
+        self.s = scale
+        self.layers = {}
+
+    def line(self, a, b, color, alpha=1.0, width=1.4):
+        if alpha <= 0.004:
+            return
+        key = tuple(int(c) for c in color)
+        if key not in self.layers:
+            self.layers[key] = Image.new("L", (W * self.s, H * self.s), 0)
+        d = ImageDraw.Draw(self.layers[key])
+        s = self.s
+        d.line([(a[0] * s, a[1] * s), (b[0] * s, b[1] * s)], fill=int(255 * clamp(alpha)),
+               width=max(1, int(round(width * s))))
+
+    def composite(self, canvas):
+        for col, im in self.layers.items():
+            m = np.asarray(im.resize((W, H), Image.BOX), np.float32) / 255.0
+            if m.max() > 0:
+                blend(canvas, 0, 0, m, col)
+
+
+class Card(Panel):
+    """A cropped region of a real screen, floating in the world as a small lit card."""
+
+    def __init__(self, path, box, centre, width, yaw=0.0, pitch=0.0):
+        full = Image.open(path).convert("RGB").crop(box)
+        tmp = os.path.join("/tmp", f"spine_card_{abs(hash((path, box)))}.png")
+        full.save(tmp)
+        super().__init__(tmp, centre, yaw=yaw, pitch=pitch, scale=width / full.size[0])

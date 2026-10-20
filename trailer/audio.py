@@ -1,8 +1,9 @@
-"""Soundtrack: the approved cut's own mix (voiceover + score) plus quiet synthesised landing cues.
+"""Soundtrack mix.
 
-  python3 audio.py assets/original_audio.wav out/mix.wav
-The cues are deliberately low (about -24 to -34 dBFS peak) so the voiceover stays clear,
-and a limiter in mux.sh keeps the final peak below -1.5 dBFS.
+  python3 audio.py out/score.wav out/mix.wav [assets/vo/voiceover.wav]
+Score (score.py) + quiet synthesised landing cues + the voiceover, with the music ducked
+under the voice. The cues stay low (about -21 to -32 dBFS peak) so the voice stays clear,
+and a limiter in build.sh keeps the final peak below -1.5 dBFS.
 """
 import subprocess
 import sys
@@ -73,20 +74,17 @@ CUES = [
     (3.88, "snap0", -21, 0.25),     # Questions bar snaps (timeline.SNAPS)
     (6.00, "snap1", -21, 0.25),     # Ideas bar snaps
     (7.62, "snap2", -21, 0.25),     # Impact bar snaps
-    (9.54, "land", -27, 0.0),       # six pieces land in one row as the light opens
-    (10.26, "tick", -32, 0.0),      # row tightens: connected
-    (14.54, "join", -25, 0.0),      # Company rules + Champion join: Answered
-    (19.54, "tap", -29, 0.15),      # Ideas pair stalls
-    (19.62, "tick", -33, 0.2),      # stall flag surfaces
-    (20.40, "tick", -34, 0.2),      # flag folds, work resumes
-    (21.21, "land", -28, 0.35),     # pair arrives at Progress
-    (24.84, "land", -26, 0.3),      # outside verifier docks against the team frame
-    (25.12, "tick_hi", -31, 0.1),   # Reported. becomes Verified.
-    (27.0, "tap", -30, 0.1),        # the dark scene closes into the frame
+    (10.30, "land", -26, 0.2),      # the six land on Home's "needs you" rows
+    (14.05, "join", -25, -0.2),     # Question + Champion meet under the thread
+    (17.45, "tick", -32, 0.3),      # Ideas pair steps to Recruiting
+    (18.25, "tick", -32, 0.4),      # ... and to Building
+    (19.55, "land", -29, -0.2),     # lands on the stalled build in Pulse
+    (20.85, "tick_hi", -29, -0.4),  # the flag surfaces
+    (22.65, "land", -27, 0.2),      # Impact pair lands on hours saved
     (34.50, "land", -28, 0.0),      # Book a demo button lands
 ]
-for i in range(6):                  # stage labels, left to right, rising pitch
-    CUES.append((27.92 + 0.05 * i, "tick", -34, -0.6 + 0.24 * i))
+for i in range(6):                  # each segment lands under its stage, left to right, rising pitch
+    CUES.append((27.55 + 0.12 * i, "tick", -32, -0.6 + 0.24 * i))
 
 
 def read_wav(path):
@@ -104,12 +102,31 @@ def write_wav(path, x):
         w.writeframes(y.tobytes())
 
 
-def build(src, dst):
-    base = read_wav(src)
+def duck_curve(vo, depth_db=-7.0, attack=0.06, release=0.35):
+    """Gain curve that lowers the music while the voice speaks."""
+    lvl = np.abs(vo).max(axis=1)
+    hop = 480
+    n = len(lvl) // hop + 1
+    env = np.array([lvl[i * hop:(i + 1) * hop].max(initial=0.0) for i in range(n)])
+    active = env > 10 ** (-40 / 20)
+    g = np.ones(n)
+    a_up, a_dn = np.exp(-hop / SR / release), np.exp(-hop / SR / attack)
+    target = 10 ** (depth_db / 20)
+    cur = 1.0
+    for i in range(n):
+        goal = target if active[i] else 1.0
+        k = a_dn if goal < cur else a_up
+        cur = goal + (cur - goal) * k
+        g[i] = cur
+    return np.repeat(g, hop)[:len(vo)][:, None]
+
+
+def build(score_path, dst, vo_path=None):
+    base = read_wav(score_path) * 10 ** (-3 / 20)
     fx = np.zeros_like(base)
     stage = 0
     for t, kind, db, pan in sorted(CUES):
-        if kind == "tick" and 27.9 <= t < 28.3:
+        if kind == "tick" and 27.5 <= t < 28.3:
             s = tick(2200.0 * (2 ** (stage / 12 * 2)))   # whole-tone steps upward
             stage += 1
         else:
@@ -120,10 +137,15 @@ def build(src, dst):
         gl, gr = np.sqrt((1 - pan) / 2), np.sqrt((1 + pan) / 2)
         fx[i:i + n, 0] += s[:n] * gl * np.sqrt(2)
         fx[i:i + n, 1] += s[:n] * gr * np.sqrt(2)
-    write_wav(dst, base + fx)
-    pk = np.max(np.abs(base + fx))
+    mix_ = base + fx
+    if vo_path:
+        vo = read_wav(vo_path)[:len(mix_)]
+        vo = np.pad(vo, ((0, len(mix_) - len(vo)), (0, 0)))
+        mix_ = mix_ * duck_curve(vo) + vo
+    write_wav(dst, mix_)
+    pk = np.max(np.abs(mix_))
     print(f"mix peak {20 * np.log10(pk):.2f} dBFS (before limiter)")
 
 
 if __name__ == "__main__":
-    build(sys.argv[1], sys.argv[2])
+    build(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)

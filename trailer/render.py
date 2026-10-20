@@ -18,8 +18,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PLATES = os.path.join(HERE, "assets", "plates")
 
 # Windows with fast camera or object moves get 180-degree-shutter motion blur.
-BLUR = [(0.0, 1.0, 6), (11.62, 12.36, 12), (16.14, 16.82, 16), (21.9, 22.66, 16), (24.0, 24.86, 16),
-        (26.45, 28.08, 14)]
+BLUR = [(0.0, 1.0, 6), (8.7, 10.5, 8), (11.9, 12.65, 16), (16.1, 16.85, 16), (18.9, 19.65, 16),
+        (22.0, 22.75, 16), (26.4, 28.2, 12), (28.2, 29.15, 8)]
 SHUTTER = 0.5 / FPS
 
 _plate = None

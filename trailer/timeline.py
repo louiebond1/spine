@@ -1,24 +1,28 @@
-"""Choreography for the Spine launch trailer (polished cut).
+"""Choreography for the Spine launch trailer.
 
 The film opens on three intact bars. Each snaps in two as its problem is spoken, giving the
 six logo segments, which are tracked by index for the rest of the film:
-  pair A = segments 0, 1  -> Answers  -> top bar of the logo
-  pair B = segments 2, 3  -> Ideas    -> middle bar of the logo
-  pair C = segments 4, 5  -> Impact   -> bottom bar of the logo
-Frames 0..878 are rendered here. Frame 879 onwards (the stage-bar-to-logo fold) is the
-approved cut itself, and frames 969+ add a re-set tagline and button on its logo plate.
-All times are seconds and were chosen against the original soundtrack's measured events.
+  pair A = segments 0, 1  -> Questions -> top bar of the logo
+  pair B = segments 2, 3  -> Ideas     -> middle bar of the logo
+  pair C = segments 4, 5  -> Impact    -> bottom bar of the logo
+The segments then travel through a world of real Spine screens (the final mockups in
+/design), landing on the parts of each screen that do the work, and finally line up under
+the real stage stepper before handing over to the approved cut's stage-to-logo fold.
+
+Frames 0..878 are rendered here. Frame 879 onwards is the approved cut itself, and frames
+969+ add a re-set tagline and button on its logo plate.
 """
 import math
+import os
 
 import numpy as np
-from PIL import Image
 
 from engine import (
-    W, H, FPS, Camera, SCREEN_CAM, default_seg, draw_segment, draw_text, rect_aa, blend,
-    dark_background, solid, coverage_1d, prog, lerp, clamp, rot_matrix,
+    W, H, FPS, Camera, SCREEN_CAM, Panel, default_seg, draw_segment, draw_text, draw_panel,
+    draw_text_scaled, draw_backlight,
+    dark_background, solid, prog, lerp, clamp, rot_matrix,
     e_io_cubic, e_io_quint, e_out_cubic, e_out_quint, e_out_expo, e_in_cubic, e_lin,
-    LIGHT_A, LIGHT_B, INK, INK_SOFT, INK_LABEL, WHITE, BLUE_ON_DARK, SUB_ON_DARK, BRAND, BUTTON,
+    LIGHT_B, INK, INK_SOFT, INK_LABEL, WHITE, BLUE_ON_DARK, SUB_ON_DARK, BRAND, BUTTON,
 )
 
 HANDOFF = 879      # first frame taken from the approved cut (29.30 s)
@@ -31,35 +35,20 @@ MED = "Inter-Medium.otf"
 SEMI_TEXT = "Inter-SemiBold.otf"
 REG = "Inter-Regular.otf"
 
-STAGES = ["Draft", "Approval", "Forming team", "Building", "Launching", "Live"]
+DESIGN = os.environ.get("SPINE_DESIGN_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "screens"))
+
+STAGES = ["Idea", "Approval", "Recruiting", "Building", "Publishing", "Live"]   # product stages (CLAUDE.md)
 # Screen geometry of the approved cut's settled stage bar at 29.30 s (measured).
 HAND_X = [305.05 + 260 * i for i in range(6)]
 HAND_Y, HAND_L, HAND_T = 491.25, 250.5, 13.3
-FINAL_CX = 2200.0
 
 # Opening: three intact bars, offsets (x, y, z) and resting rotation (rx, ry, rz).
-# Each snaps in two when its problem is spoken: 3 bars become the 6 logo segments.
 BARS_C = np.array([1440.0, 540.0, 0.0])
 BARS = [(70, -175, 110, 6, 22, -5), (-10, 0, -80, -4, -18, 4), (-60, 175, 60, 5, 26, -3)]
 ROWS_Y = [330.0, 540.0, 750.0]
 ROW_X0, ROW_X1 = 1140.0, 1650.0   # a whole problem bar; its halves keep these outer ends
-# Snap times: the start of the second voice burst in each problem phrase, measured from the
-# soundtrack's energy (the voiceover was not transcribed). Audio cues in audio.py match these.
+# Snap times: the start of each problem word in the voiceover. Audio cues in audio.py match.
 SNAPS = [3.88, 6.00, 7.62]
-
-# World layout of the three stations after the row splits (pair centres).
-SPLIT_B, SPLIT_C = 976.0, 2452.0          # B: 960 -> 1936, C: 1384 -> 3836
-B_TRAVEL = 413.0
-TRACK_X0, TRACK_X1, TRACK_Y = 1730.0, 2555.0, 622.0
-FLAG_X = 2383.0
-DARK_EDGE_X = 2860.0
-CAM_S4 = (536.0, 485.0)
-CAM_S5 = (2124.0, 437.5)
-CAM_S6 = (3592.5, 462.5)
-BOX = (930.0, 672.0, 1360.0, 880.0)       # project-team frame in Impact (screen)
-SEG4_RECT = (1036.0, 748.0, 1324.0, 772.0)  # inside segment 4 on screen in Impact
-DARK_END = 27.24
-S6_LAND = (1540.0, 760.0)                 # where the outside segment docks (screen)
 
 KEYS = ("x", "y", "z", "L", "T", "rx", "ry", "rz", "rl", "rr", "fill", "outline", "shadow")
 
@@ -72,49 +61,53 @@ def mix(a, b, p):
     return out
 
 
-def s3_x(i, sp):
-    return 960 + (i - 2.5) * sp
+# ---------------------------------------------------------------- the screens
+
+_PANELS = {}
 
 
-# ---------------------------------------------------------------- camera
-
-def camera_at(t):
-    cx, cy, z, yaw = 960.0, 540.0, 1.0, 0.0
-    if t >= 9.54:
-        z = 1 + 0.03 * prog(t, 9.54, 11.68, e_lin)
-    if t >= 11.68:
-        P = prog(t, 11.68, 12.32)
-        cx, cy, z = lerp(960, CAM_S4[0], P), lerp(540, CAM_S4[1], P), lerp(1.03, 2.0, P)
-        yaw = 9 * math.sin(math.pi * P)
-    if t >= 12.32:
-        cx, cy, z, yaw = CAM_S4[0], CAM_S4[1], 2.0 + 0.04 * prog(t, 12.32, 16.18, e_lin), 0.0
-    if t >= 16.18:
-        P = prog(t, 16.18, 16.76)
-        cx, cy, z = lerp(CAM_S4[0], CAM_S5[0], P), lerp(CAM_S4[1], CAM_S5[1], P), lerp(2.04, 1.6, P)
-        yaw = -7 * math.sin(math.pi * P)
-    if t >= 16.76:
-        cx, cy, z, yaw = CAM_S5[0], CAM_S5[1], 1.6 + 0.025 * prog(t, 16.76, 21.95, e_lin), 0.0
-    if t >= 21.95:
-        P = prog(t, 21.95, 22.62)
-        cx, cy, z = lerp(CAM_S5[0], CAM_S6[0], P), lerp(CAM_S5[1], CAM_S6[1], P), lerp(1.625, 1.6, P)
-        yaw = -6 * math.sin(math.pi * P)
-    if t >= 22.62:
-        cx, cy, z, yaw = CAM_S6[0], CAM_S6[1], 1.6, 0.0
-    if t >= 27.2:
-        K = prog(t, 27.2, 28.05)
-        cx, cy, z = lerp(CAM_S6[0], FINAL_CX, K), lerp(CAM_S6[1], 540, K), lerp(1.6, 1.025, K)
-        yaw = 5 * math.sin(math.pi * K)
-    if t >= 28.05:
-        cx, cy, z, yaw = FINAL_CX, 540.0, lerp(1.025, 1.0, prog(t, 28.05, 29.1)), 0.0
-    return Camera(cx, cy, z, yaw)
+def panels():
+    if not _PANELS:
+        def P(name, centre, yaw, pitch):
+            return Panel(os.path.join(DESIGN, name), centre, yaw=yaw, pitch=pitch)
+        _PANELS.update(
+            # Headline on the left -> the screen's left edge recedes (positive yaw), and vice versa.
+            home=P("01-home.png", (1240.0, 560.0, 260.0), 20, 5),
+            thread=P("03-question-thread.png", (4300.0, 560.0, 200.0), -20, 4),
+            pipe=P("07-pipeline.png", (7400.0, 560.0, 200.0), 18, 6),
+            pulse=P("09-pulse.png", (10500.0, 560.0, 200.0), -18, 4),
+            prog=P("10-programme.png", (13600.0, 560.0, 200.0), 18, 6),
+            ws=P("08-project-workspace.png", (16700.0, 560.0, 0.0), 0, 0),
+        )
+    return _PANELS
 
 
-def screen_to_world(cam_xy, zoom, sx, sy):
-    return cam_xy[0] + (sx - W / 2) / zoom, cam_xy[1] + (sy - H / 2) / zoom
+# Where the segments land on each screen, in mockup pixels: (u0, u1, v) per half.
+LAND = {
+    # Home "needs you" rows: Questions pair on the question row, Ideas on the approval row,
+    # Impact on the project that is ready to publish.
+    "home": {0: (350, 906, 502), 1: (918, 1475, 502), 2: (350, 906, 386), 3: (918, 1475, 386),
+             4: (350, 906, 617), 5: (918, 1475, 617)},
+    "thread": {0: (318, 660, 288), 1: (672, 1015, 288)},
+    "pulse": {2: (439, 655, 600), 3: (667, 882, 600)},
+    "prog": {4: (335, 632, 975), 5: (644, 940, 975)},
+}
+PIPE_COLS = [318, 580, 822, 1063, 1297]      # Approval, Recruiting, Building, Publishing, Live
+PIPE_V = 364
+STEP_U = [330, 426, 525, 624, 725, 822]      # stepper labels Idea .. Live
+STEP_V = 372
 
 
-# ---------------------------------------------------------------- segment states
+def on_panel(name, u0, u1, v, T=10.0, rl=1.0, rr=1.0):
+    p = panels()[name]
+    c = p.world((u0 + u1) / 2, v, lift=1.0)
+    return default_seg(x=c[0], y=c[1], z=c[2], L=(u1 - u0) * p.scale, T=T, rr=rr, rl=rl, flat=True,
+                       **p.seg_rot())
 
+
+def land(name, i, **kw):
+    u0, u1, v = LAND[name][i]
+    return on_panel(name, u0, u1, v, **kw)
 def bar_state(k, t):
     ox, oy, oz, rx, ry, rz = BARS[k]
     yaw = lerp(-24, 16, clamp(t / 3.4))
@@ -179,136 +172,212 @@ def problem_segments(t):
     return out
 
 
-def row_state(i, t, sp):
-    return default_seg(x=s3_x(i, sp), y=600.0, L=200, T=20)
 
 
-def station_states(t):
-    """Segments from the row split onward, in world space. Returns a list of 6 dicts (or merged A)."""
-    sp = 212.0
-    psplit = prog(t, 11.66, 12.32)
-    segs = []
-    for i in range(6):
-        d = row_state(i, t, sp)
-        if i in (2, 3):
-            d["x"] += SPLIT_B * psplit
-        if i in (4, 5):
-            d["x"] += SPLIT_C * psplit
-        segs.append(d)
-    # Answers: Company rules + Champion slide together and become one bar.
-    J = prog(t, 14.05, 14.54, e_io_quint)
-    segs[0]["x"] += 6.5 * J
-    segs[1]["x"] -= 6.5 * J
-    segs[0]["rr"] = 1 - J
-    segs[1]["rl"] = 1 - J
-    # Ideas: the pair travels the track, stalls, is surfaced, then completes.
-    tr = 0.55 * prog(t, 18.43, 19.54) + 0.45 * prog(t, 20.37, 21.21)
-    segs[2]["x"] += B_TRAVEL * tr
-    segs[3]["x"] += B_TRAVEL * tr
-    # Impact: the verifying half leaves the team and returns from outside.
-    s5 = segs[5]
-    if t >= 21.95:
-        p = prog(t, 21.95, 22.45, e_in_cubic)
-        s5["y"] = lerp(600, -500, p)
-        s5["rz"] = -30 * p
-    if t >= 24.0:
-        pe = prog(t, 24.0, 24.84, e_io_cubic)
-        # Crosses behind the headline, then descends outside the team frame's right edge.
-        P0, P1, P2 = np.array([-280.0, 110.0]), np.array([1700.0, 200.0]), np.array(S6_LAND)
-        sp_ = (1 - pe) ** 2 * P0 + 2 * (1 - pe) * pe * P1 + pe ** 2 * P2
-        s5["x"], s5["y"] = screen_to_world(CAM_S6, 1.6, sp_[0], sp_[1])
-        s5["rz"] = lerp(-26, 0, pe)
-        s5["ry"] = lerp(60, 0, pe)
-    return segs
+# ---------------------------------------------------------------- camera rail
+
+def aim(pt, sx, sy, zoom, yaw=0.0, focal=1600.0):
+    """Camera that shows world point pt at screen (sx, sy)."""
+    cx, cy = pt[0], pt[1]
+    for _ in range(4):
+        p = Camera(cx, cy, zoom, yaw, focal=focal).to_screen(*pt)
+        k = zoom * focal / (focal + pt[2])
+        cx += (p[0] - sx) / k
+        cy += (p[1] - sy) / k
+    return (cx, cy, zoom, yaw, focal)
 
 
-def final_target(i):
-    return default_seg(x=HAND_X[i] - W / 2 + FINAL_CX, y=HAND_Y, L=HAND_L, T=HAND_T, flat=True)
+def shot(name, u, v, sx, sy, zoom, yaw=0.0):
+    return aim(panels()[name].world(u, v), sx, sy, zoom, yaw)
 
 
-def segments_at(t):
+_RAIL = None
+
+
+def rail():
+    """(time, camera) keys; the camera eases between consecutive keys and holds on equal ones."""
+    global _RAIL
+    if _RAIL is None:
+        _RAIL = [
+            (0.0, (960.0, 540.0, 1.0, 0.0, 2200.0)),
+            (8.6, (960.0, 540.0, 1.05, 0.0, 2200.0)),
+            (10.4, shot("home", 768, 512, 1340, 560, 0.74, 0.0)),
+            (11.9, shot("home", 768, 512, 1290, 555, 0.82, -3.5)),
+            (12.5, shot("thread", 768, 512, 600, 560, 0.74, 0.0)),
+            (16.1, shot("thread", 768, 512, 650, 555, 0.82, 3.5)),
+            (16.7, shot("pipe", 768, 512, 1340, 560, 0.74, 0.0)),
+            (18.9, shot("pipe", 768, 512, 1290, 555, 0.82, -3.5)),
+            (19.5, shot("pulse", 768, 512, 600, 560, 0.74, 0.0)),
+            (22.0, shot("pulse", 768, 512, 650, 555, 0.82, 3.5)),
+            (22.6, shot("prog", 768, 512, 1340, 560, 0.74, 0.0)),
+            (26.5, shot("prog", 768, 512, 1290, 555, 0.82, -3.5)),
+            (27.3, shot("ws", 576, 345, 960, 520, 1.05, 0.0)),
+            (28.05, shot("ws", 576, 345, 960, 510, 1.25, 0.0)),
+            (29.05, shot("ws", 576, 345, 960, 500, 2.70, 0.0)),
+        ]
+    return _RAIL
+
+
+def camera_at(t):
+    keys = rail()
+    if t <= keys[0][0]:
+        c = keys[0][1]
+    elif t >= keys[-1][0]:
+        c = keys[-1][1]
+    else:
+        for (ta, a), (tb, b) in zip(keys, keys[1:]):
+            if ta <= t <= tb:
+                p = prog(t, ta, tb)
+                c = tuple(lerp(x, y, p) for x, y in zip(a, b))
+                # A whip between screens tilts the camera through the move.
+                if tb - ta < 0.9:
+                    c = (c[0], c[1], c[2] * (1 - 0.12 * math.sin(math.pi * p)), c[3] + 7 * math.sin(math.pi * p), c[4])
+                break
+    return Camera(c[0], c[1], c[2], c[3], focal=c[4])
+
+
+# ---------------------------------------------------------------- segment journeys
+
+def travel(a, b, p, arc=260.0):
+    """Move a segment state a -> b, lifting it towards the viewer mid-flight."""
+    d = mix(a, b, p)
+    d["z"] -= arc * math.sin(math.pi * p)
+    d["flat"] = b.get("flat", False) if p > 0.5 else a.get("flat", False)
+    return d
+
+
+def pipe_state(i, t):
+    """Ideas pair walking the pipeline headers, stopping at Building."""
+    col = PIPE_COLS[0]
+    for k, (t0, t1) in enumerate(((16.95, 17.45), (17.75, 18.25))):
+        col = lerp(col, PIPE_COLS[k + 1], prog(t, t0, t1, e_io_quint))
+    u0 = col + (0 if i == 2 else 104)
+    return on_panel("pipe", u0, u0 + 96, PIPE_V)
+
+
+def step_target(i):
+    return on_panel("ws", STEP_U[i] - 36, STEP_U[i] + 36, STEP_V, T=6.0)
+
+
+def segment_world(i, t):
+    pair = i // 2
+    if t < 8.62:
+        return None
+    # 1. Out of the problem rows and onto the Home screen's "needs you" rows.
+    m = prog(t, 8.70 + 0.04 * i, 10.20 + 0.04 * i)
+    s = travel(half_state(i, 8.62), land("home", i), m, arc=380)
+    if i == 5:
+        s["fill"] = max(1 - prog(t, SNAPS[2] + 0.3, SNAPS[2] + 0.95), prog(t, 8.9, 9.6))
+        s["outline"] = 1 - prog(t, 9.4, 9.8, e_lin)
+    # 2. Each pair goes on to its own screen.
+    if pair == 0:
+        J = prog(t, 13.65, 14.05, e_io_quint)
+        th = land("thread", i, rr=(1 - J) if i == 0 else 1.0, rl=(1 - J) if i == 1 else 1.0)
+        th["x"] += (6.0 if i == 0 else -6.0) * J
+        s = travel(s, th, prog(t, 11.95 + 0.04 * i, 12.55 + 0.04 * i), arc=420)
+    elif pair == 1:
+        s = travel(s, pipe_state(i, t), prog(t, 16.15 + 0.04 * (i - 2), 16.75 + 0.04 * (i - 2)), arc=420)
+        s = travel(s, land("pulse", i), prog(t, 18.95 + 0.04 * (i - 2), 19.55 + 0.04 * (i - 2)), arc=420)
+    else:
+        s = travel(s, land("prog", i), prog(t, 22.05 + 0.04 * (i - 4), 22.65 + 0.04 * (i - 4)), arc=420)
+    # 3. Everyone converges on the real stage stepper, left to right.
+    if t >= 26.4:
+        if pair == 0:
+            s["rl"], s["rr"] = 1.0, 1.0
+        s = travel(s, step_target(i), prog(t, 26.5 + 0.12 * i, 27.55 + 0.12 * i), arc=520)
+    return s
+
+
+def segments_at(t, cam):
+    """Six segment states, each tagged with the camera it should be drawn with."""
     if t < 3.5:
         out = []
         for k in range(3):
             a = bar_state(k, t)
-            m = prog(t, 2.72 + 0.07 * k, 3.34 + 0.07 * k)
-            out.append(mix(a, whole_row(k), m) if m > 0 else a)
-        return out
+            mm = prog(t, 2.72 + 0.07 * k, 3.34 + 0.07 * k)
+            out.append(mix(a, whole_row(k), mm) if mm > 0 else a)
+        return [(s, cam) for s in out]
     if t < 8.62:
-        return problem_segments(t)
-    if t < 9.54 + 1e-6:
-        out = []
-        for i in range(6):
-            m = prog(t, 8.62 + 0.03 * i, 9.39 + 0.03 * i, e_io_quint)
-            a = half_state(i, t)
-            b = row_state(i, t, 240)
-            d = mix(a, b, m)
-            if i == 5:
-                d["fill"] = prog(t, 8.75, 9.3)
-                d["outline"] = 1 - prog(t, 9.0, 9.35, e_lin)
-            out.append(d)
-        return out
-    if t < 11.66:
-        sp = lerp(240, 212, prog(t, 10.0, 10.26))
-        return [row_state(i, t, sp) for i in range(6)]
-    segs = station_states(t)
-    J = prog(t, 14.05, 14.54, e_io_quint)
-    merged = J >= 1.0
-    F = [prog(t, 27.2 + 0.03 * i, 28.05) for i in range(6)]
-    if t >= 27.2:
-        out = []
-        for i in range(6):
-            d = segs[i]
-            if i in (0, 1):
-                d["rl"], d["rr"] = (1.0, 0.0) if i == 0 else (0.0, 1.0)
-            out.append(mix(d, final_target(i), F[i]) if F[i] > 0 else d)
-            out[-1]["flat"] = F[i] > 0.6
-        return out
-    if merged:
-        a = default_seg(x=(segs[0]["x"] + segs[1]["x"]) / 2, y=600.0, L=399.0, T=20.0)
-        return [a] + segs[2:]
-    return segs
+        return [(s, cam) for s in problem_segments(t)]
+    segs = [segment_world(i, t) for i in range(6)]
+    # 4. Handoff: lift the six off the screen into the approved cut's stage bar.
+    F = [prog(t, 28.35 + 0.03 * i, 29.12) for i in range(6)]
+    out = []
+    for i, s in enumerate(segs):
+        if F[i] <= 0:
+            out.append((s, cam))
+            continue
+        c = cam.to_screen(s["x"], s["y"], s["z"])
+        k = cam.zoom * cam.focal / (cam.focal + s["z"])
+        scr = default_seg(x=c[0], y=c[1], L=s["L"] * k, T=s["T"] * k, flat=True)
+        tgt = default_seg(x=HAND_X[i], y=HAND_Y, L=HAND_L, T=HAND_T, flat=True)
+        out.append((mix(scr, tgt, F[i]), SCREEN_CAM))
+    return out
 
 
-# ---------------------------------------------------------------- background
+# ---------------------------------------------------------------- scene
 
-def background_at(t, cam):
-    if t < 9.50:
-        return dark_background().copy()
-    if t < 10.05:
-        open_ = prog(t, 9.50, 10.05)
-        yc = cam.to_screen(960, 600)[1]
-        top, bot = yc - open_ * (yc + 2), yc + open_ * (H - yc + 2)
-        cov = coverage_1d(H, top, bot)[:, None, None]
-        return dark_background() * (1 - cov) + LIGHT_A * cov
-    if t < 21.95:
-        return solid(LIGHT_A)
-    if t < 22.62:
-        ex = cam.to_screen(DARK_EDGE_X, 600)[0]
-        cov = coverage_1d(W, ex, W + 10)[None, :, None]
-        return solid(LIGHT_A) * (1 - cov) + dark_background() * cov
-    if t < 26.5:
-        return dark_background().copy()
-    rect = dark_rect(t)
-    if rect is None:
-        return solid(LIGHT_B)
-    x0, y0, x1, y1 = rect
-    cov = coverage_1d(H, y0, y1)[:, None, None] * coverage_1d(W, x0, x1)[None, :, None]
-    return solid(LIGHT_B) * (1 - cov) + dark_background() * cov
+LIGHT_AT = 28.35        # the workspace screen fills the frame; the world behind turns light
+PANEL_FADE = (28.45, 28.95)
 
 
-def dark_rect(t):
-    """The Impact scene's darkness contracts into the project-team frame, then closes."""
-    if t >= DARK_END:
-        return None
-    Q = prog(t, 26.5, 27.0)
-    R = prog(t, 27.0, DARK_END)
-    full = (-40.0, -40.0, W + 40.0, H + 40.0)
-    rect = (lerp(f, b, Q) for f, b in zip(full, BOX))
-    return tuple(lerp(a, b, R) for a, b in zip(rect, SEG4_RECT))
+def visible_panels(t):
+    out = [("home", 8.9, 12.7), ("thread", 11.9, 16.8), ("pipe", 16.1, 19.6), ("pulse", 18.9, 22.7),
+           ("prog", 22.0, 27.0), ("ws", 26.3, 29.3)]
+    return [n for n, a, b in out if a <= t < b]
 
 
-# ---------------------------------------------------------------- text helper
+def panel_alpha(name, t):
+    if name == "home":
+        return prog(t, 8.9, 9.7, e_out_cubic)
+    if name == "ws":
+        return 1 - prog(t, *PANEL_FADE, e_io_cubic)
+    return 1.0
+
+
+def render_scene(t):
+    cam = camera_at(t)
+    c = (solid(LIGHT_B) if t >= LIGHT_AT else dark_background().copy()).astype(np.float32)
+    for name in visible_panels(t):
+        p = panels()[name]
+        sweep = -600 + 3600 * ((t * 0.35) % 1.0)
+        if t < LIGHT_AT:
+            bc = cam.to_screen(*p.world(p.w / 2, p.h / 2))
+            draw_backlight(c, bc[0], bc[1], 0.55 * panel_alpha(name, t))
+        draw_panel(c, cam, p, alpha=panel_alpha(name, t), shadow=0.0 if t >= LIGHT_AT else 0.6,
+                   sheen=(sweep, 0.05))
+    # The stall flag on Pulse: rises beside the stalled build as Spine flags it.
+    fl = 64 * prog(t, 20.55, 20.85, e_out_quint)
+    if fl > 0.5 and t < 22.7:
+        p = panels()["pulse"]
+        cw = p.world(326, 586 - fl / 2, lift=1.0)
+        draw_segment(c, cam, default_seg(x=cw[0], y=cw[1], z=cw[2], L=fl, T=6, rz=-90, flat=True,
+                                         color=BRAND, **p.seg_rot()))
+    for s, scam in sorted(segments_at(t, cam), key=lambda sc: -sc[0]["z"]):
+        draw_segment(c, scam, s)
+    draw_texts(c, t, cam)
+    return c
+
+
+# ---------------------------------------------------------------- text helpers
+
+HEAD_KEYS = [10.4, 12.5, 16.7, 19.5, 22.6]     # rail keys whose framing places each headline
+_ANCHORS = {}
+
+
+def head_anchor(key, sx, sy):
+    """World point (on the z=0 plane) that the camera at rail time `key` shows at (sx, sy)."""
+    k = (key, sx, sy)
+    if k not in _ANCHORS:
+        cam = camera_at(key)
+        x, y = cam.cx + (sx - W / 2) / cam.zoom, cam.cy + (sy - H / 2) / cam.zoom
+        for _ in range(6):
+            p = cam.to_screen(x, y, 0.0)
+            x += (sx - p[0]) / cam.zoom
+            y += (sy - p[1]) / cam.zoom
+        e = cam.to_screen(x + 100, y, 0.0)
+        _ANCHORS[k] = ((x, y, 0.0), (e[0] - sx) / 100)
+    return _ANCHORS[k]
 
 def T(canvas, t, text, fname, size, color, x, base, t_in, t_out=None, align="left", d_in=0.58, d_out=0.32):
     rv = prog(t, t_in, t_in + d_in, e_out_quint)
@@ -316,146 +385,55 @@ def T(canvas, t, text, fname, size, color, x, base, t_in, t_out=None, align="lef
     draw_text(canvas, text, fname, size, color, x, base, align=align, reveal=rv, exit=ex)
 
 
-def seg_screen(cam, s):
-    p = cam.to_screen(s["x"], s["y"], s["z"])
-    return p, s["T"] * cam.zoom
+def text_w(s, f, size):
+    from engine import text_width
+    return text_width(s, f, size)
 
 
-# ---------------------------------------------------------------- scene
-
-def render_scene(t):
-    cam = camera_at(t)
-    c = background_at(t, cam).astype(np.float32)
-    segs = segments_at(t)
-    light = 9.5 <= t < 22.3
-    sh = prog(t, 9.5, 10.0, e_lin) if light else 0.0
-
-    # Ideas track and stall flag, behind the segments.
-    if 17.5 <= t < 27.1:
-        xe = lerp(TRACK_X0, TRACK_X1, prog(t, 17.6, 18.2))
-        xs = lerp(TRACK_X0, TRACK_X1, prog(t, 26.6, 27.1))
-        if xe > xs + 0.5:
-            a = cam.to_screen(xs, TRACK_Y)
-            b = cam.to_screen(xe, TRACK_Y)
-            rect_aa(c, a[0], a[1] - 1.25, b[0], b[1] + 1.25, (206, 210, 222))
-        fl = 36 * prog(t, 19.54, 19.87, e_out_quint) * (1 - prog(t, 26.6, 27.0))
-        if fl > 0.5:
-            ang = lerp(-90, 0, prog(t, 20.30, 20.55))
-            cxw = FLAG_X + math.cos(math.radians(ang)) * fl / 2
-            cyw = TRACK_Y + math.sin(math.radians(ang)) * fl / 2
-            draw_segment(c, cam, default_seg(x=cxw, y=cyw, L=fl, T=6, rz=ang, flat=True, color=BRAND))
-
-    for s in sorted(segs, key=lambda s: -s["z"]):
-        if light and s["shadow"] == 0:
-            s["shadow"] = sh
-        draw_segment(c, cam, s)
-
-    # Brackets: the project team's frame in Impact.
-    if 23.3 <= t < DARK_END:
-        draw_brackets(c, t)
-
-    draw_texts(c, t, cam, segs)
-    return c
-
-
-def draw_brackets(c, t):
-    col = (100, 130, 250)
-    rect = dark_rect(t) if t >= 27.0 else None
-    corners = []
-    starts = [(-420, -320), (420, -320), (420, 320), (-420, 320)]
-    box_c = [(BOX[0], BOX[1]), (BOX[2], BOX[1]), (BOX[2], BOX[3]), (BOX[0], BOX[3])]
-    for k in range(4):
-        pe = prog(t, 23.40 + 0.05 * k, 24.05 + 0.05 * k, e_out_quint)
-        if rect is not None:
-            x0, y0, x1, y1 = rect
-            box_c_k = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)][k]
-            corners.append((box_c_k[0], box_c_k[1], 1.0 - prog(t, 27.0, DARK_END, e_lin)))
-        else:
-            corners.append((box_c[k][0] + starts[k][0] * (1 - pe), box_c[k][1] + starts[k][1] * (1 - pe), pe))
-    if rect is not None:
-        arm = min(54.0, (rect[3] - rect[1]) / 2, (rect[2] - rect[0]) / 2)
-    else:
-        arm = 54.0
-    sw = 4.0
-    for k, (x, y, a) in enumerate(corners):
-        if a <= 0:
-            continue
-        sx = 1 if k in (0, 3) else -1
-        sy = 1 if k in (0, 1) else -1
-        hx0, hx1 = sorted((x, x + sx * arm))
-        vy0, vy1 = sorted((y, y + sy * arm))
-        ox = 0 if sx > 0 else -sw
-        oy = 0 if sy > 0 else -sw
-        rect_aa(c, hx0, y + oy, hx1, y + oy + sw, col, min(1, a * 1.5))
-        rect_aa(c, x + ox, vy0, x + ox + sw, vy1, col, min(1, a * 1.5))
-
-
-def draw_texts(c, t, cam, segs):
+def draw_texts(c, t, cam):
     # 1. Your company has AI.
     if t < 3.2:
         T(c, t, "Your company", SEMI, 112, WHITE, 150, 419, 0.42, 2.66)
         T(c, t, "has AI.", SEMI, 112, WHITE, 150, 549, 0.62, 2.72)
-    # 2. Questions / Ideas / Impact.
+    # 2. Each issue word lands with its bar's snap.
     if 3.0 <= t < 9.2:
-        # Each issue word lands with its bar's snap.
         rows = [("Questions.", "Unanswered.", 3.20, SNAPS[0] - 0.08), ("Ideas.", "Stalled.", 5.29, SNAPS[1] - 0.08),
                 ("Impact.", "Unproven.", 6.77, SNAPS[2] - 0.08)]
         for r, (w1, w2, ta, tb) in enumerate(rows):
             base = ROWS_Y[r] + 27
             out = 8.55 + 0.06 * r
             T(c, t, w1, SEMI, 74, WHITE, 150, base, ta, out)
-            x2 = 150 + text_w(w1 + " ", SEMI, 74)
-            T(c, t, w2, DISP, 74, BLUE_ON_DARK, x2, base, tb, out)
-    # 3. Bring it together.
-    if 9.5 <= t < 12.1:
-        T(c, t, "Bring it together.", SEMI, 120, INK, 960, 430, 9.80, 11.62, align="center")
-        T(c, t, "AI adoption, connected.", REG, 46, INK_SOFT, 960, 712, 10.30, 11.66, align="center")
-    # 4. Answers.
-    if 12.2 <= t < 16.9:
-        T(c, t, "Answers grounded", SEMI, 96, INK, 150, 248, 12.32, 16.15)
-        T(c, t, "in your company’s rules.", SEMI, 96, INK, 150, 360, 12.60, 16.20)
-        T(c, t, "Human Champions. Shared answers.", REG, 46, INK_SOFT, 150, 446, 13.05, 16.22)
-        if t < 14.7:
-            for i, (lab, tin) in enumerate((("Company rules", 13.43), ("Champion", 13.71))):
-                (sx, sy), th = seg_screen(cam, segs[i])
-                T(c, t, lab, MED, 40, INK, sx, sy + th / 2 + 60, tin, 14.28, align="center", d_in=0.45)
-        if t >= 14.5:
-            (sx, sy), th = seg_screen(cam, segs[0])
-            T(c, t, "Answered.", SEMI, 50, BRAND, sx, sy + th / 2 + 62, 14.56, 16.15, align="center", d_in=0.5)
-    # 5. Ideas.
-    if 16.9 <= t < 22.7:
-        T(c, t, "Ideas, backed", SEMI, 96, INK, 150, 248, 17.04, 21.92)
-        T(c, t, "by people and ownership.", SEMI, 96, INK, 150, 360, 17.32, 21.96)
-        T(c, t, "Clear owners. Stalls surfaced.", REG, 46, INK_SOFT, 150, 446, 17.88, 21.98)
-        ib = 1 if len(segs) == 5 else 2
-        for k, (lab, tin) in enumerate((("People", 18.15), ("Ownership", 18.29))):
-            (sx, sy), th = seg_screen(cam, segs[ib + k])
-            T(c, t, lab, MED, 40, INK, sx, sy - th / 2 - 24, tin, 21.90, align="center", d_in=0.45)
-        ex, ey = cam.to_screen(TRACK_X1, TRACK_Y)
-        g = prog(t, 21.21, 21.5, e_lin)
-        col = tuple(lerp(a, b, g) for a, b in zip(INK_SOFT, BRAND))
-        T(c, t, "Progress", MED, 40, col, ex, ey + 52, 18.2, 21.94, align="right", d_in=0.45)
-    # 6. Impact.
-    if 22.6 <= t < 27.0:
-        T(c, t, "Impact you", SEMI, 110, WHITE, 150, 262, 23.14, 26.50)
-        T(c, t, "can prove.", SEMI, 110, WHITE, 150, 390, 23.58, 26.55)
-        T(c, t, "Verified outside the project team.", REG, 46, SUB_ON_DARK, 150, 474, 24.16, 26.58)
-        ia = 3 if len(segs) == 5 else 4
-        (sx, sy), th = seg_screen(cam, segs[ia])
-        T(c, t, "Reported.", MED, 42, SUB_ON_DARK, sx, sy + th / 2 + 58, 23.85, 25.10, align="center", d_in=0.45)
-        T(c, t, "Verified.", SEMI, 46, BLUE_ON_DARK, sx, sy + th / 2 + 58, 25.18, 26.50, align="center", d_in=0.45)
-    # 7. Stages.
-    if 27.9 <= t < 29.3:
+            T(c, t, w2, DISP, 74, BLUE_ON_DARK, 150 + text_w(w1 + " ", SEMI, 74), base, tb, out)
+    # 3-6. Headlines sit in the open space beside each screen.
+    heads = [
+        (9.75, 11.75, 110, 400, ["Your AI", "project", "manager."], None),
+        (12.6, 15.95, 1300, 450, ["Questions go", "to Champions."], ["Answered in private.", "Reused when asked again."]),
+        (16.85, 18.75, 110, 360, ["Every idea gets", "an owner", "and a team."], ["AI review. Approval.", "Build plan."]),
+        (19.65, 21.85, 1300, 400, ["When work", "goes quiet,", "Spine flags it."], None),
+        (22.75, 26.35, 110, 450, ["Impact you", "can measure."], ["Hours saved, logged", "every month."]),
+    ]
+    for (t0, t1, x, base, lines, sub), key in zip(heads, HEAD_KEYS):
+        if t0 - 0.1 <= t < t1 + 0.9:
+            items = [(line, SEMI, 76, WHITE, base + k * 88, t0 + 0.12 * k) for k, line in enumerate(lines)]
+            items += [(line, REG, 38, SUB_ON_DARK, base + len(lines) * 88 + 8 + k * 50, t0 + 0.4 + 0.06 * k)
+                      for k, line in enumerate(sub or [])]
+            for text, fn, size, col, b, tin in items:
+                # The type is anchored in the world beside its screen, so it moves with the camera.
+                anchor, ref = head_anchor(key, x, b)
+                sx, sy = cam.to_screen(*anchor)
+                ex = cam.to_screen(anchor[0] + 100, anchor[1], anchor[2])
+                scale = (ex[0] - sx) / 100 / ref
+                rv = prog(t, tin, tin + 0.58, e_out_quint)
+                draw_text_scaled(c, text, fn, size, col, sx, sy, scale=scale, reveal=rv)
+    # 7. Stage names: the screen's own labels resolve into crisp type as the screen dissolves.
+    if 28.3 <= t < 29.3:
+        segs = segments_at(t, cam)
+        a = prog(t, *PANEL_FADE, e_io_cubic)
         for i, name in enumerate(STAGES):
-            (sx, sy), th = seg_screen(cam, segs[i])
-            fn, col = (SEMI_TEXT, BRAND) if name == "Live" else (MED, INK_LABEL)
-            T(c, t, name, fn, 36, col, sx, sy + 54, 27.92 + 0.05 * i, 28.92 + 0.02 * i,
-              align="center", d_in=0.4, d_out=0.22)
-
-
-def text_w(s, f, size):
-    from engine import text_width
-    return text_width(s, f, size)
+            s, scam = segs[i]
+            sx, sy = scam.to_screen(s["x"], s["y"], s["z"])
+            ex = prog(t, 28.98 + 0.02 * i, 29.2 + 0.02 * i * 0.3, e_io_cubic)
+            draw_text(c, name, MED, 34, INK_LABEL, sx, sy - 26, align="center", reveal=1.0, exit=ex, alpha=a)
 
 
 # ---------------------------------------------------------------- end card

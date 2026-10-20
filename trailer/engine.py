@@ -331,3 +331,140 @@ def coverage_1d(n, a, b):
 def quantise(canvas):
     # The dither stays below half a level, so flat integer colours survive exactly.
     return np.clip(np.rint(canvas + dither()), 0, 255).astype(np.uint8)
+
+
+# ---------------------------------------------------------------- screen panels
+
+PANEL_PAD = 6
+PANEL_RADIUS = 18
+
+
+class Panel:
+    """A product screen (mockup PNG) placed in the world as a flat, lit 3D surface.
+
+    Panel-local coordinates are mockup pixels (u, v); the screen's centre sits at
+    world `centre`, rotated by (pitch, yaw) and scaled by `scale` world units per pixel.
+    """
+
+    def __init__(self, path, centre, yaw=0.0, pitch=0.0, scale=1.0):
+        im = Image.open(path).convert("RGB")
+        self.w, self.h = im.size
+        mask = Image.new("L", im.size, 0)
+        ImageDraw.Draw(mask).rounded_rectangle([0, 0, self.w - 1, self.h - 1], PANEL_RADIUS, fill=255)
+        rgba = im.convert("RGBA")
+        rgba.putalpha(mask)
+        padded = Image.new("RGBA", (self.w + 2 * PANEL_PAD, self.h + 2 * PANEL_PAD), (0, 0, 0, 0))
+        padded.paste(rgba, (PANEL_PAD, PANEL_PAD))
+        # Mip levels so a small, distant panel is not aliased.
+        self.mips = [padded]
+        while self.mips[-1].size[0] > 300:
+            m = self.mips[-1]
+            self.mips.append(m.resize((m.size[0] // 2, m.size[1] // 2), Image.LANCZOS))
+        self.centre = np.array(centre, float)
+        self.yaw, self.pitch, self.scale = yaw, pitch, scale
+        self.R = rot_matrix(pitch, yaw, 0)
+
+    def world(self, u, v, lift=0.0):
+        """World position of mockup pixel (u, v); lift moves it towards the viewer."""
+        local = np.array([(u - self.w / 2) * self.scale, (v - self.h / 2) * self.scale, -lift])
+        return self.R @ local + self.centre
+
+    def seg_rot(self):
+        return dict(rx=self.pitch, ry=self.yaw)
+
+
+def _perspective_coeffs(dst, src):
+    """PIL PERSPECTIVE coefficients mapping output points dst -> input points src."""
+    A, b = [], []
+    for (x, y), (u, v) in zip(dst, src):
+        A.append([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.append(u)
+        A.append([0, 0, 0, x, y, 1, -v * x, -v * y]); b.append(v)
+    return np.linalg.solve(np.array(A, float), np.array(b, float))
+
+
+def draw_panel(canvas, cam, panel, alpha=1.0, shadow=0.55, sheen=None):
+    if alpha <= 0.003:
+        return
+    P = PANEL_PAD
+    corners_uv = [(-P, -P), (panel.w + P, -P), (panel.w + P, panel.h + P), (-P, panel.h + P)]
+    world = np.array([panel.world(u, v) for u, v in corners_uv])
+    sc = cam.project(world)
+    x0, y0 = np.floor(sc.min(0)).astype(int) - 2
+    x1, y1 = np.ceil(sc.max(0)).astype(int) + 2
+    X0, Y0, X1, Y1 = max(x0, 0), max(y0, 0), min(x1, W), min(y1, H)
+    if X1 <= X0 or Y1 <= Y0:
+        return
+    # Choose a mip level from the on-screen size of the panel.
+    screen_w = max(np.linalg.norm(sc[1] - sc[0]), np.linalg.norm(sc[2] - sc[3]))
+    ratio = screen_w / (panel.w + 2 * P)
+    lvl = 0
+    while lvl + 1 < len(panel.mips) and ratio < 0.6 / (2 ** lvl):
+        lvl += 1
+    src = panel.mips[lvl]
+    f = 1 / (2 ** lvl)
+    src_pts = [(0, 0), (src.size[0], 0), (src.size[0], src.size[1]), (0, src.size[1])]
+    dst_pts = [(px - X0, py - Y0) for px, py in sc]
+    coeffs = _perspective_coeffs(dst_pts, src_pts)
+    out = src.transform((X1 - X0, Y1 - Y0), Image.PERSPECTIVE, tuple(coeffs), Image.BICUBIC)
+    arr = np.asarray(out, np.float32)
+    a = arr[..., 3] / 255.0 * alpha
+    if shadow > 0:
+        small = Image.fromarray((a * 255).astype(np.uint8)).resize(
+            (max(1, (X1 - X0) // 8), max(1, (Y1 - Y0) // 8)), Image.BILINEAR)
+        small = small.filter(ImageFilter.GaussianBlur(4))
+        sh = np.asarray(small.resize((X1 - X0, Y1 - Y0), Image.BILINEAR), np.float32) / 255.0
+        off = max(2, int((Y1 - Y0) * 0.03))
+        sh = np.roll(sh, off, axis=0)
+        sh[:off] = 0
+        blend(canvas, X0, Y0, sh * shadow * alpha, (2, 5, 14))
+    rgb = arr[..., :3]
+    if sheen is not None:
+        # A soft diagonal band of light travelling across the glass.
+        pos, strength = sheen
+        yy, xx = np.mgrid[Y0:Y1, X0:X1].astype(np.float32)
+        d = (xx * 0.8 + yy * 0.6) - pos
+        rgb = rgb + (255 - rgb) * (np.exp(-(d / 180.0) ** 2) * strength)[..., None]
+    blend(canvas, X0, Y0, a, rgb)
+
+
+def draw_text_scaled(canvas, text, fname, size, color, x, baseline, scale=1.0, reveal=1.0, alpha=1.0):
+    """Text drawn at `size` then scaled (for type that lives in the 3D world). Mask reveal as draw_text."""
+    if scale <= 0.05 or reveal <= 0 or alpha <= 0:
+        return
+    if abs(scale - 1.0) < 1e-3:
+        draw_text(canvas, text, fname, size, color, x, baseline, reveal=reveal, alpha=alpha)
+        return
+    m, bo, lo, adv = text_mask(text, fname, size)
+    asc, desc = font(fname, size).getmetrics()
+    box_top, box_bot = bo - asc - 4, bo + desc + 4          # line box inside the mask
+    travel = box_bot - box_top
+    dy = (1 - reveal) * travel
+    rows = np.arange(m.shape[0], dtype=np.float32) - dy
+    src = np.zeros_like(m)
+    ok = (rows >= 0) & (rows < m.shape[0] - 1)
+    r0 = np.clip(np.floor(rows).astype(int), 0, m.shape[0] - 1)
+    fr = (rows - np.floor(rows))[:, None]
+    r1 = np.clip(r0 + 1, 0, m.shape[0] - 1)
+    src[ok] = (m[r0] * (1 - fr) + m[r1] * fr)[ok]
+    rr = np.arange(m.shape[0])
+    src *= ((rr >= box_top) & (rr < box_bot)).astype(np.float32)[:, None]
+    w2, h2 = max(1, int(round(m.shape[1] * scale))), max(1, int(round(m.shape[0] * scale)))
+    im = Image.fromarray((src * 255).astype(np.uint8)).resize((w2, h2), Image.LANCZOS)
+    mm = np.asarray(im, np.float32) / 255.0
+    ox, oy = x - lo * scale, baseline - bo * scale
+    ix, iy = int(math.floor(ox)), int(math.floor(oy))
+    mm = _shift(mm, ox - ix, oy - iy)
+    blend(canvas, ix, iy, mm * alpha, color)
+
+
+@lru_cache(None)
+def glow_sprite(radius=900):
+    yy, xx = np.mgrid[-radius:radius, -radius:radius].astype(np.float32)
+    r = np.sqrt(xx ** 2 + (yy * 1.6) ** 2) / radius
+    return np.clip(1 - r, 0, 1) ** 2.2
+
+
+def draw_backlight(canvas, cx, cy, strength, color=(40, 62, 125)):
+    g = glow_sprite()
+    rad = g.shape[0] // 2
+    blend(canvas, int(cx) - rad, int(cy) - rad, g * strength, color)

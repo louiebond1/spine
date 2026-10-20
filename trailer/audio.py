@@ -71,20 +71,25 @@ KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": jo
 
 # (time s, kind, peak dBFS, pan -1..1). Times match landings in timeline.py.
 CUES = [
-    (3.88, "snap0", -21, 0.25),     # Questions bar snaps (timeline.SNAPS)
-    (6.00, "snap1", -21, 0.25),     # Ideas bar snaps
-    (7.62, "snap2", -21, 0.25),     # Impact bar snaps
-    (10.30, "land", -26, 0.2),      # the six land on Home's "needs you" rows
-    (14.05, "join", -25, -0.2),     # Question + Champion meet under the thread
-    (17.45, "tick", -32, 0.3),      # Ideas pair steps to Recruiting
-    (18.25, "tick", -32, 0.4),      # ... and to Building
-    (19.55, "land", -29, -0.2),     # lands on the stalled build in Pulse
-    (20.85, "tick_hi", -29, -0.4),  # the flag surfaces
-    (22.65, "land", -27, 0.2),      # Impact pair lands on hours saved
+    (3.70, "snap0", -21, 0.25),     # the line falls short of the question
+    (5.95, "snap1", -21, 0.25),     # the idea's line sags
+    (8.00, "snap2", -21, 0.25),     # impact's line breaks up
+    (9.55, "join", -24, 0.0),       # pulled taut: Spine
+    (14.20, "tick_hi", -30, 0.3),   # the line reaches the Champion
+    (15.00, "land", -28, 0.3),      # Answered.
+    (18.00, "tick", -32, -0.2),     # Recruiting
+    (18.75, "tick", -31, 0.0),      # Building
+    (19.80, "tap", -26, 0.0),       # Pulse: heartbeat as Spine flags the stall
+    (20.12, "tap", -29, 0.0),
+    (20.44, "tap", -32, 0.0),
+    (21.45, "tick", -32, 0.3),      # Publishing
+    (21.95, "land", -28, 0.45),     # Live
+    (27.90, "tick_hi", -32, 0.0),   # from idea to live: the line completes
     (34.50, "land", -28, 0.0),      # Book a demo button lands
 ]
-for i in range(6):                  # each segment lands under its stage, left to right, rising pitch
-    CUES.append((27.55 + 0.12 * i, "tick", -32, -0.6 + 0.24 * i))
+for k in range(4):                  # hours saved: each month's point, rising pitch
+    CUES.append((23.10 + 0.42 * k, "tick", -31, -0.5 + 0.33 * k))
+PITCHED = (23.0, 24.6)              # cues in this window step up a whole tone each
 
 
 def read_wav(path):
@@ -126,7 +131,7 @@ def build(score_path, dst, vo_path=None):
     fx = np.zeros_like(base)
     stage = 0
     for t, kind, db, pan in sorted(CUES):
-        if kind == "tick" and 27.5 <= t < 28.3:
+        if kind == "tick" and PITCHED[0] <= t < PITCHED[1]:
             s = tick(2200.0 * (2 ** (stage / 12 * 2)))   # whole-tone steps upward
             stage += 1
         else:

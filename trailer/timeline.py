@@ -1,34 +1,33 @@
-"""Choreography for the Spine launch trailer.
+"""Spine launch film: "One line".
 
-The film opens on three intact bars. Each snaps in two as its problem is spoken, giving the
-six logo segments, which are tracked by index for the rest of the film:
-  pair A = segments 0, 1  -> Questions
-  pair B = segments 2, 3  -> Ideas
-  pair C = segments 4, 5  -> Impact
-The six then stack into a spine of six vertebrae at the centre of a 3D field of dots (the
-company: people, questions, ideas). Lines draw out from the spine to every dot, and the camera
-follows one story per pair: a question routed to a Champion, an idea that gathers a team,
-moves through the real stages, stalls and is flagged, and impact rising as hours saved.
-Finally the network folds back into the spine, the vertebrae swing horizontal into the stage
-bar, and the approved cut's stage-to-logo fold takes over.
+A bright, typographic film. A single brand-blue line carries the whole story:
+  - it falls short of a question, sags as an idea stalls, breaks up as impact goes unproven;
+  - it snaps taut: Spine, your AI project manager;
+  - it circles a question and carries it to a Champion;
+  - it becomes the six real project stages, stalls at Building and spikes into the Pulse
+    heartbeat when Spine flags it, then reaches Live;
+  - it rises into the hours-saved line;
+  - and finally cuts into three pieces that stack into the Spine logo.
+All copy and stage names follow the product brief (CLAUDE.md). The figures 6, 16, 30, 42 are the
+product's seeded hours saved for July to October, as shown in the Programme screen.
 
-Frames 0..878 are rendered here. Frame 879 onwards is the approved cut itself, and frames
-969+ add a re-set tagline and button on its logo plate.
+Everything is a function of time t (seconds). Frames 969+ are the end card.
 """
 import math
 import os
 
 import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
 
 from engine import (
-    W, H, FPS, Camera, SCREEN_CAM, Card, default_seg, draw_segment, draw_text, draw_panel, draw_dot,
-    LineLayer, dark_background, solid, coverage_1d, prog, lerp, clamp, rot_matrix, text_width,
+    W, H, FPS, SCREEN_CAM, default_seg, draw_segment, draw_text, draw_text_scaled, draw_dot, blend,
+    solid, prog, lerp, clamp, text_width,
     e_io_cubic, e_io_quint, e_out_cubic, e_out_quint, e_out_expo, e_in_cubic, e_lin,
-    LIGHT_B, INK, INK_SOFT, INK_LABEL, WHITE, BLUE_ON_DARK, SUB_ON_DARK, BRAND, BUTTON,
+    LIGHT_B, INK, INK_SOFT, INK_LABEL, BRAND, BUTTON,
 )
 
-HANDOFF = 879      # first frame taken from the approved cut (29.30 s)
 END_PLATE = 969    # first end-card frame (32.30 s)
+HANDOFF = END_PLATE
 TOTAL = 1140       # 38.0 s
 
 SEMI = "InterDisplay-SemiBold.otf"
@@ -38,514 +37,548 @@ SEMI_TEXT = "Inter-SemiBold.otf"
 REG = "Inter-Regular.otf"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCREENS = os.environ.get("SPINE_DESIGN_DIR", os.path.join(HERE, "assets", "screens"))
+PLATES = os.path.join(HERE, "assets", "plates")
 
 STAGES = ["Idea", "Approval", "Recruiting", "Building", "Publishing", "Live"]   # product stages (CLAUDE.md)
-# Screen geometry of the approved cut's settled stage bar at 29.30 s (measured).
-HAND_X = [305.05 + 260 * i for i in range(6)]
-HAND_Y, HAND_L, HAND_T = 491.25, 250.5, 13.3
+HOURS = [6, 16, 30, 42]
+MONTHS = ["July", "August", "September", "October"]
 
-# Opening: three intact bars, offsets (x, y, z) and resting rotation (rx, ry, rz).
-BARS_C = np.array([1440.0, 540.0, 0.0])
-BARS = [(70, -175, 110, 6, 22, -5), (-10, 0, -80, -4, -18, 4), (-60, 175, 60, 5, 26, -3)]
-ROWS_Y = [330.0, 540.0, 750.0]
-ROW_X0, ROW_X1 = 1140.0, 1650.0   # a whole problem bar; its halves keep these outer ends
-# Snap times: the start of each problem word in the voiceover. Audio cues in audio.py match.
-SNAPS = [3.88, 6.00, 7.62]
+GREY = (205, 209, 219)
+GREY_TEXT = (150, 155, 168)
+TRACK = (226, 228, 234)
+THREAD_W = 12.0
 
-KEYS = ("x", "y", "z", "L", "T", "rx", "ry", "rz", "rl", "rr", "fill", "outline", "shadow")
-
-# ---------------------------------------------------------------- the world
-
-C = np.array([960.0, 540.0, 0.0])                      # centre of the spine
-VERT_DX = [8, -6, 10, -8, 6, -4]                       # a slight organic stagger
-VERT = [C + np.array([VERT_DX[k], (k - 2.5) * 62, 0.0]) for k in range(6)]
-
-NODE_PERSON, NODE_QUESTION, NODE_IDEA = 0, 1, 2
-COL_PERSON = (222, 228, 242)
-COL_LINE = (110, 136, 225)
-COL_HERO = (170, 192, 255)
+# Each scene lives in its own region of a wide 2D world; the camera travels between them.
+REGION = 2600.0
 
 
-def _make_nodes(n=150, seed=5):
-    rng = np.random.default_rng(seed)
-    out = []
-    while len(out) < n:
-        th = rng.uniform(0, 2 * math.pi)
-        cphi = rng.uniform(-1, 1)
-        sphi = math.sqrt(1 - cphi ** 2)
-        r = 560 + 560 * rng.random() ** 0.7
-        p = C + np.array([r * sphi * math.cos(th), 0.55 * r * cphi, r * sphi * math.sin(th)])
-        u = rng.random()
-        kind = NODE_PERSON if u < 0.7 else NODE_QUESTION if u < 0.85 else NODE_IDEA
-        k = int(np.clip(round((p[1] - C[1]) / 62 + 2.5), 0, 5))
-        out.append(dict(p=p, kind=kind, v=k, phase=rng.uniform(0, 6.3), dist=r))
-    order = np.argsort([o["dist"] for o in out])
-    for rank, i in enumerate(order):
-        out[i]["tc"] = 9.75 + 1.35 * rank / n + 0.08 * math.sin(out[i]["phase"] * 3)
-    return out
+def R(k, x, y):
+    return np.array([k * REGION + x, y], float)
 
 
-NODES = _make_nodes()
+# Problem beats stack vertically inside region 1.
+B_DY = [0.0, 760.0, 1520.0]
 
-# Hero story points (world).
-Q = C + np.array([430.0, -250.0, -320.0])              # a question
-CH = C + np.array([700.0, 70.0, 120.0])                # the Champion who claims it
-L5 = C + np.array([-760.0, 260.0, -180.0])             # where the idea's journey plays out
-SP = [L5 + np.array([-390.0 + 156 * k, -26 * math.sin(k * 0.9), 0.0]) for k in range(6)]
-TEAM = [SP[0] + np.array(o) for o in ((-110, -120, 40), (-30, 140, -30), (100, -130, -60))]
-L6 = C + np.array([820.0, 200.0, -380.0])              # where impact is measured
-HOURS = [6, 16, 30, 42]                                # total hours saved Jul-Oct (seed data)
-MONTHS = ["Jul", "Aug", "Sep", "Oct"]
-CHART = [L6 + np.array([-300.0 + 200 * k, 120 - HOURS[k] * 6.0, 0.0]) for k in range(4)]
+# Logo bars of the approved end card (screen pixels): (x0, x1, centre y).
+LOGO = [(736.0, 831.0, 397.5), (708.0, 835.0, 469.5), (700.0, 779.0, 541.5)]
+LOGO_T = 40.0
+SNAPS = [3.70, 5.95, 8.00]     # the line fails as each issue word lands
 
 
-def mix(a, b, p):
-    out = dict(a)
-    for k in KEYS:
-        if k in a and k in b:
-            out[k] = lerp(a[k], b[k], p)
-    return out
+# ---------------------------------------------------------------- 2D camera
 
-def bar_state(k, t):
-    ox, oy, oz, rx, ry, rz = BARS[k]
-    yaw = lerp(-24, 16, clamp(t / 3.4))
-    off = rot_matrix(8, yaw, 0) @ np.array([ox, oy, oz], float)
-    s = e_out_expo((t - 0.1 * k) / 1.3)
-    far = BARS_C + np.array([ox * 2.5, oy * 2.5, 9000.0])
-    pos = far + (BARS_C + off - far) * s
-    spin = 1 - s
-    sign = 1 if k % 2 else -1
-    return default_seg(x=pos[0], y=pos[1], z=pos[2], L=360, T=28,
-                       rx=rx + 140 * spin * sign, ry=ry + yaw + 80 * spin, rz=rz + 60 * spin * (-sign),
-                       alpha=prog(t, 0.0, 0.2, e_lin))
+class Cam2D:
+    def __init__(self, cx, cy, zoom):
+        self.cx, self.cy, self.zoom = cx, cy, zoom
+
+    def to_screen(self, p):
+        p = np.asarray(p, float)
+        return (p - np.array([self.cx, self.cy])) * self.zoom + np.array([W / 2, H / 2])
 
 
-def whole_row(k):
-    return default_seg(x=(ROW_X0 + ROW_X1) / 2, y=ROWS_Y[k], L=ROW_X1 - ROW_X0, T=22)
-
-
-def recoil(u, amp):
-    """A sharp kick at the moment of the snap that settles without bouncing."""
-    if u < 0:
-        return 0.0
-    return amp * min(u / 0.04, 1.0) * math.exp(-max(u - 0.04, 0) / 0.11)
-
-
-def half_state(i, t):
-    """One half of a snapped problem bar. The crack opens at the bar's centre."""
-    k, side = i // 2, i % 2
-    u = t - SNAPS[k]
-    g = e_out_expo(u / 0.35) if u > 0 else 0.0
-    mid = (ROW_X0 + ROW_X1) / 2
-    inner = lerp(mid, mid - 25 if side == 0 else mid + 25, g)
-    x0, x1 = (ROW_X0, inner) if side == 0 else (inner, ROW_X1)
-    d = default_seg(x=(x0 + x1) / 2, y=ROWS_Y[k], L=x1 - x0, T=22)
-    d["rr" if side == 0 else "rl"] = g
-    sgn = -1 if side == 0 else 1
-    d["rz"] = recoil(u, 2.5 * sgn)
-    d["y"] += recoil(u, 3.0 * sgn)
-    if i == 1:   # Questions: the answer half drifts away
-        p = prog(t, SNAPS[0] + 0.35, SNAPS[0] + 1.0)
-        d["x"] += 60 * p
-        d["rz"] -= 3 * p
-    if i == 3:   # Ideas: the second half loses momentum and droops
-        p = prog(t, SNAPS[1] + 0.25, SNAPS[1] + 0.8, e_out_cubic)
-        d["rz"] += 7 * p
-        d["y"] += 16 * p
-        d["x"] -= 6 * p
-    if i == 5:   # Impact: the proof half drains to an empty outline
-        d["fill"] = 1 - prog(t, SNAPS[2] + 0.3, SNAPS[2] + 0.95)
-        d["outline"] = prog(t, SNAPS[2] + 0.2, SNAPS[2] + 0.35, e_lin)
-    return d
-
-
-def problem_segments(t):
-    """Three bars until each snaps, then their halves."""
-    out = []
-    for k in range(3):
-        if t < SNAPS[k]:
-            out.append(whole_row(k))
-        else:
-            out += [half_state(2 * k, t), half_state(2 * k + 1, t)]
-    return out
-
-
-
-
-
-
-# ---------------------------------------------------------------- camera rail
-
-def look(pt, zoom, yaw, pitch, focal=1700.0):
-    return (pt[0], pt[1], pt[2], zoom, yaw, pitch, focal)
+def view(k, x=960.0, y=540.0, zoom=1.0):
+    return (k * REGION + x, y, zoom)
 
 
 RAIL = [
-    (0.0, look(C, 1.0, 0, 0, 2200)),
-    (8.55, look(C, 1.05, -4, 0, 2200)),
-    (9.6, look(C, 1.30, -20, 6, 1700)),                      # in close as the spine forms
-    (12.1, look(C, 0.80, 26, 10, 1700)),                     # orbit out: the network lights up
-    (13.0, look((Q + CH) / 2, 1.45, 40, 6)),                 # dolly to one question
-    (16.0, look((Q + CH) / 2, 1.55, 47, 4)),
-    (17.0, look(SP[2] + np.array([60.0, -40.0, 0.0]), 1.75, -34, 8)),   # swing round the spine to an idea
-    (19.6, look(SP[3] + np.array([40.0, -40.0, 0.0]), 1.85, -30, 6)),   # follow it to Building
-    (22.0, look(SP[4] + np.array([0.0, -40.0, 0.0]), 1.85, -26, 6)),
-    (22.9, look(L6 + np.array([150.0, -60.0, 0.0]), 1.55, 22, 4)),      # across to impact
-    (26.3, look(L6 + np.array([170.0, -60.0, 0.0]), 1.62, 28, 2)),
-    (27.35, look(C, 1.0, 0, 0, 2200)),                       # back to the spine, square on
-    (29.3, look(C, 1.0, 0, 0, 2200)),
+    (0.0, view(0, zoom=1.0)),
+    (2.85, view(0, zoom=1.05)),
+    (3.25, view(1, zoom=1.0)),
+    (5.1, view(1, 990, zoom=1.03)),
+    (5.55, view(1, 960, 540 + B_DY[1])),
+    (7.15, view(1, 990, 540 + B_DY[1], 1.03)),
+    (7.6, view(1, 960, 540 + B_DY[2])),
+    (9.25, view(1, 990, 540 + B_DY[2], 1.04)),
+    (9.65, view(2, zoom=0.92)),
+    (12.1, view(2, zoom=1.0)),
+    (12.65, view(3, zoom=1.0)),
+    (16.2, view(3, 990, zoom=1.04)),
+    (16.75, view(4, zoom=1.0)),
+    (22.15, view(4, 1010, zoom=1.03)),
+    (22.7, view(5, zoom=1.0)),
+    (26.45, view(5, 1000, zoom=1.04)),
+    (27.0, view(6, zoom=1.1)),
+    (29.4, view(6, zoom=1.0)),
+    (29.4001, view(7, zoom=1.0)),     # region 6 and 7 frame the same screen; see final()
+    (38.0, view(7, zoom=1.0)),
 ]
 
 
 def camera_at(t):
-    keys = RAIL
-    t = max(t, keys[0][0])
-    if t >= keys[-1][0]:
-        c = keys[-1][1]
-    else:
-        for (ta, a), (tb, b) in zip(keys, keys[1:]):
-            if ta <= t <= tb:
-                c = tuple(lerp(x, y, prog(t, ta, tb)) for x, y in zip(a, b))
-                break
-    return Camera(c[0], c[1], c[3], c[4], c[5], focal=c[6], cz=c[2])
+    t = max(t, 0.0)
+    for (ta, a), (tb, b) in zip(RAIL, RAIL[1:]):
+        if ta <= t <= tb:
+            p = prog(t, ta, tb)
+            return Cam2D(*(lerp(x, y, p) for x, y in zip(a, b)))
+    return Cam2D(*RAIL[-1][1])
 
 
-def dof(cam, p):
-    """Blur radius in pixels for a world point: sharp at the look-at plane, softer with depth."""
-    return min(7.0, abs(float(cam.depth(p)[0])) * 0.0065 * cam.zoom)
+# ---------------------------------------------------------------- polylines
+
+N = 260
 
 
-# ---------------------------------------------------------------- segments: vertebrae of the spine
-
-def travel(a, b, p, arc=260.0):
-    d = mix(a, b, p)
-    d["z"] -= arc * math.sin(math.pi * p)
-    d["flat"] = b.get("flat", False) if p > 0.5 else a.get("flat", False)
-    return d
-
-
-def vertebra(i):
-    v = VERT[i]
-    return default_seg(x=v[0], y=v[1], z=v[2], L=190.0, T=22.0)
+def resample(pts, n=N):
+    pts = np.asarray(pts, float)
+    d = np.r_[0, np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))]
+    if d[-1] <= 0:
+        return np.repeat(pts[:1], n, axis=0)
+    s = np.linspace(0, d[-1], n)
+    return np.c_[np.interp(s, d, pts[:, 0]), np.interp(s, d, pts[:, 1])]
 
 
-def stage_target(i):
-    return default_seg(x=HAND_X[i], y=HAND_Y, L=HAND_L, T=HAND_T, flat=True)
+def line(a, b, n=2):
+    return np.linspace(np.asarray(a, float), np.asarray(b, float), n)
 
 
-def segments_at(t):
-    if t < 3.5:
-        out = []
-        for k in range(3):
-            a = bar_state(k, t)
-            mm = prog(t, 2.72 + 0.07 * k, 3.34 + 0.07 * k)
-            out.append(mix(a, whole_row(k), mm) if mm > 0 else a)
-        return out
-    if t < 8.62:
-        return problem_segments(t)
+def arc(c, r, a0, a1, n=80):
+    a = np.linspace(a0, a1, n)
+    return np.c_[c[0] + r * np.cos(a), c[1] + r * np.sin(a)]
+
+
+def chain(*parts):
+    return np.vstack(parts)
+
+
+def sub_path(pts, s0, s1):
+    """Portion of a polyline between arc-length fractions s0 and s1."""
+    d = np.r_[0, np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))]
+    if d[-1] <= 0 or s1 <= s0:
+        return pts[:0]
+    a, b = s0 * d[-1], s1 * d[-1]
+    keep = (d > a) & (d < b)
+    pa = np.array([np.interp(a, d, pts[:, 0]), np.interp(a, d, pts[:, 1])])
+    pb = np.array([np.interp(b, d, pts[:, 0]), np.interp(b, d, pts[:, 1])])
+    return np.vstack([pa, pts[keep], pb])
+
+
+# ---------------------------------------------------------------- the line, scene by scene
+
+def shape_A(t):
+    pts = line(R(0, 660, 700), R(0, 1260, 700))
+    return dict(pts=pts, s0=0.0, s1=prog(t, 0.35, 1.25), dash=0.0)
+
+
+def shape_B1(t):
+    # races toward the question, stops short, and falls back as it goes unanswered
+    end = 1520 - 90 * prog(t, SNAPS[0], SNAPS[0] + 0.5, e_out_cubic)
+    pts = line(R(1, 1090, 600), R(1, end, 600))
+    return dict(pts=pts, s0=0.0, s1=1.0, dash=0.0)
+
+
+def shape_B2(t):
+    # climbs, then loses momentum and sags
+    y0 = B_DY[1]
+    sag = prog(t, SNAPS[1], SNAPS[1] + 0.6, e_out_cubic)
+    xs = np.linspace(960, 1760, 60)
+    climb = np.clip((xs - 960) / 520, 0, 1)
+    ys = 760 - 260 * np.sin(climb * math.pi / 2)
+    tail = np.clip((xs - 1480) / 280, 0, 1)
+    ys = ys + sag * 230 * tail ** 2
+    pts = np.c_[xs + 1 * REGION, ys + y0]
+    return dict(pts=pts, s0=0.0, s1=1.0, dash=0.0)
+
+
+def shape_B3(t):
+    y0 = B_DY[2]
+    pts = line(R(1, 960, 600 + y0), R(1, 1760, 600 + y0))
+    return dict(pts=pts, s0=0.0, s1=1.0, dash=prog(t, SNAPS[2], SNAPS[2] + 0.7, e_out_cubic))
+
+
+def shape_C(t):
+    xs = np.linspace(-260, 2180, 120)
+    u = (xs + 260) / 2440
+    k = max(t - 9.55, 0.0)
+    vib = 46 * math.exp(-k / 0.22) * math.sin(2 * math.pi * 7.5 * k) * np.sin(math.pi * u) if t > 9.55 else 0
+    pts = np.c_[xs + 2 * REGION, 640 + vib]
+    return dict(pts=pts, s0=0.0, s1=1.0, dash=0.0)
+
+
+Q_C, CH_C, RING = (520.0, 600.0), (1400.0, 600.0), 150.0
+
+
+def path_D():
+    q = np.array(R(3, *Q_C))
+    ch = np.array(R(3, *CH_C))
+    ring1 = arc(q, RING, math.pi, 4 * math.pi, 120)   # round the question, leaving from its right
+    conn = line(q + [RING, 0], ch - [RING, 0], 20)
+    ring2 = arc(ch, RING, math.pi, math.pi - 2 * math.pi)
+    return chain(ring1, conn, ring2)
+
+
+def shape_D(t):
+    pts = path_D()
+    # the line circles the question, carries it across, circles the Champion; then lets go of the question
+    return dict(pts=pts, s0=0.62 * prog(t, 14.55, 15.15), s1=prog(t, 12.75, 14.2), dash=0.0)
+
+
+E_Y = 660.0
+E_X = [210.0 + 300.0 * k for k in range(6)]
+
+
+def stage_progress(t):
+    # begins at Approval: the line arrives from the Champion already one stage long
+    return 0.2 + 0.4 * prog(t, 17.35, 18.75) + 0.4 * prog(t, 21.0, 21.95)
+
+
+def shape_E(t):
+    x0, x1 = E_X[0], E_X[-1]
+    xs = np.linspace(x0, x1, 240)
+    ys = np.full_like(xs, E_Y)
+    # Pulse: the stalled line spikes into a heartbeat as Spine flags it
+    beat = prog(t, 19.75, 20.05, e_out_cubic) * (1 - prog(t, 20.75, 21.05, e_io_cubic))
+    if beat > 0:
+        bx = E_X[3] - 150
+        shape = np.zeros_like(xs)
+        knots_x = np.array([-1, 0, 1, 2, 3, 4, 5]) * 26 + bx
+        knots_y = np.array([0, 0, -150, 110, -40, 0, 0])
+        inside = (xs >= knots_x[0]) & (xs <= knots_x[-1])
+        shape[inside] = np.interp(xs[inside], knots_x, knots_y)
+        ys = ys + beat * shape
+    pts = np.c_[xs + 4 * REGION, ys]
+    return dict(pts=pts, s0=0.0, s1=stage_progress(t), dash=0.0)
+
+
+F_BASE = 860.0
+F_X = [360.0 + 400.0 * k for k in range(4)]
+
+
+def chart_pt(k):
+    return R(5, F_X[k], F_BASE - HOURS[k] * 9.6)
+
+
+def shape_F(t):
+    pts = chain(line(R(5, 240, F_BASE - 20), chart_pt(0), 10), *[line(chart_pt(k), chart_pt(k + 1), 30) for k in range(3)])
+    return dict(pts=pts, s0=0.0, s1=prog(t, 22.95, 24.4, e_io_cubic), dash=0.0)
+
+
+def shape_G(t):
+    # one clean line, Idea to Live; then it gathers into the centre
+    w = lerp(1600, 300, prog(t, 28.55, 29.4, e_io_quint))
+    pts = line(R(6, 960 - w / 2, 620), R(6, 960 + w / 2, 620))
+    return dict(pts=pts, s0=0.0, s1=prog(t, 27.0, 27.9, e_io_cubic), dash=0.0)
+
+
+SCENES = [
+    (0.0, 2.85, shape_A),
+    (3.25, 5.1, shape_B1),
+    (5.55, 7.15, shape_B2),
+    (7.6, 9.25, shape_B3),
+    (9.65, 12.1, shape_C),
+    (12.65, 16.2, shape_D),
+    (16.75, 22.15, shape_E),
+    (22.7, 26.45, shape_F),
+    (27.0, 29.4, shape_G),
+]
+
+
+def thread_at(t):
+    """The line's shape at time t; between scenes it morphs from one shape to the next."""
+    for i, (a, b, fn) in enumerate(SCENES):
+        if a <= t <= b:
+            th = fn(t)
+            # while the line is still drawing itself, its tip glows
+            ahead = fn(min(t + 1 / FPS, b))
+            th["head"] = clamp((ahead["s1"] - th["s1"]) * 160) if th["s1"] < 1 else 0.0
+            return th
+        if i + 1 < len(SCENES) and b < t < SCENES[i + 1][0]:
+            na, _, nfn = SCENES[i + 1]
+            p = prog(t, b, na, e_io_cubic)
+            A, B = fn(b), nfn(na)
+            pa = resample(sub_path(A["pts"], A["s0"], A["s1"]))
+            pb = resample(sub_path(B["pts"], B["s0"], max(B["s1"], 0.05)))
+            return dict(pts=pa + (pb - pa) * p, s0=0.0, s1=1.0, dash=lerp(A["dash"], B["dash"], p))
+    if t < SCENES[0][0]:
+        return None
+    return None
+
+
+# ---------------------------------------------------------------- drawing the line
+
+def draw_thread(c, cam, th, width=THREAD_W, color=BRAND, shadow=True):
+    if th is None:
+        return
+    pts = sub_path(th["pts"], th["s0"], th["s1"])
+    if len(pts) < 2:
+        return
+    scr = np.array([cam.to_screen(p) for p in pts])
+    w = width * cam.zoom
+    pieces = [scr]
+    if th["dash"] > 0:
+        pieces = dashes(scr, th["dash"])
+    draw_strokes(c, pieces, w, color, shadow)
+    if th.get("head", 0) > 0:
+        tip = scr[-1]
+        draw_dot(c, tip[0], tip[1], w * 1.6, (150, 175, 255), 0.35 * th["head"], blur=w * 0.8)
+        draw_dot(c, tip[0], tip[1], w * 0.42, (238, 243, 255), 0.95 * th["head"])
+
+
+def dashes(scr, amount):
+    """Break a stroke into pieces with gaps that grow (and fade) towards its end."""
+    d = np.r_[0, np.cumsum(np.linalg.norm(np.diff(scr, axis=0), axis=1))]
+    L = d[-1]
     out = []
-    for i in range(6):
-        s = half_state(i, min(t, 8.62))
-        s = travel(s, vertebra(i), prog(t, 8.62 + 0.05 * i, 9.45 + 0.05 * i, e_io_quint), arc=300)
-        if i == 5:
-            s["fill"] = prog(t, 8.8, 9.4)
-            s["outline"] = 1 - prog(t, 9.2, 9.6, e_lin)
-        # 4. The vertebrae swing horizontal into the stage bar.
-        s = travel(s, stage_target(i), prog(t, 27.2 + 0.06 * i, 28.1 + 0.03 * i), arc=380)
-        s["glow"] = glow(i, t)
-        out.append(s)
+    pos = 0.0
+    while pos < L:
+        u = pos / max(L, 1)
+        dash = lerp(L, 46 - 26 * u, clamp(amount * 1.6)) if amount < 0.62 else 46 - 26 * u
+        gap = amount * (10 + 70 * u ** 1.5)
+        seg = scr_slice(scr, d, pos, min(pos + dash, L))
+        if len(seg) >= 2:
+            out.append((seg, 1 - amount * 0.85 * u ** 2))
+        pos += dash + gap
     return out
 
 
-def glow(i, t):
-    """How brightly a vertebra is lit while its story plays."""
-    pair = i // 2
-    win = [(13.1, 15.4), (19.9, 21.6), (23.2, 25.6)][pair]
-    return prog(t, win[0], win[0] + 0.25, e_out_cubic) * (1 - prog(t, win[1], win[1] + 0.5))
+def scr_slice(scr, d, a, b):
+    keep = (d > a) & (d < b)
+    pa = np.array([np.interp(a, d, scr[:, 0]), np.interp(a, d, scr[:, 1])])
+    pb = np.array([np.interp(b, d, scr[:, 0]), np.interp(b, d, scr[:, 1])])
+    return np.vstack([pa, scr[keep], pb])
 
 
-# ---------------------------------------------------------------- the network
-
-def network_alpha(t):
-    return 1 - prog(t, 26.5, 27.4)
-
-
-def draw_network(c, t, cam, lines):
-    fade = network_alpha(t)
-    if fade <= 0:
+def draw_strokes(c, pieces, w, color, shadow=True):
+    S = 2
+    pieces = [p if isinstance(p, tuple) else (p, 1.0) for p in pieces]
+    allp = np.vstack([p for p, _ in pieces])
+    pad = int(w * 3 + 24)
+    x0, y0 = np.floor(allp.min(0)).astype(int) - pad
+    x1, y1 = np.ceil(allp.max(0)).astype(int) + pad
+    x0, y0 = max(x0, -pad), max(y0, -pad)
+    x1, y1 = min(x1, W + pad), min(y1, H + pad)
+    if x1 <= x0 or y1 <= y0:
         return
-    pts = np.array([n["p"] for n in NODES])
-    wob = np.array([[6 * math.sin(t * 0.7 + n["phase"]), 5 * math.cos(t * 0.6 + n["phase"] * 1.3), 0.0]
-                    for n in NODES])
-    pts = pts + wob
-    scr = cam.project(pts)
-    dep = cam.depth(pts)
-    retract = prog(t, 26.4, 27.2, e_in_cubic)
-    vs = cam.project(np.array(VERT))
-    for n, p, s, d in zip(NODES, pts, scr, dep):
-        if not (-200 < s[0] < W + 200 and -200 < s[1] < H + 200) or d < -1500:
-            continue
-        near = clamp(1 - (d + 900) / 2600)            # dimmer when further away
-        lit = prog(t, n["tc"], n["tc"] + 0.35, e_out_cubic)
-        # connection from its vertebra, drawn outward, retracted at the end
-        if lit > 0:
-            a = vs[n["v"]]
-            e = a + (s - a) * lit * (1 - retract)
-            lines.line(a, e, COL_LINE, alpha=(0.16 + 0.22 * near) * fade, width=1.1)
-        k = cam.zoom * cam.focal / (cam.focal + d)
-        blur = min(6.0, abs(d) * 0.0065 * cam.zoom)
-        base_a = (0.16 + 0.70 * lit) * (0.35 + 0.65 * near) * fade
-        flash = math.exp(-max(t - n["tc"] - 0.35, 0) / 0.25) * lit
-        if n["kind"] == NODE_PERSON:
-            draw_dot(c, s[0], s[1], 3.0 * k * (1 + 0.8 * flash), COL_PERSON, base_a, blur)
-        elif n["kind"] == NODE_QUESTION:
-            draw_dot(c, s[0], s[1], 5.0 * k * (1 + 0.6 * flash), BLUE_ON_DARK, base_a, blur, ring=1.5 * k)
-        else:
-            draw_dot(c, s[0], s[1], 4.5 * k * (1 + 0.6 * flash), BLUE_ON_DARK, base_a, blur)
+    im = Image.new("L", ((x1 - x0) * S, (y1 - y0) * S), 0)
+    dr = ImageDraw.Draw(im)
+    for p, a in pieces:
+        q = [((x - x0) * S, (y - y0) * S) for x, y in p]
+        v = int(255 * clamp(a))
+        dr.line(q, fill=v, width=max(1, int(round(w * S))), joint="curve")
+        r = w * S / 2
+        for ex, ey in (q[0], q[-1]):
+            dr.ellipse([ex - r, ey - r, ex + r, ey + r], fill=v)
+    m = im.resize((x1 - x0, y1 - y0), Image.BOX)
+    if shadow:
+        sh = m.filter(ImageFilter.GaussianBlur(max(2, w * 0.9)))
+        sa = np.asarray(sh, np.float32) / 255.0
+        off = int(round(w * 0.5)) + 2
+        sa = np.roll(sa, off, axis=0)
+        sa[:off] = 0
+        blend(c, x0, y0, sa * 0.16, (40, 60, 140))
+    blend(c, x0, y0, np.asarray(m, np.float32) / 255.0, color)
 
 
-def along(points, p):
-    """Point at fraction p along a polyline of screen points."""
-    seg = np.array([np.linalg.norm(b - a) for a, b in zip(points, points[1:])])
-    total = seg.sum()
-    if total <= 0:
-        return points[0]
-    d = p * total
-    for a, b, L in zip(points, points[1:], seg):
-        if d <= L:
-            return a + (b - a) * (d / max(L, 1e-6))
-        d -= L
-    return points[-1]
+# ---------------------------------------------------------------- type in the world
 
-
-def hero_dot(c, cam, p, r, color, alpha=1.0, ring=0.0):
-    s = cam.to_screen(*p)
-    k = cam.zoom * cam.focal / (cam.focal + float(cam.depth(p)[0]))
-    draw_dot(c, s[0], s[1], r * k, color, alpha, dof(cam, p), ring=ring * k)
-    return s, k
-
-
-def label(c, t, cam, p, text, size, color, dy, t_in, t_out=None, alpha=1.0, align="center", fname=MED):
-    s = cam.to_screen(*p)
-    rv = prog(t, t_in, t_in + 0.45, e_out_quint)
-    ex = prog(t, t_out, t_out + 0.3) if t_out is not None else 0.0
-    draw_text(c, text, fname, size, color, s[0], s[1] + dy, align=align, reveal=rv, exit=ex, alpha=alpha)
-
-_CARDS = {}
-
-
-def cards():
-    if not _CARDS:
-        _CARDS["thread"] = Card(os.path.join(SCREENS, "03-question-thread.png"), (300, 190, 1040, 278),
-                                Q + np.array([40.0, -150.0, 0.0]), 470, yaw=-40)
-        _CARDS["pulse"] = Card(os.path.join(SCREENS, "09-pulse.png"), (318, 500, 1500, 608),
-                               SP[3] + np.array([60.0, -190.0, 0.0]), 560, yaw=30)
-    return _CARDS
-
-
-def card_alpha(t, t0, t1):
-    return prog(t, t0, t0 + 0.4, e_out_cubic) * (1 - prog(t, t1, t1 + 0.35))
-
-
-def draw_question_story(c, t, cam, lines):
-    """A question routes through the spine to a Champion; the answer comes back."""
-    if not 12.0 <= t < 17.2:
+def wtext(c, cam, text, fname, size, color, p, t_in, t_out=None, align="left", d_in=0.6, alpha=1.0):
+    """World-anchored type: a mask reveal in, a mask exit out; it moves and scales with the camera.
+    Large multi-word lines reveal word by word."""
+    words = text.split(" ")
+    if size >= 80 and len(words) > 1:
+        total = text_width(text, fname, size)
+        x0 = p[0] - (total / 2 if align == "center" else total if align == "right" else 0)
+        for i, w in enumerate(words):
+            pre = text_width(" ".join(words[:i]) + (" " if i else ""), fname, size)
+            _wtext_one(c, cam, w, fname, size, color, np.array([x0 + pre, p[1]]), t_in + 0.055 * i,
+                       t_out, "left", d_in, alpha)
         return
-    fade = 1 - prog(t, 16.4, 16.9)
-    va, vb = VERT[0], VERT[1]
-    route = [Q, (va + vb) / 2, CH]
-    scr = [cam.to_screen(*p) for p in route]
-    go = prog(t, 13.2, 14.0, e_io_cubic)
-    back = prog(t, 14.3, 15.0, e_io_cubic)
-    if go > 0:
-        tip = along(scr, go)
-        pts = [scr[0]] + [s for s, f in zip(scr[1:], (0.5, 1.0)) if go >= f] + [tip]
-        for a, b in zip(pts, pts[1:]):
-            lines.line(a, b, COL_HERO, alpha=0.9 * fade, width=2.0)
-        if go < 1:
-            draw_dot(c, tip[0], tip[1], 5, (235, 240, 255), fade)
-    if 0 < back < 1:
-        tip = along(scr[::-1], back)
-        draw_dot(c, tip[0], tip[1], 6, (235, 240, 255), fade)
-    answered = prog(t, 15.0, 15.25, e_out_cubic)
-    s, k = hero_dot(c, cam, Q, 11, BLUE_ON_DARK, fade, ring=0 if answered > 0.5 else 2.4)
-    if answered > 0:
-        draw_dot(c, s[0], s[1], (11 + 30 * answered) * k, BLUE_ON_DARK, 0.5 * (1 - answered) * fade, ring=2 * k)
-    s2, k2 = hero_dot(c, cam, CH, 30, (238, 241, 247), fade * prog(t, 12.6, 13.0, e_out_cubic))
-    draw_text(c, "AM", SEMI_TEXT, max(8, int(round(20 * k2))), (40, 48, 70), s2[0], s2[1] + 7 * k2,
-              align="center", alpha=fade * prog(t, 12.7, 13.1))
-    label(c, t, cam, CH, "Champion", 26, SUB_ON_DARK, 54 * k2, 13.9, 16.3, alpha=fade)
-    card = cards()["thread"]
-    draw_panel(c, cam, card, alpha=card_alpha(t, 13.05, 16.2), shadow=0.5)
+    _wtext_one(c, cam, text, fname, size, color, p, t_in, t_out, align, d_in, alpha)
 
 
-def draw_idea_story(c, t, cam, lines):
-    """An idea gathers an owner and a team, moves through the stages, stalls, is flagged, finishes."""
-    if not 16.2 <= t < 23.2:
+def _wtext_one(c, cam, text, fname, size, color, p, t_in, t_out, align, d_in, alpha):
+    s = cam.to_screen(p)
+    tw = text_width(text, fname, size) * cam.zoom
+    x = s[0] - (tw / 2 if align == "center" else tw if align == "right" else 0)
+    T_ = wtext.t
+    rv = prog(T_, t_in, t_in + d_in, e_out_quint)
+    ex = prog(T_, t_out, t_out + 0.35, e_io_cubic) if t_out is not None else 0.0
+    if rv <= 0 or ex >= 1:
         return
-    fade = 1 - prog(t, 22.5, 23.0)
-    on = prog(t, 16.5, 17.0)
-    scr = [cam.to_screen(*p) for p in SP]
-    # the stage path, drawn left to right
-    path = prog(t, 16.6, 17.4, e_io_cubic)
-    tip = along(scr, path)
-    pts = [scr[0]] + [s for k, s in enumerate(scr[1:], 1) if path >= k / 5] + [tip]
-    for a, b in zip(pts, pts[1:]):
-        lines.line(a, b, (90, 110, 175), alpha=0.8 * fade, width=1.6)
-    for k, p in enumerate(SP):
-        if path >= k / 5 - 1e-6:
-            hero_dot(c, cam, p, 6, (120, 140, 200), fade * on, ring=1.6)
-            label(c, t, cam, p, STAGES[k], 24, SUB_ON_DARK, 44, 16.7 + 0.12 * k, 22.4, alpha=fade)
-    # owner and team connect to the idea
-    for j, p in enumerate(TEAM):
-        tj = 17.5 + 0.25 * j
-        g = prog(t, tj, tj + 0.35, e_out_cubic)
+    if abs(cam.zoom - 1) < 1e-3:
+        draw_text(c, text, fname, size, color, x, s[1], reveal=rv, exit=ex, alpha=alpha)
+    else:
+        draw_text_scaled(c, text, fname, size, color, x, s[1], scale=cam.zoom, reveal=rv * (1 - ex),
+                         alpha=alpha)
+
+
+wtext.t = 0.0
+
+
+def avatar(c, cam, p, r, initials, t_in, alpha=1.0, ring=False):
+    g = prog(wtext.t, t_in, t_in + 0.45, e_out_quint) * alpha
+    if g <= 0:
+        return
+    s = cam.to_screen(p)
+    rr = r * cam.zoom * (0.6 + 0.4 * g)
+    draw_dot(c, s[0], s[1], rr, (238, 240, 245), g)
+    size = max(8, int(round(r * 0.72)))
+    draw_text_scaled(c, initials, SEMI_TEXT, size, (60, 68, 92), s[0] - text_width(initials, SEMI_TEXT, size) * cam.zoom / 2,
+                     s[1] + size * 0.36 * cam.zoom, scale=cam.zoom, alpha=g)
+
+
+# ---------------------------------------------------------------- scenes: everything but the line
+
+def draw_scene_layers(c, t, cam):
+    wtext.t = t
+    # A. Your company has AI.
+    wtext(c, cam, "Your company", SEMI, 150, INK, R(0, 960, 470), 0.45, 2.7, "center")
+    wtext(c, cam, "has AI.", SEMI, 150, INK, R(0, 960, 620), 0.7, 2.75, "center")
+    # B. The problems.
+    beats = [("Questions.", "Unanswered.", 3.15), ("Ideas.", "Stalled.", 5.5), ("Impact.", "Unproven.", 7.55)]
+    for k, (w1, w2, t0) in enumerate(beats):
+        y = B_DY[k]
+        out = [4.8, 6.85, 8.95][k]
+        wtext(c, cam, w1, SEMI, 132, INK, R(1, 160, 540 + y), t0, out)
+        wtext(c, cam, w2, SEMI, 132, BRAND, R(1, 160, 690 + y), SNAPS[k] - 0.08, out)
+    # the question the line never reaches
+    wtext(c, cam, "?", SEMI, 360, GREY, R(1, 1690, 720), 3.3, 4.8, "center")
+    # C. Spine.
+    wtext(c, cam, "Spine is your", SEMI, 96, GREY_TEXT, R(2, 960, 400), 9.8, 11.95, "center")
+    wtext(c, cam, "AI project manager.", SEMI, 140, INK, R(2, 960, 560), 10.05, 11.98, "center")
+    # D. Questions go to Champions.
+    wtext(c, cam, "Questions go to Champions.", SEMI, 84, INK, R(3, 160, 200), 12.75, 16.05)
+    wtext(c, cam, "Answered in private. Reused when asked again.", REG, 40, INK_SOFT, R(3, 160, 268), 13.15, 16.1)
+    qa = 1 - prog(t, 14.6, 15.0)
+    wtext(c, cam, "?", SEMI, 190, INK, R(3, Q_C[0], Q_C[1] + 68), 12.7, 16.0, "center", alpha=qa)
+    avatar(c, cam, R(3, *CH_C), 104, "AM", 13.6)
+    wtext(c, cam, "Champion", MED, 40, INK_SOFT, R(3, CH_C[0], CH_C[1] + 214), 13.9, 16.05, "center")
+    wtext(c, cam, "Answered.", SEMI, 56, BRAND, R(3, CH_C[0], CH_C[1] - 196), 15.0, 16.05, "center")
+    # E. Stages, owner and team, Pulse.
+    if 16.3 <= t < 22.8:
+        tr = 1.0 * prog(t, 16.8, 17.3)
+        leave = 1 - prog(t, 21.85, 22.15)
+        for k in range(5):
+            a, b = cam.to_screen(R(4, E_X[k], E_Y)), cam.to_screen(R(4, E_X[k + 1], E_Y))
+            if tr > 0:
+                draw_strokes(c, [(np.array([a, a + (b - a) * clamp(tr * 5 - k)]), leave)], 4 * cam.zoom, TRACK, False)
+        prog_x = E_X[0] + (E_X[-1] - E_X[0]) * stage_progress(t)
+        for k, name in enumerate(STAGES):
+            p = cam.to_screen(R(4, E_X[k], E_Y))
+            reached = prog_x >= E_X[k] - 1
+            g = prog(t, 16.9 + 0.08 * k, 17.3 + 0.08 * k, e_out_quint)
+            if reached:
+                draw_dot(c, p[0], p[1], 15 * cam.zoom * g, BRAND, leave)
+            else:
+                draw_dot(c, p[0], p[1], 15 * cam.zoom * g, (250, 250, 252), leave)
+                draw_dot(c, p[0], p[1], 15 * cam.zoom * g, GREY, leave, ring=3 * cam.zoom)
+            cur = (k == 3 and 18.6 < t < 21.0) or (k == 5 and t > 21.9)
+            wtext(c, cam, name, SEMI_TEXT if cur else MED, 38, INK if cur else INK_SOFT,
+                  R(4, E_X[k], E_Y + 78), 16.95 + 0.08 * k, 21.8, "center")
+        # Pulse rings from the stalled build
+        bp = cam.to_screen(R(4, E_X[3], E_Y))
+        for j in range(3):
+            rt = 19.8 + 0.32 * j
+            g = prog(t, rt, rt + 0.9, e_out_cubic)
+            if 0 < g < 1:
+                draw_dot(c, bp[0], bp[1], (18 + 90 * g) * cam.zoom, BRAND, 0.55 * (1 - g), ring=3 * cam.zoom)
+        # owner and team (the AI Invoice Assistant's team in the product's demo data)
+        for j, (ini, dx, dy) in enumerate((("JC", 10, -130), ("MT", 120, -200), ("SK", 230, -130))):
+            fade = 1 - prog(t, 22.0, 22.3)
+            avatar(c, cam, R(4, E_X[0] + dx, E_Y + dy), 48, ini, 17.55 + 0.15 * j, alpha=fade)
+        wtext(c, cam, "Owner and team", MED, 36, INK_SOFT, R(4, E_X[0] + 120, E_Y - 270), 17.9, 19.45, "center")
+    wtext(c, cam, "Every idea gets an owner and a team.", SEMI, 84, INK, R(4, 160, 200), 17.0, 19.45)
+    wtext(c, cam, "AI review. Approval. Build plan.", REG, 40, INK_SOFT, R(4, 160, 268), 17.4, 19.5)
+    wtext(c, cam, "When work goes quiet, Spine flags it.", SEMI, 84, INK, R(4, 160, 200), 19.7, 21.8)
+    # F. Impact you can measure.
+    wtext(c, cam, "Impact you can measure.", SEMI, 84, INK, R(5, 160, 200), 22.75, 26.3)
+    wtext(c, cam, "Hours saved, logged every month.", REG, 40, INK_SOFT, R(5, 160, 268), 23.15, 26.35)
+    if 22.5 <= t < 26.9:
+        base_a = cam.to_screen(R(5, 240, F_BASE + 40))
+        base_b = cam.to_screen(R(5, 1700, F_BASE + 40))
+        g = prog(t, 22.8, 23.4, e_io_cubic) * (1 - prog(t, 26.3, 26.7))
         if g > 0:
-            a, b = cam.to_screen(*p), scr[0]
-            lines.line(a, a + (b - a) * g, COL_HERO, alpha=0.8 * fade * (1 - prog(t, 18.6, 19.0)), width=1.6)
-            hero_dot(c, cam, p, 7 if j == 0 else 5, COL_PERSON, fade * prog(t, tj - 0.2, tj))
-    if t >= 17.4:
-        label(c, t, cam, TEAM[0], "Owner", 24, SUB_ON_DARK, -26, 17.6, 19.0, alpha=fade)
-    # the idea travels: Idea -> Building, stalls, flagged, then on to Live
-    move = 0.6 * prog(t, 18.6, 19.9, e_io_cubic) + 0.4 * prog(t, 21.3, 22.1, e_io_cubic)
-    ip = along([np.array(p, float) for p in SP], move)
-    s, k = hero_dot(c, cam, ip, 12, BLUE_ON_DARK, fade * prog(t, 16.9, 17.3))
-    # Pulse: rings from the stalled build, and the spine's Ideas vertebrae reach out to it
-    for j in range(3):
-        rt = 20.15 + 0.35 * j
-        g = prog(t, rt, rt + 0.9, e_out_cubic)
-        if 0 < g < 1 and t < 21.4:
-            draw_dot(c, s[0], s[1], (14 + 60 * g) * k, BLUE_ON_DARK, 0.7 * (1 - g) * fade, ring=2.0 * k)
-    flag = prog(t, 20.4, 20.8, e_io_cubic) * (1 - prog(t, 21.5, 21.9))
-    if flag > 0:
-        a = cam.to_screen(*((VERT[2] + VERT[3]) / 2))
-        lines.line(a, a + (s - a) * flag, COL_HERO, alpha=0.9 * fade, width=2.0)
-    draw_panel(c, cam, cards()["pulse"], alpha=card_alpha(t, 20.55, 21.7), shadow=0.5)
+            draw_strokes(c, [(np.array([base_a, base_a + (base_b - base_a) * g]), 1.0)], 3 * cam.zoom, TRACK, False)
+        for k in range(4):
+            tk = 23.1 + 0.42 * k
+            gk = prog(t, tk, tk + 0.4, e_out_quint) * (1 - prog(t, 26.3, 26.6))
+            if gk <= 0:
+                continue
+            p = cam.to_screen(chart_pt(k))
+            draw_dot(c, p[0], p[1], 14 * cam.zoom * gk, BRAND, 1.0)
+            draw_dot(c, p[0], p[1], 6 * cam.zoom * gk, (250, 251, 255), 1.0)
+            big = k == 3
+            wtext(c, cam, str(HOURS[k]) + (" hours" if big else ""), SEMI, 64 if big else 48, INK,
+                  chart_pt(k) + np.array([0, -46.0]), tk, 26.3, "center")
+            wtext(c, cam, MONTHS[k], MED, 34, INK_SOFT, R(5, F_X[k], F_BASE + 100), 22.9 + 0.1 * k, 26.35, "center")
+    # G. From idea to live.
+    wtext(c, cam, "From idea to live.", SEMI, 140, INK, R(6, 960, 520), 27.05, 28.5, "center")
+    wtext(c, cam, "Idea", MED, 40, INK_SOFT, R(6, 170, 700), 27.3, 28.45)
+    wtext(c, cam, "Live", SEMI_TEXT, 40, BRAND, R(6, 1750, 700), 27.75, 28.45, "right")
 
 
-def draw_impact_story(c, t, cam, lines):
-    """Live work reports hours saved; the points rise and connect into the line."""
-    if not 22.2 <= t < 27.2:
-        return
-    fade = 1 - prog(t, 26.4, 27.0)
-    scr = [cam.to_screen(*p) for p in CHART]
-    base = [cam.to_screen(*(p * np.array([1, 0, 1]) + np.array([0, L6[1] + 120, 0]))) for p in CHART]
-    for k in range(4):
-        tk = 23.0 + 0.35 * k
-        g = prog(t, tk, tk + 0.45, e_out_quint)
-        if g <= 0:
-            continue
-        pos = base[k] + (scr[k] - base[k]) * g
-        if k > 0:
-            j = prog(t, tk + 0.2, tk + 0.5, e_io_cubic)
-            if j > 0:
-                a = scr[k - 1]
-                lines.line(a, a + (pos - a) * j, COL_HERO, alpha=0.95 * fade, width=2.4)
-        draw_dot(c, pos[0], pos[1], 7, BLUE_ON_DARK if k < 3 else (235, 240, 255), fade)
-        draw_text(c, str(HOURS[k]), SEMI_TEXT, 28 if k < 3 else 40, WHITE, pos[0], pos[1] - 22,
-                  align="center", reveal=g, alpha=fade)
-        draw_text(c, MONTHS[k], MED, 24, SUB_ON_DARK, base[k][0], base[k][1] + 40, align="center",
-                  reveal=prog(t, 22.7 + 0.1 * k, 23.1 + 0.1 * k, e_out_quint), alpha=fade)
-    # the Impact vertebrae feed the line
-    if 23.2 <= t < 26.4:
-        a = cam.to_screen(*((VERT[4] + VERT[5]) / 2))
-        g = prog(t, 23.2, 23.6, e_out_cubic) * (1 - prog(t, 25.8, 26.3))
-        lines.line(a, a + (scr[0] - a) * g, COL_HERO, alpha=0.6 * fade, width=1.6)
+# ---------------------------------------------------------------- final: the line becomes the logo
+
+def pieces_at(t):
+    """Three pieces cut from the gathered line, each stacking into a bar of the logo."""
+    out = []
+    cx, w = 960.0, 300.0
+    cuts = [(cx - w / 2 + k * (w / 3) + (3 if k else 0), cx - w / 2 + (k + 1) * (w / 3) - (3 if k < 2 else 0))
+            for k in range(3)]
+    for k in range(3):
+        a, b = cuts[k]
+        p = prog(t, 29.45 + 0.15 * k, 30.55 + 0.15 * k, e_io_quint)
+        x0, x1, yc = LOGO[k]
+        L = lerp(b - a, x1 - x0, p)
+        x = lerp((a + b) / 2, (x0 + x1) / 2, p)
+        y = lerp(620.0, yc, p) - 80 * math.sin(math.pi * p)
+        T = lerp(THREAD_W, LOGO_T, prog(t, 30.25 + 0.15 * k, 30.75 + 0.15 * k, e_out_cubic))
+        rz = 14 * math.sin(math.pi * p) * (-1 if k % 2 else 1)
+        out.append(default_seg(x=x, y=y, L=L, T=T, rz=rz, flat=T < 14))
+    return out
 
 
-# ---------------------------------------------------------------- scene
-
-LIGHT_OPEN = (27.95, 28.5)
+_plate = None
 
 
-def background_at(t):
-    if t < LIGHT_OPEN[0]:
-        return dark_background().copy()
-    if t >= LIGHT_OPEN[1]:
-        return solid(LIGHT_B)
-    o = prog(t, *LIGHT_OPEN)
-    yc = HAND_Y
-    top, bot = yc - o * (yc + 2), yc + o * (H - yc + 2)
-    cov = coverage_1d(H, top, bot)[:, None, None]
-    return dark_background() * (1 - cov) + LIGHT_B * cov
+def plate():
+    global _plate
+    if _plate is None:
+        _plate = np.asarray(Image.open(os.path.join(PLATES, "f0969.png")).convert("RGB")).astype(np.float32)
+    return _plate
 
+
+WORD_BOX = (870, 380, 1345, 575)    # the wordmark on the end-card plate
+
+
+def render_final(c, t):
+    for s in pieces_at(t):
+        draw_segment(c, SCREEN_CAM, s)
+    # The wordmark rises in beside the mark, taken from the approved end card itself.
+    rv = prog(t, 30.95, 31.6, e_out_quint)
+    if rv > 0:
+        x0, y0, x1, y1 = WORD_BOX
+        reg = plate()[y0:y1, x0:x1]
+        dy = int(round((1 - rv) * (y1 - y0) * 0.6))
+        dst = c[y0:y1, x0:x1]
+        a = np.zeros((y1 - y0, x1 - x0, 1), np.float32)
+        a[: (y1 - y0) - dy] = 1.0
+        src = np.zeros_like(reg)
+        src[: (y1 - y0) - dy] = reg[dy:]
+        src[(y1 - y0) - dy:] = LIGHT_B
+        dst[:] = dst * (1 - a) + src * a
+    # Settle exactly onto the end-card plate.
+    k = prog(t, 31.75, 32.2, e_io_cubic)
+    if k > 0:
+        c[:] = c * (1 - k) + plate() * k
+
+
+# ---------------------------------------------------------------- frame
 
 def render_scene(t):
     cam = camera_at(t)
-    c = background_at(t).astype(np.float32)
-    lines = LineLayer()
-    if t >= 8.0:
-        draw_network(c, t, cam, lines)
-    elif t >= 0:
-        # Before Spine: the same people, faint and unconnected.
-        for n in NODES:
-            s = cam.project([n["p"]])[0]
-            d = float(cam.depth(n["p"])[0])
-            draw_dot(c, s[0], s[1], 2.4, COL_PERSON, 0.10 * prog(t, 0.3, 1.5), min(5, abs(d) * 0.004))
-    draw_question_story(c, t, cam, lines)
-    draw_idea_story(c, t, cam, lines)
-    draw_impact_story(c, t, cam, lines)
-    lines.composite(c)
-    segs = segments_at(t)
-    for s in sorted(segs, key=lambda s: -float(cam.depth([s["x"], s["y"], s["z"]])[0])):
-        g = s.pop("glow", 0.0)
-        if g > 0:
-            p = cam.to_screen(s["x"], s["y"], s["z"])
-            draw_dot(c, p[0], p[1], 70 * cam.zoom, (60, 90, 200), 0.25 * g, 30)
-            s["color"] = tuple(lerp(a, b, g) for a, b in zip((80, 110, 235), (175, 198, 255)))
-        draw_segment(c, cam, s)
-    draw_texts(c, t, cam, segs)
+    c = solid(LIGHT_B).astype(np.float32)
+    if t < 29.4:
+        draw_scene_layers(c, t, cam)
+        draw_thread(c, cam, thread_at(t))
+    else:
+        render_final(c, t)
     return c
-
-
-# ---------------------------------------------------------------- text
-
-def T(canvas, t, text, fname, size, color, x, base, t_in, t_out=None, align="left", d_in=0.58, d_out=0.32):
-    rv = prog(t, t_in, t_in + d_in, e_out_quint)
-    ex = prog(t, t_out, t_out + d_out, e_io_cubic) if t_out is not None else 0.0
-    draw_text(canvas, text, fname, size, color, x, base, align=align, reveal=rv, exit=ex)
-
-
-def draw_texts(c, t, cam, segs):
-    if t < 3.2:
-        T(c, t, "Your company", SEMI, 112, WHITE, 150, 419, 0.42, 2.66)
-        T(c, t, "has AI.", SEMI, 112, WHITE, 150, 549, 0.62, 2.72)
-    if 3.0 <= t < 9.2:
-        rows = [("Questions.", "Unanswered.", 3.20, SNAPS[0] - 0.08), ("Ideas.", "Stalled.", 5.29, SNAPS[1] - 0.08),
-                ("Impact.", "Unproven.", 6.77, SNAPS[2] - 0.08)]
-        for r, (w1, w2, ta, tb) in enumerate(rows):
-            base = ROWS_Y[r] + 27
-            out = 8.55 + 0.06 * r
-            T(c, t, w1, SEMI, 74, WHITE, 150, base, ta, out)
-            T(c, t, w2, DISP, 74, BLUE_ON_DARK, 150 + text_width(w1 + " ", SEMI, 74), base, tb, out)
-    heads = [
-        # (in, out, x, baseline, align, lines, sub lines)
-        (9.9, 11.9, 960, 900, "center", ["Your AI project manager."], []),
-        (13.0, 15.9, 120, 860, "left", ["Questions go", "to Champions."], ["Answered in private.", "Reused when asked again."]),
-        (17.1, 19.3, 120, 820, "left", ["Every idea gets", "an owner and a team."], ["AI review. Approval. Build plan."]),
-        (19.7, 21.9, 120, 820, "left", ["When work goes quiet,", "Spine flags it."], []),
-        (22.95, 26.2, 1800, 190, "right", ["Impact you", "can measure."], ["Hours saved, logged every month."]),
-    ]
-    for t0, t1, x, base, align, lines_, sub in heads:
-        if t0 - 0.1 <= t < t1 + 0.4:
-            for k, line in enumerate(lines_):
-                T(c, t, line, SEMI, 64, WHITE, x, base + k * 74, t0 + 0.1 * k, t1 + 0.03 * k, align=align)
-            for k, line in enumerate(sub):
-                T(c, t, line, REG, 32, SUB_ON_DARK, x, base + len(lines_) * 74 + 4 + k * 42,
-                  t0 + 0.35 + 0.06 * k, t1 + 0.06, align=align)
-    # Stage names under the bar, once the light has opened.
-    if 28.2 <= t < 29.3:
-        for i, name in enumerate(STAGES):
-            s = segs[i]
-            fn, col = (SEMI_TEXT, BRAND) if name == "Live" else (MED, INK_LABEL)
-            T(c, t, name, fn, 36, col, s["x"], s["y"] + 54, 28.3 + 0.05 * i, 28.92 + 0.02 * i,
-              align="center", d_in=0.4, d_out=0.22)
 
 
 # ---------------------------------------------------------------- end card
 
 text_w = text_width
+
 
 def end_card(t, plate):
     c = plate.astype(np.float32).copy()

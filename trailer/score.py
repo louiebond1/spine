@@ -2,12 +2,12 @@
 
   python3 score.py out/score.wav
 Structure (seconds):
-  0.0 - 9.5   problem: low D minor drone, a heartbeat pulse from the first snap
-  9.54        the six pieces land on Home: lift to D major, 108 BPM
-  9.5 - 28.3  pad + plucked arpeggio + soft kick and hats; filtered whooshes on each whip-pan
-  28.35-29.3  drop out with a reverse swell into the fold
-  29.3 - 31.0 five rising tones as the stage bar folds into the logo
-  30.98       logo lands: full chord, sub and a bell; the tail carries the end card
+  0.0 - 9.5   problem: low D minor drone
+  9.55        the line pulls taut: a plucked low string and the lift to D major, 108 BPM
+  9.5 - 28.5  pad + plucked arpeggio + soft kick and hats; an air whoosh on each camera move
+  28.55-29.45 drop out with a reverse swell as the line gathers
+  30.55-30.85 three rising tones as the pieces land as the logo's bars
+  30.95       wordmark: full chord, sub and a bell; the tail carries the end card
 """
 import sys
 import wave
@@ -18,11 +18,12 @@ SR = 48000
 DUR = 38.0
 N = int(SR * DUR)
 BEAT = 60 / 108
-LIFT = 9.54
-FOLD_TONES = [29.55, 29.80, 30.05, 30.30, 30.55]
-LOGO = 30.98
-DROP = 28.35
-WHIPS = [(11.9, 12.5, 1), (16.1, 16.7, 1), (18.9, 19.5, 1), (22.0, 22.6, 1), (26.5, 27.15, 1)]
+LIFT = 9.55                          # the line pulls taut
+FOLD_TONES = [30.55, 30.70, 30.85]   # the three pieces land as the logo's bars
+LOGO = 30.95                         # wordmark rises in
+DROP = 28.55                         # the line gathers into the centre
+WHIPS = [(2.85, 3.25, 1), (5.1, 5.55, 1), (7.15, 7.6, 1), (9.25, 9.65, 1), (12.1, 12.65, 1),
+         (16.2, 16.75, 1), (22.15, 22.7, 1), (26.45, 27.0, 1)]
 
 rng = np.random.default_rng(11)
 t_all = np.arange(N) / SR
@@ -153,11 +154,8 @@ def build():
     buf = np.zeros((N, 2))
     # --- problem: D minor drone, heartbeat from the first snap
     pad(buf, 0.0, LIFT - 0.3, [38, 45, 50, 53], 0.16, cutoff=700, attack=2.5, release=0.8)
-    t = 3.88
-    while t < LIFT - 0.2:
-        add(buf, t, sub(hz(38), 0.22), 0.30)
-        add(buf, t + 0.28, sub(hz(38), 0.18), 0.18)
-        t += BEAT * 2
+    # the line pulls taut: a plucked low string
+    add(buf, LIFT, pluck(hz(38), 1.6, 1200), 0.35)
     # reverse swell into the lift
     n = int(0.9 * SR)
     sw = lp_fast(rng.standard_normal(n), 2500) * np.linspace(0, 1, n) ** 3
@@ -194,10 +192,10 @@ def build():
         buf[i:i + n, 0] += s[:n] * 0.10 * np.sqrt(1 - pan_curve[:n])
         buf[i:i + n, 1] += s[:n] * 0.10 * np.sqrt(1 + pan_curve[:n])
     # --- drop and fold
-    n = int((29.3 - DROP) * SR)
+    n = int((29.45 - DROP) * SR)
     sw = lp_fast(rng.standard_normal(n), 1800) * np.linspace(0, 1, n) ** 4
     add(buf, DROP, sw, 0.08)
-    add(buf, 29.3, kick(), 0.25)
+    add(buf, 29.45, kick(), 0.22)
     for k, tt in enumerate(FOLD_TONES):
         add(buf, tt, pluck(hz([62, 64, 66, 69, 71][k]), 0.6, 5000), 0.16, -0.5 + 0.25 * k)
     # --- logo

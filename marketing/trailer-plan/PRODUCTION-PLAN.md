@@ -1,21 +1,24 @@
-# Spine launch trailer: production feasibility and master plan
+# Spine launch trailer: production feasibility and master plan (revision 2)
 
-Prepared 20 October 2026 for independent review. No trailer frames have been produced for delivery, nothing has been deployed or purchased, and no paid API call was made. Everything marked **verified** below was done or seen in this environment. Everything marked **unverified** was not.
+Prepared 20 October 2026 for independent review. Nothing has been produced for delivery, deployed or purchased, and no paid API call was made. **Verified** means done or seen in this environment. **Unverified** means not.
 
-Evidence referred to in this document is in `marketing/trailer-plan/evidence/`.
+Evidence is in `marketing/trailer-plan/evidence/`.
+
+This revision builds the film from a blank page around the ambition in the brief: a cinematic launch film with realistic people and environments, the real Spine product as the star, and seamless transitions between the two.
 
 ---
 
 ## Contents
 
 - A. Asset audit
-- B. Creative concepts and the selection
-- C. Master storyboard (shot by shot, frame-timed)
-- D. Technical production architecture
-- E. Budget
-- F. Risk assessment
-- G. Production readiness
-- H. Schedule, quality control and definition of done
+- B. Creative concepts and selection
+- C. Master storyboard (frame-timed)
+- D. Cinematic and generative shot plan
+- E. Technical production architecture
+- F. Budget
+- G. Risk assessment
+- H. Production readiness
+- I. Schedule, quality control and definition of done
 - Final verdict for GPT-6
 
 ---
@@ -24,167 +27,156 @@ Evidence referred to in this document is in `marketing/trailer-plan/evidence/`.
 
 ### A.1 What I inspected and how
 
-| Source | Location | How it was inspected |
+| Source | Location | How |
 | --- | --- | --- |
-| Trailer brief (ASTRA-BRIEF.md) | `spine-2` branch, `marketing/ASTRA-BRIEF.md` | Read in full |
-| 15 story clips | `spine-2` branch, `marketing/clips/*.mp4` | Extracted from git. Probed with ffprobe. One frame per second tiled into contact sheets with burnt-in timecodes (`evidence/contact-sheets/`). Frame-difference analysis at 30 fps to find the exact frame of every click and state change. Full-resolution frames for key end states |
-| 18 screenshots | `spine-2` branch, `marketing/*.png` | Size probed, tiled and viewed (`evidence/screenshots-*.jpg`) |
-| Spine 2.0 application source | `spine-2` branch | Read: recording script, integrations doc, AI modules, logo component, colour tokens. **Built and run locally**: seeded, served with `next start`, clip 01 re-recorded, still frames captured at 3× and 4× device scale |
-| Previous trailers | branches `trailer/rebuild-2026-10-20`, `trailer/downloads-2026-10-20`, `claude/new-session-41hpt8` | Read their scripts, QA records and provenance. The 80-second rebuilt master was decoded and sampled every 3 seconds (`evidence/previous-80s-trailer-every-3s.jpg`) |
-| Integrations | `spine-2` branch, `docs/INTEGRATIONS.md` and app code | Read in full |
-| Runway account | Runway MCP connector in this session | `whoami` called (read-only). No generation run |
+| Trailer brief | `spine-2` branch, `marketing/ASTRA-BRIEF.md` | Read in full |
+| 15 story clips | `spine-2` branch, `marketing/clips/*.mp4` | Probed with ffprobe. One frame per second tiled with timecodes (`evidence/contact-sheets/`). Frame-difference analysis at 30 fps to find the exact frame of every click and state change. Full-resolution frames of the end states |
+| 18 screenshots | `spine-2` branch, `marketing/*.png` | Probed and viewed (`evidence/screenshots-*.jpg`) |
+| Spine 2.0 application | `spine-2` branch | Source read (recording script, AI modules, integrations, logo, colour tokens). **Built, seeded and run locally**. One clip re-recorded with the repository's script. Stills captured at 3× and 4× device scale |
+| Integrations | `docs/INTEGRATIONS.md` and app code | Read in full |
+| Runway account | Runway connector in this session | `whoami` (read-only). Nothing generated |
 
-Not inspected: the public Spine website (the brief says it shows the old product), and any brand guidelines document (none exists in the repository). The brand values below were sampled from the app's own CSS tokens and from rendered frames.
+### A.2 Story clips (real Spine 2.0, H.264, 2880 × 1620, 30 fps, no audio)
 
-### A.2 Story clips (all real Spine 2.0, H.264, 2880 × 1620, 30 fps, no audio track)
+Measured traits common to all 15 clips:
 
-All 15 share these traits, measured:
+- The first 2 to 11 frames are a blank, loading page. They are usable from about 0.4 s.
+- The bitrate is very low (about 0.2 to 0.55 Mbps). At 1:1 the frames are clean. Pushed past about 2 output pixels per source pixel, text turns soft with JPEG artefacts (`evidence/sharpness-original-vs-rerecord-vs-dsf4.jpg`). The cause is the screencast JPEGs in the recording script.
+- The layout is 1440 × 810 rendered at 2×. Most pages fill only the top 60% of the frame.
+- After the decisive click, most clips hold the result for only 0.9 to 1.5 s.
+- The cursor sometimes covers the key words.
 
-- **The first 2 to 11 frames are a blank or loading page** (mean luma 247 on frame 0). Usable from about frame 12 (0.4 s).
-- **The bitrate is very low**, roughly 0.2 to 0.55 Mbps. Static UI compresses well, so at 1:1 the frames look clean. Pushed past about 2 output pixels per source pixel, text goes soft and shows JPEG artefacts. This comes from the screencast JPEG frames inside the recording script, not the final H.264 encode (my re-record with the same script looked the same). See `evidence/sharpness-original-vs-rerecord-vs-dsf4.jpg`.
-- The viewport is a 1440 × 810 layout rendered at 2×. Most of the 2880 × 1620 frame is empty canvas: the content column ends about 60% of the way down on most pages.
-- **The result states are short.** After the decisive click, most clips hold the result for only 0.9 to 1.5 s before ending.
-- The cursor is visible and sometimes covers the exact words that matter (clip 03 at 19.5 s covers "company").
-
-| # | File | Duration | What it shows (verified) | Key frames, from frame-difference analysis (s / frame) | Quality notes | Suitability |
+| # | File | Length | Shows | Key events, s (frame) | Notes | Suitability |
 | --- | --- | --- | --- | --- | --- | --- |
-| 01 | 01-home-what-needs-you.mp4 | 11.37 s | Alex's Home: "3 things need you" (Supplier Research Assistant, auto-approves in 6h, Review; Can Claude analyse multiple Excel files? Reply; Knowledge Search Assistant, Open). Your initiatives, Our AI priorities, Start something | Static page. Cursor drifts over the rows between 2.80 and 9.63 s. **No click happens** | Clean. The cursor never reaches Review, despite the brief's description | Good for the "turn" shot, held still. A sharper capture would be better |
-| 02 | 02-ask-a-question.mp4 | 23.73 s | Priya opens Ask a question, types "Can I put client contract data into Copilot?" and the details, picks Security, clicks Ask, and lands on her thread | Modal opens at 4.57 s (f137). Title typed 5.5 to 13.5 s. Details 13.5 to 19.2 s. Topic 19.2 s. Ask clicked 22.77 s (f683). Thread visible 22.87 s (f686) | Typing is slow: 8 s for the title | Usable for the ask beat if heavily retimed. The privacy line in the modal is useful |
-| 03 | 03-champion-answers.mp4 | 19.63 s | Mia's queue. She claims Priya's question and types the reply "Not in Copilot yet: it's approved for internal data only until Legal signs off. Use the company Claude workspace, and replace client names first. It's all in the Playbook." | Claim clicked about 7.47 s (f224; the thread page renders at that frame). Reply typed 10.93 to 15.67 s, **in a single-line field that scrolls sideways** (13.4 to 15.7 s). Send at 18.37 s (f551). Bubble visible from 18.47 s | Sideways scrolling is unreadable. The final bubble is excellent, but the cursor covers one word | Use only the claim and the final bubble. Re-capture recommended |
-| 04 | 04-answer-helps-someone-else.mp4 | 16.73 s | Ben opens Ask a question and types "Is client contract data OK in Copilot?" "Already answered?" appears with the link "Can I put client contract data into Copilot?" | Modal opens 4.07 s (f122). Typing 5.5 to 9.1 s. **Suggestion appears 9.17 s (f275)** and holds to the end, with the cursor resting on the link | Clean. A strong 7.5 s hold | Strong. Use as is, or re-capture sharper |
-| 05 | 05-approve-the-idea.mp4 | 9.07 s | Admin approval view of Supplier Research Assistant: problem, who benefits, team, effort, difficulty, target date; "Auto-approves in 6h" panel; Approve | Static to 8.0 s. **Approve clicked 8.03 s (f241)**. Forming team page at 8.17 s (f245). Clip ends 9.07 s | Shows the neutral "The AI review raised concerns. The owner has seen the details." banner, which reads badly in a launch film. Only 0.9 s of result | Usable with a crop below the banner. The post-approve hold must be a frozen real frame |
-| 06 | 06-someone-joins.mp4 | 6.00 s | Jamie on the Team tab: "1 of 3 people", Join the team → "2 of 3 people", Louie (Owner) and Jamie Chen (Member). "Needs 1 more person to start" | **Join clicked 4.93 s (f148)**. 2 of 3 at 5.07 s (f152) | Clean, short | Good |
-| 07 | 07-plan-moves-forward.mp4 | 14.40 s | Plan tab, "First drafted by AI from the brief", 6 steps with avatars and dates. Louie ticks "List the supplier sources Procurement trusts"; the next-action line changes to "Jamie is building the research template / At the current pace: on track, finishing around 11 Nov" | **Tick at 7.93 s (f238)**. Updated line at 8.07 s (f242), held to 14.4 s | Clean, with a long hold | Very good. This is the AI plan moment |
-| 08 | 08-blocked.mp4 | 16.77 s | Check-ins tab: On track / At risk / Blocked. Louie picks Blocked and types "We need the approved supplier list exported from SAP. Who can get it for us?" Check in → red banner "Blocked since 7 Oct: ..." | **Blocked selected 6.97 s (f209)**. Typing 9.97 to 15.6 s. Check in 15.73 s. **Banner at 15.83 s (f475)**, held about 0.9 s | Clean | Good with retiming |
-| 09 | 09-pulse-catches-it.mp4 | 10.17 s | Alex's Pulse: Blocked 2 (Supplier Research Assistant first, primary Open; Contract Clause Checker), Unanswered questions 3, Overdue steps 1. Opens the project, which shows the blocker banner | Static to 8.9 s. **Open clicked 8.97 s (f269)**. Project page from 9.03 s | Clean. Supplier Research Assistant says "Blocked for 1 day" while the banner says "Blocked since 7 Oct" and today is 7 Oct (a demo-data inconsistency) | Good |
-| 10 | 10-unblocked.mp4 | 13.40 s | Louie checks in On track: "Alex got us the SAP export. Back on track." Check in → **the blocker banner disappears**, "Checked in. Thanks." | Typing 7.73 to 12.27 s. Click 12.40 s. **Banner gone at 12.53 s (f376)** | Verified full-res. The page jumps up as the banner is removed | Good. The banner vanishing is the payoff |
-| 11 | 11-goes-live.mp4 | 5.87 s | "You're launching this", Mark Live → all six stepper segments fill and a green "Live" dot appears, plus the Outcomes tab | **Mark Live clicked 4.93 s (f148)**. Live at 5.00 s (f150) | Only 0.87 s after the click | Good, with a frozen hold |
-| 12 | 12-team-reports-hours.mp4 | 14.07 s | Outcomes: "How did you measure it?" typed as "Six buyers used it on 18 supplier requests; each one took 15 minutes instead of 55 (timed in October)." Hours 12, Report → "October 2026: 12 hours saved ... Reported by Louie Morris · Not verified yet" | Typing 4.33 to 9.87 s. Hours 10.0 to 12.8 s. Report 12.97 s. **Result 13.17 s (f395)** | Clean. The measurement sentence is long | Good. The equation can be lifted into motion graphics without inventing numbers (18 × 40 min = 720 min = 12 h) |
-| 13 | 13-verified-outside-the-team.mp4 | 9.53 s | Alex, outside the team, sees the report and clicks Verify → "Verified", "Reported by Louie Morris · Verified by Alex Morgan on 7 Oct" | **Verify clicked 8.53 s (f256)**. Verified at 8.63 s (f259) | The result is small text | Good |
-| 14 | 14-leadership-sees-it.mp4 | 16.20 s | Leadership: Verified hours saved 106; Live initiatives 3; In flight 6; People active 7 of 7; Questions asked 102; line chart Jul to Oct; Needs leadership; Pipeline; Went live 3 (Supplier Research Assistant 7 October at the top) | Static. The cursor wanders the sidebar from 6.6 to 13.8 s. **The chart does not animate** | Clean, and the best-composed screen | Good, held still. Animate a reveal wipe of the real chart, never new data |
-| 15 | 15-playbook.mp4 | 8.43 s | Playbook: Priorities; AI tools: Claude (company workspace) Approved, Microsoft 365 Copilot Approved with limits ("Internal data only for now. Client data is allowed once Legal signs off the pilot."), Personal AI accounts Not approved | Static | Clean. Uses amber and red status pills | Useful for a short "the rule came from here" insert |
+| 01 | 01-home-what-needs-you | 11.37 s | Alex's Home, "3 things need you" | Static. The cursor drifts 2.8 to 9.6 s. No click | Clean | Good, held still |
+| 02 | 02-ask-a-question | 23.73 s | Priya asks "Can I put client contract data into Copilot?" | Modal 4.57 (f137); title 5.5 to 13.5; Ask 22.77 (f683); thread 22.87 (f686) | Slow typing | Usable, retimed |
+| 03 | 03-champion-answers | 19.63 s | Mia claims the question and replies with the Copilot and Playbook rule | Claim about 7.47 (f224); reply typed 10.9 to 15.7 **in a single-line field that scrolls sideways**; Send 18.37 (f551) | The cursor covers "company" in the final bubble | Use the claim and bubble only |
+| 04 | 04-answer-helps-someone-else | 16.73 s | Ben types a similar question; "Already answered?" suggests Priya's | Modal 4.07 (f122); **suggestion 9.17 (f275)**, held to the end | Clean | Strong |
+| 05 | 05-approve-the-idea | 9.07 s | Approval of Supplier Research Assistant, "Auto-approves in 6h" | **Approve 8.03 (f241)**; Forming team 8.17 (f245) | Shows the "AI review raised concerns" banner; crop below it | Good |
+| 06 | 06-someone-joins | 6.00 s | Jamie joins: 1 of 3 → 2 of 3 | **Join 4.93 (f148)**; result 5.07 (f152) | Short | Good |
+| 07 | 07-plan-moves-forward | 14.40 s | "First drafted by AI from the brief" plan; tick; "Jamie is building the research template" | **Tick 7.93 (f238)**; new line 8.07 (f242) | Long hold | Very good |
+| 08 | 08-blocked | 16.77 s | Blocked check-in → red banner | Blocked 6.97 (f209); typing 9.97 to 15.6; **banner 15.83 (f475)** | Clean | Good |
+| 09 | 09-pulse-catches-it | 10.17 s | Pulse, the blocked project first, Open | **Open 8.97 (f269)** | "Blocked for 1 day" vs "since 7 Oct" on 7 Oct | Good |
+| 10 | 10-unblocked | 13.40 s | "Alex got us the SAP export. Back on track." → the banner disappears | Click 12.40; **banner gone 12.53 (f376)** | Verified at full resolution | Good |
+| 11 | 11-goes-live | 5.87 s | Mark Live → green Live dot | **Click 4.93 (f148)**; Live 5.00 (f150) | 0.87 s of result | Good |
+| 12 | 12-team-reports-hours | 14.07 s | 18 requests, 15 instead of 55 minutes, 12 hours, Report | **Result 13.17 (f395)** | Long sentence | Good |
+| 13 | 13-verified-outside-the-team | 9.53 s | Alex clicks Verify → "Verified by Alex Morgan on 7 Oct" | **Verify 8.53 (f256)**; result 8.63 (f259) | Small text | Good |
+| 14 | 14-leadership-sees-it | 16.20 s | Leadership: 106 verified hours, chart, Went live (Supplier Research Assistant first) | Static; the cursor in the sidebar 6.6 to 13.8 | The best-composed screen | Good |
+| 15 | 15-playbook | 8.43 s | Approved tools: Claude, Copilot "approved with limits", personal accounts not approved | Static | Clean | Insert |
 
 ### A.3 Screenshots
 
-| File | Size | Shows | Notes for the trailer |
-| --- | --- | --- | --- |
-| 01-home-what-needs-you.png | 2880 × 1800 | Same Home as clip 01, with sidebar user "Alex Morgan, Acme Group" | Good still |
-| 02-help-desk.png | 2880 × 1800 | Help Desk Queue: Unclaimed 3, In progress 4, Champions this month | Supporting |
-| 03-private-question-thread.png | 2880 × 1800 | "Can Claude analyse multiple Excel files?" thread with attachment Sales_Data_Sample.xlsx | Off-story (a different question). Avoid in the master; the brief warns against the Excel question |
-| 04-initiatives-board.png | 2880 × 1800 | Initiatives board: Approval, Forming team, Building, Launching, Live columns | Useful as a "whole programme" plane in the final pull-back |
-| 05-initiative-plan.png | 2880 × 1800 | AI Invoice Assistant plan with "Open Teams channel" | Shows the built Teams channel link. A different project |
-| 06-check-ins.png | 2880 × 1800 | AI Invoice Assistant check-ins with On track and At risk history | Supporting |
-| 07-approval-decision.png | 2880 × 1800 | Approval view (same as clip 05) | Still for the approval hold |
-| 08-pulse-whats-stuck.png | 2880 × 1800 | Pulse with Blocked 1, Decisions waiting 1, Unanswered 3, Overdue 1 | A different state from clip 09 |
-| 09-playbook.png | 2880 × 1800 | Playbook with Guidance section and edit controls | Supporting |
-| 10-discover.png | 2880 × 1800 | Discover: colleagues' discoveries and Recently shared answers | **Not in any clip.** A real feature (collaboration). Candidate insert |
-| 11-leadership.png | 2880 × 1800 | Leadership with 94 hours and 2 live (a state before Supplier Research Assistant) | Do not mix with clip 14: the numbers differ |
-| 12-propose-an-idea.png | 2880 × 1800 | Propose an idea: "Describe your idea in a sentence. Spine drafts the proposal below." and Draft it | **The AI drafting feature, not in any clip.** Needs a capture |
-| 13-search-palette.png | 2880 × 1800 | ⌘K search palette | Optional |
-| 20 to 23 phone PNGs | 1170 × 2532 | Mobile Home, thread (Excel), initiative (AI Invoice Assistant, Open Teams channel), Pulse | Shows the product is responsive. Useful for the 9:16 cut, but they are off-story projects |
-| 30-member-home.png | 2880 × 1800 | Ben's Home: "You're all clear", Contract Clause Checker with a red Blocked pill | Supporting |
+The 13 desktop screenshots are 2880 × 1800, plus 4 phone screenshots at 1170 × 2532 and Ben's Home.
 
-### A.4 Brand (sampled from `spine-2` CSS tokens and rendered pixels)
+Material in them that isn't in any clip:
 
-| Token | Value | Use in the film |
+- **Discover** (colleagues' discoveries).
+- **Propose an idea with "Draft it"** (the AI drafts the proposal).
+- **The Initiatives board.**
+- **"Open Teams channel"** on an initiative.
+- **The ⌘K search palette.**
+- **Mobile layouts.**
+
+Screenshot 11 (Leadership) shows 94 hours and must not be mixed with clip 14 (106). The Excel thread (03 and 21) is off-story.
+
+### A.4 Brand (sampled from the Spine 2.0 CSS and rendered pixels)
+
+| Token | Value | Film use |
 | --- | --- | --- |
-| nav (sidebar navy) | #0E1629 (pixel-verified) | The film's dark field |
-| canvas (warm off-white) | #FAF9F6 (pixel-verified) | The film's light field |
-| surface | #FFFFFF | UI containers |
-| text | #181A20 | Dark type |
-| brand (cobalt) | #3B5BDB | The one thing to look at, the line, the pulse |
-| logo-light | #81A0FF | Top of the logo gradient |
+| nav (navy) | #0E1629 | Dark field, end card |
+| canvas (warm off-white) | #FAF9F6 | Light field |
+| text | #181A20 | Type |
+| brand (cobalt) | #3B5BDB | The one thing to look at |
+| logo-light | #81A0FF | Logo gradient top |
 | live | #22C55E | The Live dot only |
 | critical | #BE2D28 | The Blocked banner only |
-| Logo | Three rounded bars (24, 32 and 20 units wide, offset), gradient from logo-light to brand, Inter semibold wordmark | Source geometry is in `src/components/shell/Logo.tsx`. Rebuild it as vector. Never screenshot it |
-| Typeface | Inter (installed here: Inter and Inter Display OTF, verified with fc-list) | All film type |
 
-Note: the root `CLAUDE.md` on `main` lists older tokens (#1660FF, #F7F8FA). Spine 2.0 ships the values above. The film follows Spine 2.0.
+- **Logo:** three rounded offset bars (24, 32 and 20 units wide), gradient from logo-light to brand, with an Inter semibold wordmark. Rebuilt as vector from `src/components/shell/Logo.tsx`.
+- **Typeface:** Inter (installed here).
 
-### A.5 Integrations: what is actually built (from `docs/INTEGRATIONS.md` and the UI)
+### A.5 Integrations (from `docs/INTEGRATIONS.md`)
 
-| Capability | Status | Evidence in footage |
-| --- | --- | --- |
-| Slack channel posts (incoming webhook) | **Built** and unit-tested. The doc says no real Slack workspace has been tested | No Slack UI captured. "Link your Teams or Slack channel" is visible on the initiative page in clips 07 to 13 |
-| Teams channel posts (Teams Workflows webhook, Adaptive Card) | **Built** and unit-tested. No real Teams tenant tested | "Open Teams channel" in screenshots 05 and 22 |
-| What gets posted | Daily Pulse digest, approvals needing a decision, newly approved initiatives looking for a team, blocked initiatives | Pulse subtitle: "It's also posted to your team channel each morning." |
-| Channel links on an initiative | **Built** | Visible |
-| Calendar (.ics export of plan steps and target date) | **Built**. Import into each calendar app not tested | "Calendar" button visible |
-| Slack DMs, Teams personal messages, @mentions, channel creation, calendar write access | **Not built** (proposals only) | None |
-| "@Spine in Teams", "Send to Spine" from Slack, Claude proposing an initiative | **Not built**. ASTRA calls these coming soon | None |
-| Anthropic Claude (inside Spine) | **Built**: AI review, build plan, "Draft it" for ideas, instant first answers on Help Desk questions, "Update from meeting notes", "Spotted by Spine" opportunities on Discover | Only the build-plan label is visible in the clips |
+- **Built:**
+  - Slack channel posts and Teams channel posts (webhooks). Unit-tested; not tested against a real workspace or tenant.
+  - The daily Pulse digest, approvals, new initiatives looking for a team and blockers posted to channels.
+  - Teams and Slack channel links on an initiative.
+  - Calendar `.ics` export.
+- **Not built:** Slack DMs, Teams personal messages and check-ins, @mentions, channel creation, calendar write access, "@Spine" in Teams, "Send to Spine", and Claude proposing initiatives.
+- **AI inside Spine (built, using Claude):**
+  - Instant first answers on Help Desk questions.
+  - "Draft it" for ideas.
+  - The AI review.
+  - The AI-drafted build plan.
+  - "Update from meeting notes".
+  - "Spotted by Spine" opportunities.
 
-### A.6 Gaps: material that does not exist yet
+### A.6 Gaps
 
-1. **AI on the Help Desk.** Spine 2.0 has an instant-answer feature (`src/server/ai/answer.ts`): Spine drafts a first answer from the Playbook and shared answers, and a Champion still owns the follow-up. The clips were recorded without an API key, so it never appears. The user's brief asks for "AI assistance" on the Help Desk. **Needs a capture.** Unverified: how the answer looks in the UI.
-2. **Consent to share.** The real "Share the answer with your company?" panel (`SharePanel.tsx`) explains how Priya's private answer became Ben's "Already answered?". Not in any clip. **Needs a capture.** The previous trailer "bridged editorially" here.
-3. **"Draft it" on Propose an idea.** Screenshot only. **Needs a capture.**
-4. **Admin > Integrations.** Not captured anywhere. **Needs a capture** if integrations are to be shown as product rather than as a text line.
-5. **Discover and "Spotted by Spine".** Screenshot only. Optional.
-6. **Hold frames after each click.** Most clips end 0.9 s after the payoff. Freezing the last real frame works but looks static. A new capture with 3 s of dwell after every result is better.
-7. **Sharp frames for push-ins past 2×.** Not possible from the supplied clips (see A.2).
-8. **Dates that progress.** Every clip says 7 October, so approval, launch and verification all happen on one day. New captures can set `SPINE_TODAY` per beat so the story spans weeks. This is my recommendation, but it changes the demo dataset, so it needs your approval.
-9. **Music, sound effects and voice.** None exist apart from the previous trailer's local synthesis.
-10. **A destination URL for "Book a demo".** None supplied. The end card will use a placeholder.
-
-### A.7 The existing trailers (inspected)
-
-The 80-second rebuild (`trailer/rebuild-2026-10-20`) is carefully truthful: one project, real clicks, demo-data labels, a Kokoro British voice and locally synthesised music. Its QA record is honest about what it couldn't verify. Sampled every 3 seconds, its weaknesses are:
-
-- It still reads as an explainer: a headline at top-left, a small UI card, and articulated clip-art characters beside it on most frames.
-- The UI is mostly lifted into cards and enlarged excerpts, so the real product surfaces rarely fill the screen. The product is not the star.
-- Camera movement is minimal, and there is no visual idea tying the scenes together.
-- The music is deterministic synthesis, and the sound design is thin.
-- The Help Desk AI, the sharing consent, Draft it, integrations and Discover are absent.
-
-The plan below fixes these structurally rather than polishing that edit.
+1. **The Help Desk AI first answer** isn't in the footage (the clips were recorded without an API key). It needs a capture. Its look on screen is unverified.
+2. **The "Share the answer with your company?" consent panel** needs a capture.
+3. **"Draft it" on Propose** needs a capture.
+4. **Admin > Integrations** needs a capture.
+5. **Holds after each click** are too short. Re-capture with dwell after every result.
+6. **Sharp frames for zooms past 2×** need re-capture (verified possible; see E.2).
+7. **Dates:** every clip says 7 October. Optionally re-capture with dates that progress (needs your approval).
+8. **All cinematic footage, music, sound design and voice** have to be created.
+9. **The "Book a demo" URL** wasn't supplied, so a placeholder is used.
 
 ---
 
 ## B. Creative concepts
 
-All three obey the same rules: real Spine 2.0 UI only, one project throughout, no AI scores, AI drafts and people decide, Acme Group is labelled demo data, and future features are labelled coming soon.
+Shared rules for all three:
 
-### Concept 1: "One Line"
+- Real Spine 2.0 UI only. No fake product screens.
+- One project throughout.
+- No AI scores.
+- AI drafts and people decide.
+- Acme Group numbers are labelled demo data.
+- Unbuilt features are labelled coming soon.
+- Generated people never "use" invented software. Any screen they look at is either the real Spine UI composited in, or out of focus.
 
-- **Central idea.** Spine's logo is three offset bars: a spine. The film is built on one cobalt line that never breaks. It is the thread that carries a question to an answer and an idea to Live, and it is also a pulse. When work stalls it flattens. When someone steps in it beats again.
-- **Hook.** Out of black, a single cobalt line draws across the frame with a soft heartbeat. Around it, unanswered messages from everyday workplace chat (generic, not Spine and not real brands) go grey one by one and the line flattens. Silence. Then the line snaps into the three bars of the logo.
-- **Visual language.** A deep navy (#0E1629) void with the real Spine UI as large, crisp planes laid out in 2.5D space, connected by the line. A virtual camera glides plane to plane: it pushes in to read one sentence, then flies along the line to the next plane. Warm off-white (#FAF9F6) planes on navy; cobalt is the only accent; green only for Live, red only for Blocked.
-- **Structure.** Quiet (problem) → the turn (Home: "3 things need you") → Ask → Answer → Share → Idea → Approve → Join → Plan → Stall → Pulse → Unblock → Live → Prove → Lead → the whole spine → end card.
-- **Editing.** Few cuts. Mostly continuous camera moves that feel like one take, punctuated by hard cuts on the beat at the three act changes. Every read is held still.
-- **Sound.** 120 BPM (exactly 15 frames per beat at 30 fps), minimal electronic pulse. A low "heartbeat" kick is the motif, UI clicks are designed foley, and real silence falls on the stall. The music drops out under the flatline and returns on the unblock.
-- **Product integration.** The product is literally the set: every plane is a real capture.
-- **Why it stands out.** It turns the product's core promise ("ideas never quietly die") into a visual and sonic device that pays off twice (Pulse and the logo), and it keeps real UI on screen almost the whole time.
+### Concept 1: "Through the Screen"
+
+- **Central idea.** Spine lives between people. Each beat starts in a real-feeling moment of someone's working day (a train, a busy desk, a corridor, a boardroom). The camera then travels *through* that person's screen into the real product, and out again into the next person's world. One continuous journey links six people through one idea.
+- **Hook.** Dusk, an empty office. A phone on a desk lights up with a message nobody answers. A meeting-room whiteboard with a half-erased "AI pilot" sketch. Silence. *"Most AI ideas don't fail. They go quiet."*
+- **Visual language.**
+  - World: natural light, 35 to 50 mm, shallow depth of field, slow motivated camera moves, real textures (worn desks, coffee cups, rain on windows), all graded to one navy-and-warm-white palette.
+  - Product: crisp, full-frame, still during reads.
+  - The bridge between them: the camera pushing into a screen until the real UI takes over the frame.
+- **Structure.** Quiet → the turn (Alex: "3 things need you") → a question travels (Priya → Spine → Mia → Ben) → an idea travels (Louie → Alex → Jamie → the team) → it stalls and is rescued (Pulse) → it proves its value (a buyer, the verifier, the boardroom) → end card.
+- **Editing.** Match cuts on the screen push-ins; hard cuts on the beat at act changes; still holds on every read.
+- **Sound.** A 120 BPM minimal pulse score. World scenes carry rich room tone (train hum, office murmur, rain); the product is cleaner and closer. A heartbeat motif drops out when work stalls and returns when it's unblocked.
+- **Product integration.** 70% of the running time is real UI. Every person's moment exists to hand off to the product.
+- **Why it stands out.** Most SaaS films choose between people and screen recordings. This one makes the transition between them the signature. It also tells Spine's real story: a question or idea passing from person to person without being dropped.
 
 ### Concept 2: "Quiet until needed"
 
-- **Central idea.** Spine's design principle as a film: silence and stillness by default, motion only when a human is needed. Each scene starts almost empty and calm. Then one notification-like cobalt point appears, and the camera, sound and edit spring into action until a person acts, and everything settles.
-- **Hook.** Ten seconds of near-stillness: a calm Home screen, slow breath sound. Then "3 things need you" and a single sharp sound.
-- **Visual language.** Static, gallery-like full-frame UI, with sudden extreme macro pushes onto the one actionable element. Lots of negative space.
-- **Editing.** Contrast cuts: long stillness, then fast bursts.
-- **Sound.** Mostly ambience and Foley. Music only in the bursts.
-- **Product integration.** Strong: full-frame UI.
-- **Why it stands out.** Unusually restrained and confident. The risk is that it feels slow and austere, the "dead air" hurts on social autoplay, and it does less to explain the breadth of the product.
+- **Central idea.** Spine's design principle as a film: stillness by default, action only when a human is needed.
+- **Hook.** A single calm Home screen, the sound of breath.
+- **Visual.** A gallery-like, full-frame UI with sudden macro pushes onto the one actionable element.
+- **Editing.** Long stillness, then bursts.
+- **Sound.** Mostly Foley.
+- **Why.** Confident and unusual. It falls short on the brief's call for cinematic visuals, people and energy, and autoplay viewers may scroll past.
 
-### Concept 3: "A week at Acme" (cinematic people-first)
+### Concept 3: "The Spine of the company"
 
-- **Central idea.** Follow Priya, Mia, Louie, Jamie and Alex through their real working days in live action, with each person's moment cutting into the UI on their screen via screen composites.
-- **Hook.** A phone lights up on a dark desk; a message goes unread.
-- **Visual language.** Shallow-depth-of-field office cinematography with UI composited into screens.
-- **Editing.** Classic commercial match cuts from world to screen.
-- **Sound.** Licensed-style indie track, room tone.
-- **Product integration.** Weaker: UI lives inside screens in the world, often small or angled.
-- **Why it stands out.** Human and warm, but it depends heavily on AI-generated people. On a £20 budget that means roughly 50 seconds of generated video in total, high failure rates, inconsistent faces between shots, and the "generic AI corporate ad" look the brief forbids. It also puts the product second.
+- **Central idea.** Macro, architectural cinematography of a company building at dawn (corridors, stairwells, a lift shaft) forms a literal spine. Each floor holds a Spine moment, revealed by the camera rising through the building.
+- **Visual.** Large-scale generated architecture, with UI composited onto glass walls and displays.
+- **Why.** Spectacular when it works. But it needs long, complex, continuous generated camera moves, which are the hardest thing for current video models to keep consistent. Generation cost is several times Concept 1's, and putting UI on glass reduces readability.
 
-### Selection: Concept 1, "One Line", with two elements from Concept 2
+### Selection: Concept 1, "Through the Screen"
 
-- Concept 1 makes the product the star, has one memorable idea that runs through the whole film, and needs no generative video to look premium. That suits the budget and the "don't fake the product" rule.
-- From Concept 2 I take **genuine stillness during every read** (the camera stops; nothing else moves) and **silence on the stall**.
-- From Concept 3 I keep only an **optional** pair of live-action plates (cold open and end), behind a budget decision. The master is designed to work fully without them.
+- It fulfils every part of the ambition: cinematic people and places, creative camera moves, seamless transitions, the product as the star, and a "that's clever" moment (the dive through a screen into live UI).
+- It keeps generated shots **short (2 to 3 s), simple and forgiving.** Those are the conditions where current models are most reliable.
+- From Concept 2 it takes complete stillness during every UI read.
+- From Concept 3 it takes the closing idea of the whole company connected: the end card's pull-back.
 
-### Duration: 72 seconds (2160 frames at 30 fps)
+### Duration: 86 seconds (2580 frames at 30 fps, 120 BPM = 15 frames per beat, 43 bars)
 
-The ASTRA brief recommends about 60. Counted against reading time (section C.0), 60 s cannot fit the four product areas, the AI moments and the integrations beat while keeping 2 s or more on each read. 80 s (the previous edit) sagged. 72 s gives 22 shots, about 2.4 s of held reading time per product beat, and 120 BPM gives exactly 36 bars. Cutdowns: 30 s, 15 s and 9:16 vertical (section C.3).
+- The cinematic beats add about 24 s of world footage on top of roughly 60 s of product.
+- Shorter, and either the people become decoration or the product reads get rushed.
+- Cutdowns: 45 s, 15 s and 9:16 (section C.3).
 
 ---
 
@@ -192,687 +184,641 @@ The ASTRA brief recommends about 60. Counted against reading time (section C.0),
 
 ### C.0 Conventions
 
-- **Frame rate:** 30 fps everywhere (the source is 30 fps, so there is no conversion). Timecode is `mm:ss.ff` (frames 00 to 29). Frame numbers are absolute (0 to 2159).
-- **Beat grid:** 120 BPM = 15 frames per beat. Every shot boundary is a multiple of 15 frames.
-- **Canvas:** master render 1920 × 1080 (a 4K render is possible; see D.4).
-- **Zoom notation:** `z` = output pixels per logical UI pixel. The UI layout is 1440 × 810 logical pixels, so a full-frame fit is z = 1.333.
-  - New captures at 3× device scale (4320 × 2430) stay pixel-sharp up to z = 3.0 at 1080p (verified: `evidence/frame-stepped-capture-dsf3-crop.jpg`).
-  - The supplied clips (2×) stay sharp to about z = 2.0. Beyond that, softness is visible (verified: `evidence/remotion-test-frame-2.2x-push.jpg`).
-- **Readability rule:** the one thing to read in each shot must render at 30 px x-height or more at 1080p. Inter's x-height is about 0.55 em, so 14 px meta text needs z ≥ 3.9 (too far; it's never the primary read). 17 px row titles need z ≥ 3.2. 20 px or larger headings need z ≥ 2.7. When the primary read is small UI text, the shot carries an editorial type line restating it (verbatim from the UI, never paraphrased into a claim).
-- **Hold rule:** read time = 0.6 s + (words ÷ 3.5) s. The camera is completely still during a read, except for an optional push of 2% or less.
-- **Ease:** camera moves use cubic-bezier(0.16, 1, 0.3, 1) ("glide"), 18 to 24 frames. Type enters with a 10-frame fade plus a 12 px rise, and exits with an 8-frame fade.
-- **Source columns:** "v2" means the new capture beat (section D.2) that replaces the original. "Fallback" gives the exact in/out in the supplied clip, used if v2 isn't approved. Times are clip seconds / frames.
-- **Type:** editorial lines are Inter Display Semibold, 64 px, tracking −0.02 em, on navy in white or on off-white in #181A20, left-aligned to a 120 px margin. Labels are Inter Medium 22 px #8790A8 (navy) or #636772 (light).
-- **Demo-data note:** "Acme Group · Demo data" in Inter Medium 18 px, 60% opacity, bottom-left, on every shot that shows Acme numbers (S18 to S20).
+- **Frame rate and timecode:** 30 fps; `mm:ss.ff`; absolute frame numbers. Shot boundaries fall on the 15-frame beat grid.
+- **Canvas:** master 1920 × 1080.
+- **Shot types:**
+  - **GEN:** a generated live-action plate.
+  - **UI:** the real Spine capture, full frame.
+  - **GEN→UI:** a plate whose screen carries composited real UI, with a dive-through into full-frame UI.
+- **Zoom:** `z` = output pixels per logical UI pixel (1440 × 810 layout; full frame z = 1.333).
+  - New 3× captures stay sharp up to z = 3.0 (verified).
+  - The supplied clips stay sharp to about z = 2.0.
+- **Readability:** the primary read is at least 30 px x-height at 1080p. When the UI text is small, a verbatim editorial line repeats it.
+- **Hold rule:** the read lasts at least 0.6 s + words ÷ 3.5 s. The camera is completely still during reads.
+- **Camera ease:** cubic-bezier(0.16, 1, 0.3, 1), 18 to 24 frames.
+- **Editorial type:** Inter Display Semibold 64 px, −0.02 em tracking, white on navy or #181A20 on off-white, 120 px left margin. In world shots it sits bottom-left over a soft vignette.
+- **Demo data:** "Acme Group · Demo data", 18 px, 60%, on every shot showing Acme numbers.
+- **The dive-through transition (signature), over 24 frames:**
+  - f0 to f12: the camera keeps pushing into the plate while the tracked UI composite on the screen grows.
+  - f8 to f16: screen glare, reflections and bezel fade out, and the perspective flattens. The corner pin interpolates to a frontal rectangle.
+  - f16 to f24: hand-off to the native full-frame capture at matched scale and position. A 2-frame cross-dissolve hides any residual offset.
+  - The reverse (UI → world) runs the same in reverse.
+- **"v2"** means the new capture beat (E.2). **"Fallback"** means the exact in/out in the supplied clips.
 
 ### C.1 Shot list
 
-#### ACT 0: Quiet (00:00.00 to 00:07.00)
+#### ACT 0: Quiet (00:00.00 to 00:06.00)
 
-**S01 · 00:00.00 to 00:02.15 · 75 f (frames 0 to 74)**
+**S01 · 00:00.00 to 00:03.00 · 90 f (0 to 89) · GEN (G01)**
 
-- **Purpose:** hook. Introduce the line, the motif of the whole film.
-- **Sees:** a pure navy #0E1629 frame. At f10 a 4 px cobalt line starts drawing from the left edge at y = 540 and reaches the right edge at f60 (ease-out). At f30 and f54 the line kicks upward in a small 18 px heartbeat blip that travels along it.
-- **Camera:** locked.
-- **Source:** motion graphics only.
-- **On-screen text:** none.
+- **Purpose:** the hook. Company-wide, ideas going quiet.
+- **Sees:** dusk, a nearly empty open-plan office. On a pale oak desk in the foreground, a phone lies face-up. At f30 it lights with a plain notification card (no readable text); at f70 it dims. Out-of-focus figures leave in the background.
+- **Camera:** slow push-in, 3% over 90 f (generated, plus a 1% added in comp).
+- **Text:** none.
 - **VO:** none.
-- **Sound:** f0 low room tone. f30 and f54 a soft sub "heartbeat" kick with a high tick on the blip. The music bed (pulse synth) starts very low at f45.
-- **Viewer understands/feels:** something alive and calm. "What is this line?"
-- **Additional asset:** none.
-- **Connects:** the camera pulls back on the line into S02.
+- **Sound:** room tone, HVAC, distant lift chime; a muted phone buzz at f30 with no follow-up. The music's pulse begins faint at f45.
+- **Feels:** recognition, a little loneliness.
+- **Connects:** the dimming screen glow matches the light in S02's window.
 
-**S02 · 00:02.15 to 00:05.15 · 90 f (75 to 164)**
+**S02 · 00:03.00 to 00:06.00 · 90 f (90 to 179) · GEN (G02)**
 
-- **Purpose:** the company-wide problem.
-- **Sees:** the camera pulls back over 20 f (z of the line scene from 1.0 to 0.55) to reveal nine generic chat-message fragments floating above and below the line. They are white rounded bubbles at 70% opacity, sans avatars, deliberately unbranded (not Teams, Slack or Spine UI). Copy:
-  1. "Can I put client data into Copilot?" · Seen
-  2. "Has anyone automated supplier checks?" · 3 weeks ago
-  3. "I made a prompt that saves me an hour a day. Where do I share it?"
-  4. "Pilot paused. Waiting on the SAP export." · last updated 19 days ago
-  5. "Who owns AI here?"
-  6. "Is this tool approved?" · Seen
-  7. "We should build this." · 1 reaction
-  8. "Any update?"
-  9. "Following up on this"
+- **Sees:** an empty meeting room, morning. A whiteboard shows a half-erased hand-drawn sketch: boxes and an arrow, plus the words "AI pilot?" (lettering composited in comp so it's legible and consistent). Chairs pushed back, a cold coffee cup.
+- **Camera:** a slow lateral dolly, left to right.
+- **Text:** f95 to f140 "Most AI ideas don't fail." f140 to f179 "They go quiet." (white, bottom-left).
+- **VO:** f95 to f170 "Every company is full of AI ideas. Most of them just go quiet."
+- **Sound:** **true silence f150 to f172**, then a single soft inhale-swell.
+- **Feels:** "That's us."
+- **Connects:** a hard cut on f180 to the morning light of S03.
 
-  From f105 bubbles fade to 25% grey one per 6 frames, and the line's blips stop. By f150 the line is flat.
-- **Camera:** pull back (f75 to f95), then a slow 2% drift.
-- **Source:** motion graphics (mock chat, not product).
-- **On-screen text:** f110 to f164 "Most AI ideas don't fail." (centred, white, 72 px).
-- **VO:** f90 to f145 "Every company is full of AI questions and ideas."
-- **Sound:** soft notification ticks as bubbles appear (f75 to f100), then nothing. The music thins to the pulse only.
-- **Feels:** recognition. "That's us."
-- **Additional asset:** none.
-- **Connects:** the line is flat; cut to the silence beat.
+#### ACT 1: The turn (00:06.00 to 00:11.00)
 
-**S03 · 00:05.15 to 00:07.00 · 45 f (165 to 209)**
+**S03 · 00:06.00 to 00:11.00 · 150 f (180 to 329) · GEN→UI (G03 plus v2 H1)**
 
-- **Purpose:** the punchline of the problem, then the turn.
+- **Purpose:** Spine tells you what needs you, calmly.
 - **Sees:**
-  - f165 to f180: bubbles gone. Only the flat line and the text "They go quiet." (replacing the S02 line in place).
-  - f186 to f204: the line retracts from both ends into three short offset segments that round off into the exact logo bars (lengths 24, 32 and 20, offsets as in `Logo.tsx`), scaling to 240 px tall at the frame centre.
-  - f198: the wordmark "Spine" fades in.
-- **Camera:** locked.
-- **Source:** motion graphics (brand vector).
-- **Text:** "They go quiet." (f165 to f185).
-- **VO:** f168 to f190 "Most of them go quiet."
-- **Sound:** **true silence f166 to f185**, then a single inhale/air swell into a clean "set" click at f204 when the bars lock.
-- **Feels:** a small jolt. The brand arrives as the answer.
-- **Additional asset:** none.
-- **Connects:** the logo is the anchor for the zoom-out into the real sidebar.
-
-#### ACT 1: The turn (00:07.00 to 00:11.15)
-
-**S04 · 00:07.00 to 00:11.15 · 135 f (210 to 344)**
-
-- **Purpose:** show that Spine is calm and tells you what to do first.
-- **Sees:**
-  - f210 to f240: the centre logo travels and shrinks into the sidebar logo position of the real Home screen, which fades up around it. Match-move: logo scale 10 → 1, Home plane z 6.0 → 1.333, with origin locked on the logo.
-  - f240 to f270: the camera glides to frame the headline and the first row.
-  - f270 to f344: hold, z = 2.6, on "Wednesday, 7 October / 3 things need you" and row 1 "Supplier Research Assistant · Auto-approves in 6h unless you review it · Review".
-  - f300: a 2 px cobalt outline ring traces around the Review button once. Drawn outside the button with an 8 px gap, so it can't be mistaken for UI.
-- **Camera:** dolly out, then glide, then hold.
-- **Source:** v2 beat H1 (Alex Home, DSF 3, no cursor). Fallback: clip 01, frame at 1.0 s (f30), held. z is capped at 2.0 with the fallback.
+  - f180 to f240: Alex, who leads AI adoption, at a standing desk by a window with coffee, opens a laptop (medium shot from behind and to the side; the face is partly visible, not the subject). The laptop screen is a tracked grey plate showing the real Home capture.
+  - f240 to f264: the dive-through into full-frame Home.
+  - f264 to f290: glide to the headline.
+  - f290 to f329: hold, z 2.6, on "Wednesday, 7 October / 3 things need you" and row 1 "Supplier Research Assistant · Auto-approves in 6h unless you review it · Review".
+- **Camera:** a plate push-in, the dive, then a lock.
+- **Source:** G03 plate; v2 H1 (Alex Home, 3× capture, no cursor). Fallback: clip 01 at 1.0 s, z ≤ 2.0.
 - **Text:** none (the UI headline is the read).
-- **VO:** f235 to f330 "Spine keeps them moving, and only asks for you when you're needed."
-- **Sound:** the music's kick enters on f210 (bar 1 proper). A soft UI tick at f300.
-- **Feels:** relief. "It tells me the one thing."
-- **Asset needed:** H1 (or none with the fallback).
-- **Connects:** the camera flies down the cobalt line to the Help Desk plane (S05).
+- **VO:** f190 to f320 "Spine keeps them moving, and only asks for you when you're actually needed."
+- **Sound:** the laptop-open Foley; the kick enters on f240 (bar 5) as the dive starts.
+- **Feels:** calm control.
+- **Connects:** a reverse dive out of the UI into S04's phone.
 
-#### ACT 2: Help Desk (00:11.15 to 00:27.00)
+#### ACT 2: A question travels (00:11.00 to 00:32.15)
 
-**S05 · 00:11.15 to 00:14.15 · 90 f (345 to 434)**
+**S04 · 00:11.00 to 00:14.00 · 90 f (330 to 419) · GEN→UI (G04 plus v2 Q1m)**
 
-- **Purpose:** asking a company-specific question, privately.
+- **Purpose:** anyone can ask, wherever they are.
+- **Sees:** Priya on a commuter train, morning, holding a phone at chest height. An over-the-shoulder shot; the phone screen shows the real *mobile* Ask a question capture with the title being typed ("Can I put client contract data into Copilot?"). Rain-streaked window, passing light.
+- **Camera:** a gentle handheld-style drift, then a push toward the phone from f390.
+- **Source:** G04; v2 Q1m (mobile viewport 390 × 844 at 3×).
+- **Text:** f340 to f419 "Ask what only your company can answer."
+- **VO:** f335 to f410 "Ask the question only your company can answer..."
+- **Sound:** train interior hum, soft key taps.
+- **Note:** the phone UI is too small to read here by design. S05 delivers the read.
+- **Connects:** the dive into the desktop-equivalent modal (S05). It's the same question at full size; the layout jump is hidden by the dive.
+
+**S05 · 00:14.00 to 00:17.00 · 90 f (420 to 509) · UI (v2 Q1)**
+
+- **Sees:** the Ask a question modal.
+  - f420 to f450: the last words of the title type.
+  - f450 to f509: hold, z 2.5, on the title and the privacy line "Only you and the Champion who picks this up can see the conversation." The privacy line gets a cobalt underline at f455.
+  - Ask is clicked at f500.
+- **Fallback:** clip 02 at 13.5 s (f405), z ≤ 2.0.
+- **VO:** f425 to f500 "...privately."
+- **Sound:** a click at f500.
+- **Feels:** safe to ask.
+
+**S06 · 00:17.00 to 00:19.15 · 75 f (510 to 584) · UI (v2 Q2, conditional)**
+
+- **Sees:** Priya's thread, where Spine's instant first answer, drafted from the company Playbook, appears (as captured). Hold z ≈ 2.4.
+- **Text:** "An instant first answer, from your own Playbook." This line is used only if the captured UI really reflects the Playbook rule.
+- **VO:** f515 to f580 "Spine drafts a first answer from your rules..."
+- **Fallback (if not approved, or weak):** Mia's Help Desk queue (clip 03 at 6.0 s), pushing to the Unclaimed row "Can I put client contract data into Copilot? · Claim".
+- **Unverified:** how the answer looks on screen.
+- **Connects:** a reverse dive out into Mia's monitor (S07).
+
+**S07 · 00:19.15 to 00:22.00 · 75 f (585 to 659) · GEN→UI (G05 plus v2 Q3)**
+
+- **Sees:** Mia, a Champion, at a busy desk with headphones round her neck, a plant, a second monitor. A medium shot from her side. Her main monitor (a tracked plate) shows the real Help Desk queue with Priya's question at the top. She leans in (f610), and the camera follows her eyeline into the screen: the dive at f630 to f654.
+- **Text:** "A Champion who knows picks it up."
+- **VO:** f590 to f655 "...and a Champion confirms it."
+- **Sound:** office murmur fades to the product's cleaner sound as we dive.
+- **Feels:** real people, real expertise.
+
+**S08 · 00:22.00 to 00:26.00 · 120 f (660 to 779) · UI (v2 Q3)**
+
 - **Sees:**
-  - f345 to f365: the camera arrives on the Ask a question modal.
-  - f365 to f405: the title types "Can I put client contract data into Copilot?" at a natural pace (the 44 characters retimed into 40 frames).
-  - f405 to f434: hold, z = 2.5, framing Title plus the privacy line "Only you and the Champion who picks this up can see the conversation." That line gets a cobalt underline, drawn on at f410.
-- **Camera:** glide in, then lock.
-- **Source:** v2 beat Q1 (Priya, typing frame-stepped). Fallback: clip 02 modal from 4.57 s; title typing 5.5 to 13.5 s retimed ×6 (240 f → 40 f); hold on the frame at 13.5 s (f405); z ≤ 2.0.
-- **Text (f370 to f434, top-left):** "Ask what only your company can answer."
-- **VO:** f350 to f425 "Ask the question only your company can answer."
-- **Sound:** soft key ticks matched to the characters, and a whoosh on arrival.
-- **Feels:** "This is safe to ask."
-- **Asset:** Q1.
-- **Connects:** Ask is pressed (Q1 frame) and the camera slides right to the thread.
+  - f660 to f680: Claim is clicked (real).
+  - f680 to f700: the thread opens.
+  - f700 to f779: Mia's reply bubble, held at z 2.3, reading "Not in Copilot yet: it's approved for internal data only until Legal signs off. Use the company Claude workspace, and replace client names first. It's all in the Playbook."
+  - f740 to f779: a Playbook inset slides up (clip 15 at 2.0 s, the AI tools crop): "Microsoft 365 Copilot · Approved with limits · Internal data only for now...".
+- **Fallback:** clip 03, claim f214 to f234; bubble frame f558 (the cursor covers one word).
+- **Text:** "Answered with your company's own rules."
+- **Sound:** a click and a soft "sent" tone.
 
-**S06 · 00:14.15 to 00:17.00 · 75 f (435 to 509)**
+**S09 · 00:26.00 to 00:28.00 · 60 f (780 to 839) · UI (v2 Q4)**
 
-- **Purpose:** AI assistance that follows company rules.
-- **Sees:** Priya's thread with Spine's first answer drafted from the Playbook (the `aiAnswer` UI, captured in v2).
-  - f435 to f455: the answer area reveals as recorded.
-  - f455 to f509: hold, z ≈ 2.4, on the drafted answer text, which, given the Playbook rule, should say that Copilot is internal-data-only until Legal signs off. The exact wording comes from the captured run and is not known yet.
-- **Camera:** short glide, then lock.
-- **Source:** v2 beat Q2 (needs either the dev-mode fixtures or one real Claude call; see D.2).
-- **Text:** "A first answer from your own Playbook." The line is only kept if the captured UI really cites or uses the Playbook.
-- **VO:** f440 to f505 "Spine drafts a first answer from your Playbook..."
-- **Sound:** a soft shimmer as the text appears. No sci-fi sound.
-- **Feels:** instant help, within the rules.
-- **Asset:** Q2 (**unverified UI**).
-- **Fallback if Q2 is not approved or looks weak:** a 75 f Help Desk Queue plane (Mia's view, clip 03, 0.4 to 7.4 s), pushing to the Unclaimed row "Can I put client contract data into Copilot? · Claim". The text becomes "Champions see it straight away." Hold on clip 03 f200.
-- **Connects:** the line runs from the answer to Mia's avatar (S07).
-
-**S07 · 00:17.00 to 00:21.15 · 135 f (510 to 644)**
-
-- **Purpose:** a Champion confirms with the company's own rules.
-- **Sees:**
-  - f510 to f530: Mia's queue, Claim pressed (real click).
-  - f530 to f545: the thread opens.
-  - f545 to f600: Mia's reply bubble appears whole, with no sideways scrolling.
-  - f560 to f644: hold, z = 2.3, on the bubble: "Not in Copilot yet: it's approved for internal data only until Legal signs off. Use the company Claude workspace, and replace client names first. It's all in the Playbook."
-  - f615 to f644: a 30 f inset slides up from the bottom right (40% frame width): the Playbook row "Microsoft 365 Copilot · Approved with limits · Internal data only for now..." (clip 15 at 2.0 s, f60, crop to the AI tools section, z 2.0), linked to the word "Playbook" by the cobalt line.
-- **Camera:** glide, then lock.
-- **Source:** v2 beat Q3. Fallback: clip 03, Claim at 7.47 s (f224, play f214 to f234 at real speed); the bubble frame at 18.6 s (f558); a cursor-free bubble is not available in the fallback, because the cursor sits over "company" from 18.47 s. Plus clip 15 f60.
-- **Text:** "A Champion answers with your rules."
-- **VO:** f515 to f600 "...and a Champion confirms it, with your company's own rules."
-- **Sound:** a click on Claim; a soft "sent" tone at f545.
-- **Feels:** expert humans, not a chatbot.
-- **Asset:** Q3.
-- **Connects:** the camera pulls down to the share panel below the thread.
-
-**S08 · 00:21.15 to 00:23.15 · 60 f (645 to 704)**
-
-- **Purpose:** private by default; shared only when the asker agrees.
-- **Sees:** the real panel "Your Champion suggested sharing this answer" with the summary text and the primary "Share summary". It is clicked at f675 (real) and "Shared." appears at f680. Hold z = 2.4 to f704.
-- **Source:** v2 beat Q4 (new; no fallback exists in the supplied material). If not captured, this shot is removed and S09 grows to 165 f (starting at f645).
+- **Sees:** the real panel "Your Champion suggested sharing this answer" with "Share summary". It's clicked at f805, and "Shared." appears. Hold z 2.4.
 - **Text:** "Shared only when the asker agrees."
-- **VO:** none (it's covered by the type, which gives breathing room).
-- **Sound:** a click, then a confirmation tick.
+- **Fallback:** none exists. If it isn't captured, cut the shot and give its 60 f to S10.
 - **Feels:** trust.
-- **Asset:** Q4.
-- **Connects:** the camera flies along the line to a new person (Ben).
 
-**S09 · 00:23.15 to 00:27.00 · 105 f (705 to 809)**
+**S10 · 00:28.00 to 00:32.15 · 135 f (840 to 974) · GEN (G06, 30 f) then UI (v2 Q5)**
 
-- **Purpose:** knowledge compounds.
 - **Sees:**
-  - f705 to f725: Ben's Ask modal; the title types "Is client contract data OK in Copilot?"
-  - f740: "Already answered?" with the link "Can I put client contract data into Copilot?" appears (real).
-  - f745 to f809: push from z 2.2 to z 2.9 over 12 f, then lock on the suggestion.
-  - The cobalt line from S07/S08 arrives and underlines the link at f750.
-- **Source:** v2 beat Q5. Fallback: clip 04, typing 5.5 to 9.1 s retimed ×5.4 (108 f → 20 f); the suggestion appears at 9.17 s (f275); hold on 9.5 s (f285) (cursor near the link); z ≤ 2.0.
+  - f840 to f869: weeks later. Ben at a hot desk, close on hands typing on a laptop keyboard. The screen is out of frame or defocused. Afternoon light.
+  - f870: cut to UI. Ben's Ask modal; "Is client contract data OK in Copilot?" finishes typing.
+  - f900: "Already answered?" with the link "Can I put client contract data into Copilot?" appears (real).
+  - f905 to f920: push z 2.2 → 2.9.
+  - f920 to f974: hold.
+- **Fallback:** clip 04, suggestion at 9.17 s (f275), held on f285, z ≤ 2.0.
 - **Text:** "The next person gets the answer before they finish asking."
-- **VO:** f710 to f800 "Share it, and the next person gets the answer before they even ask."
-- **Sound:** a rising chord resolution at f740. This is the "clever" moment.
-- **Feels:** "Wow, that's smart."
-- **Asset:** Q5.
-- **Connects:** a hard cut on the downbeat at f810 (act change) to Ideas.
+- **VO:** f845 to f965 "Share it, and the next person gets the answer before they even finish asking."
+- **Sound:** a rising chord resolves at f900. This is the "clever" beat.
+- **Connects:** a hard cut on f975 to the act change.
 
-#### ACT 3: Ideas & Projects (00:27.00 to 00:42.00)
+#### ACT 3: An idea travels (00:32.15 to 00:51.15)
 
-**S10 · 00:27.00 to 00:30.00 · 90 f (810 to 899)**
+**S11 · 00:32.15 to 00:35.15 · 90 f (975 to 1064) · GEN→UI (G07 plus v2 I1)**
 
-- **Purpose:** an idea becomes a proposal, with AI help.
-- **Sees:** Propose an idea.
-  - f810 to f835: one sentence is typed in "Describe your idea in a sentence": "A supplier research assistant that gathers supplier details for Procurement".
-  - f840: Draft it is clicked (real).
-  - f845 to f880: the form fields fill (as captured).
-  - Hold to f899 on the filled Name and Problem fields, z 2.0.
-- **Source:** v2 beat I1 (needs fixtures or one Claude call; **unverified UI**). The resulting problem text must match the Supplier Research Assistant's seeded problem ("Sourcing supplier information is slow and manual, with key details spread across different websites and documents."). If the drafted text differs, we use the real drafted text and don't edit it.
+- **Sees:** Louie in Procurement. A desk stacked with supplier folders and printouts, the monitor (tracked plate) showing the real Propose an idea page. He pushes the papers aside (f985 to f1010) and types one sentence into "Describe your idea in a sentence" (the composite plays the real capture). The dive happens at f1040 to f1064.
+- **Text:** "An idea from the people doing the work."
+- **VO:** f980 to f1060 "Ideas come from the people doing the work."
+- **Sound:** paper rustle, keys.
+
+**S12 · 00:35.15 to 00:38.15 · 90 f (1065 to 1154) · UI (v2 I1)**
+
+- **Sees:** Draft it is clicked at f1070 (real); the form fields fill (as captured); hold z 2.0 on the filled Name and Problem fields.
 - **Text:** "Describe it in a sentence. Spine drafts the proposal."
-- **VO:** f815 to f890 "Turn an idea into a real proposal in one sentence."
-- **Sound:** keys, a click, a soft fill shimmer.
-- **Fallback:** screenshot 12-propose-an-idea.png (empty form) for 30 f, then straight to S11, with S11 extended by 60 f.
-- **Connects:** the line runs to the approval plane.
+- **Fallback (if the AI beats aren't approved):** screenshot 12 for 30 f, then S13 extended.
+- **Unverified:** the look and the drafted text. Whatever the drafted text says is used unedited.
 
-**S11 · 00:30.00 to 00:33.15 · 105 f (900 to 1004)**
+**S13 · 00:38.15 to 00:41.15 · 90 f (1155 to 1244) · UI (v2 I2)**
 
-- **Purpose:** leadership decides, and ideas can't stall in approval.
 - **Sees:**
-  - f900 to f960: approval view cropped below the AI-concerns banner (crop top at logical y = 300 so the banner is never in frame), z 2.2, on Problem / Who benefits / Team.
-  - f960 to f975: glide right to the panel "Auto-approves in 6h · Submitted by Louie Morris · Auto-approves today at 16:00".
-  - f975: Approve is clicked (real).
-  - f980 to f1004: the stage stepper reads Draft, Approval, **Forming team**; "Needs 2 more people to start".
-- **Source:** v2 beat I2 (with a 3 s dwell after the click). Fallback: clip 05, the frame at 4.0 s for the details hold; real click frames f236 to f245 at real speed; frozen hold on f270 (the last frame).
-- **Text (f965 to f1004):** "Decided in one click. Or it auto-approves."
-- **VO:** f905 to f990 "Leadership decides, and nothing waits forever."
-- **Sound:** a clean click on f975, and a stepper "advance" tick.
-- **Feels:** momentum, accountability.
-- **Asset:** I2.
-- **Connects:** the camera drops down the stepper to the Team tab.
+  - f1155 to f1195: the approval view, cropped below the AI-concerns banner, z 2.2, then glide to "Auto-approves in 6h · Auto-approves today at 16:00".
+  - f1200: Approve (real).
+  - f1205 to f1244: the stepper reads **Forming team**, "Needs 2 more people to start".
+- **Fallback:** clip 05, f236 to f245 at real speed, the hold frozen on f270.
+- **Text:** "Leadership decides in one click. Or it auto-approves."
+- **VO:** f1160 to f1240 "Leadership decides, and nothing waits forever."
 
-**S12 · 00:33.15 to 00:36.15 · 90 f (1005 to 1094)**
+**S14 · 00:41.15 to 00:44.00 · 75 f (1245 to 1319) · UI (v2 I3)**
 
-- **Purpose:** collaboration. The right people join.
-- **Sees:** the Team tab, "1 of 3 people", Louie Morris (Owner). Join the team is clicked at f1040 (real); "2 of 3 people", Jamie Chen (Member) appears at f1045. Push z 2.2 → 2.6 on the count, hold to f1094.
-- **Source:** v2 beat I3. Fallback: clip 06, f120 to f160 at real speed, then hold on f179.
+- **Sees:** the Team tab, "1 of 3 people". Join the team is clicked at f1270 (real); "2 of 3 people · Jamie Chen · Member" appears. Push z 2.2 → 2.6; hold.
+- **Fallback:** clip 06, f120 to f160, then hold f179.
 - **Text:** "The right people join."
-- **VO:** f1010 to f1060 "The right people join."
-- **Sound:** a click, then a warm two-note "join" tone.
-- **Feels:** a team forming.
-- **Asset:** I3.
-- **Connects:** a cut on the beat to the Plan tab.
+- **Sound:** a warm two-note tone on the join.
 
-**S13 · 00:36.15 to 00:42.00 · 165 f (1095 to 1259)**
+**S15 · 00:44.00 to 00:49.00 · 150 f (1320 to 1469) · UI (v2 I4)**
 
-- **Purpose:** the AI-drafted plan, with people owning every step.
 - **Sees:**
-  - f1095 to f1140: the Plan tab, z 1.8, showing the label "First drafted by AI from the brief" (cobalt-underlined at f1110) and six steps with avatars LM, JC, SK and dates 9 Oct to 10 Nov.
-  - f1140: Louie ticks step 1 (real).
-  - f1150 to f1170: glide up to the next-action line.
-  - f1170 to f1259: hold, z 2.8, on "Jamie is building the research template / At the current pace: on track, finishing around 11 Nov".
-- **Source:** v2 beat I4. Fallback: clip 07, the frame at 3.0 s for the plan, real tick f230 to f245, hold on the frame at 9.0 s (f270), z ≤ 2.0.
-- **Text (f1180 to f1259):** "AI drafts the plan. People own every step."
-- **VO:** f1100 to f1250 "Spine drafts the plan. Every step has an owner, and everyone knows what's next."
-- **Sound:** a tick sound on the checkbox. The music builds to bar 21 at f1260.
-- **Feels:** clarity.
-- **Asset:** I4.
-- **Connects:** hard cut at f1260 (act change) to the Check-ins tab.
+  - f1320 to f1360: the Plan tab, z 1.8. "First drafted by AI from the brief" is underlined at f1335; six steps with LM, JC and SK avatars.
+  - f1365: a step is ticked (real).
+  - f1375 to f1395: glide up.
+  - f1395 to f1469: hold, z 2.8, on "Jamie is building the research template / At the current pace: on track, finishing around 11 Nov".
+- **Fallback:** clip 07, tick f230 to f245, hold f270, z ≤ 2.0.
+- **Text:** "AI drafts the plan. People own every step."
+- **VO:** f1325 to f1460 "Spine drafts the plan. Every step has an owner, and everyone knows what's next."
+- **Connects:** a reverse dive out of the UI to the team table.
 
-#### ACT 4: Pulse (00:42.00 to 00:53.00)
+**S16 · 00:49.00 to 00:51.15 · 75 f (1470 to 1544) · GEN (G08)**
 
-**S14 · 00:42.00 to 00:45.00 · 90 f (1260 to 1349)**
+- **Sees:** the team (Louie, Jamie, Sarah) around a small table with laptops and a sketch pad, mid-conversation; one points at a laptop (the screen is out of focus). Warm late-afternoon light. Faces in three-quarter view, medium-wide.
+- **Camera:** a slow arc of about 10°.
+- **Text:** none.
+- **Sound:** an energised murmur; the music builds into bar 26.
+- **Feels:** momentum, people together.
+- **Connects:** a hard cut on f1545 to the act change; the music cuts out on f1580.
 
-- **Purpose:** work stalls.
+#### ACT 4: It stalls, and Spine notices (00:51.15 to 01:04.00)
+
+**S17 · 00:51.15 to 00:54.15 · 90 f (1545 to 1634) · UI (v2 P1)**
+
 - **Sees:**
-  - f1260 to f1280: the check-in card; Blocked is selected (real).
-  - f1280 to f1300: the note appears ("We need the approved supplier list exported from SAP. Who can get it for us?"), retimed.
-  - f1305: Check in.
-  - f1310 to f1349: the red banner "Blocked since 7 Oct: We need the approved supplier list exported from SAP. Who can get it for us?" Hold z 2.4.
-  - The film's cobalt line (running along the plane's bottom edge since S04) **flattens** at f1312.
-- **Source:** v2 beat P1. Fallback: clip 08, f205 to f215 real, the typing 9.97 to 15.6 s retimed ×8.5, click f472, banner f475, hold on the last frame f502.
+  - f1545 to f1565: the check-in card, Blocked selected (real).
+  - f1565 to f1575: the note appears: "We need the approved supplier list exported from SAP. Who can get it for us?"
+  - f1578: Check in.
+  - f1580 to f1634: the red banner "Blocked since 7 Oct: ...", held at z 2.4.
+- **Fallback:** clip 08, f205 to f215; typing retimed; banner f475; hold f502.
 - **Text:** "Work gets stuck."
-- **VO:** f1265 to f1300 "When work gets stuck,"
-- **Sound:** **the music drops out at f1312**, leaving a thin flat sine at very low level for 1 s.
-- **Feels:** tension. This is where ideas usually die.
-- **Asset:** P1.
-- **Connects:** the camera pulls back from the banner, the plane turns away, and the Pulse plane arrives.
+- **VO:** f1550 to f1585 "Then it gets stuck."
+- **Sound:** **the music drops out at f1580**; a low flat tone at −30 dB under room tone.
+- **Feels:** this is where ideas die.
 
-**S15 · 00:45.00 to 00:48.15 · 105 f (1350 to 1454)**
+**S18 · 00:54.15 to 00:58.00 · 105 f (1635 to 1739) · UI (v2 P2)**
 
-- **Purpose:** Spine notices.
 - **Sees:**
-  - f1350 to f1380: the Pulse page as Alex (a different person and screen), "Anything blocked, waiting or going quiet across your AI programme. It's also posted to your team channel each morning."
-  - f1380 to f1400: glide to the Blocked group.
-  - f1400 to f1454: hold, z 2.5, on row 1 "Supplier Research Assistant · Blocked for 1 day: We need the approved supplier list exported from SAP. Who can get it for us? · Open". The sidebar "Pulse" count is visible at left, but small.
-  - f1420: the flat line gives one heartbeat blip under the row.
-- **Source:** v2 beat P2. Fallback: clip 09, the frame at 1.0 s (f30), held, z ≤ 2.0.
-- **Text:** "Spine notices, and tells the person who can help."
-- **VO:** f1355 to f1440 "Spine notices, and brings it to someone who can help."
-- **Sound:** a single heartbeat on f1420.
-- **Feels:** a safety net.
-- **Note:** the subtitle sentence about the team channel is real product copy. It doubles as the built Slack/Teams integration, shown without faking a Slack screen.
-- **Connects:** Open is clicked at f1450 (real) and we cut to S16.
+  - f1635 to f1660: Alex's Pulse: "Anything blocked, waiting or going quiet across your AI programme. It's also posted to your team channel each morning."
+  - f1660 to f1680: glide.
+  - f1680 to f1739: hold, z 2.5, on "Supplier Research Assistant · Blocked for 1 day: We need the approved supplier list exported from SAP... · Open".
+  - Open is clicked at f1735.
+- **Fallback:** clip 09 at 1.0 s, held, plus the Open click f269.
+- **Text:** "Spine notices, and tells someone who can help."
+- **VO:** f1640 to f1730 "Spine notices, and brings it to someone who can help."
+- **Sound:** a single heartbeat at f1700.
 
-**S16 · 00:48.15 to 00:53.00 · 135 f (1455 to 1589)**
+**S19 · 00:58.00 to 01:00.15 · 75 f (1740 to 1814) · GEN (G09)**
 
-- **Purpose:** someone steps in, and work resumes.
+- **Sees:** Alex walks through the office (a tracking shot from behind and the side) to a colleague's desk, leans down and talks briefly. The colleague nods and turns to their keyboard. The screens are defocused.
+- **Camera:** a smooth follow, then a stop.
+- **Sound:** footsteps, a quiet word (an unintelligible murmur, no dialogue), keys.
+- **Feels:** a human steps in. Spine prompted it; a person did it.
+- **Connects:** a match cut on the colleague's keystroke to Louie's check-in.
+
+**S20 · 01:00.15 to 01:04.00 · 105 f (1815 to 1919) · UI (v2 P3)**
+
 - **Sees:**
-  - f1455 to f1475: the project with the blocker banner (as Alex).
-  - f1475: cut to Louie's check-in, On track selected, typing "Alex got us the SAP export. Back on track."
-  - f1520: Check in.
-  - f1525: **the red banner disappears and the page settles** (real).
-  - f1530 to f1589: hold on "Jamie is building the research template" and "Checked in. Thanks.", z 2.3.
-  - From f1525 the cobalt line beats again: three blips, then continuous.
-- **Source:** v2 beat P3 (with a 3 s dwell). Fallback: clip 09 f269 to f300; clip 10 typing 7.73 to 12.27 s retimed ×3; click f372; banner gone f376; hold to f401.
+  - f1815 to f1845: Louie's check-in, On track, "Alex got us the SAP export. Back on track."
+  - f1850: Check in.
+  - f1853: **the red banner disappears** (real).
+  - f1860 to f1919: hold, z 2.3, on "Jamie is building the research template".
+- **Fallback:** clip 10, click f372, banner gone f376, hold f401.
 - **Text:** "Someone steps in. It moves again."
-- **VO:** f1460 to f1580 "Someone steps in, and it moves again."
-- **Sound:** **the music returns on f1530** with a full drum pattern (bar 26). The heartbeat motif becomes the kick.
-- **Feels:** release. This is the emotional peak.
-- **Asset:** P3.
-- **Connects:** a cut on the beat to Launching.
+- **VO:** f1820 to f1910 "Someone steps in, and it moves again."
+- **Sound:** **the music returns on f1860 at full strength.** The emotional peak.
 
-#### ACT 5: Live and proven (00:53.00 to 01:04.15)
+#### ACT 5: It proves its value (01:04.00 to 01:19.15)
 
-**S17 · 00:53.00 to 00:55.15 · 75 f (1590 to 1664)**
+**S21 · 01:04.00 to 01:06.15 · 75 f (1920 to 1994) · UI (v2 L1)**
 
-- **Purpose:** it ships.
+- **Sees:** "You're launching this · Mark Live →", z 2.4. The click at f1945 (real); the full stepper and a green "● Live" (real). Push z 2.4 → 3.0; hold.
+- **Fallback:** clip 11, f140 to f150, hold f175.
+- **VO:** f1925 to f1975 "It goes live."
+- **Sound:** a bright chime on the Live frame.
+
+**S22 · 01:06.15 to 01:08.15 · 60 f (1995 to 2054) · GEN (G10)**
+
+- **Sees:** a Procurement buyer at a sunny desk, with a supplier folder closed beside them. They glance at the laptop (the screen is out of focus) and give a small satisfied nod, then reach for a coffee.
+- **Camera:** a slow push.
+- **Purpose:** what became useful, and for whom. No product UI is shown, because the assistant itself isn't part of Spine.
+- **Text:** "For the Procurement team: 15 minutes instead of 55." This is verbatim from the team's own reported measurement in S23, and the demo-data note shows.
+- **Sound:** a light office ambience.
+
+**S23 · 01:08.15 to 01:12.00 · 105 f (2055 to 2159) · UI (v2 L2)**
+
 - **Sees:**
-  - f1590 to f1615: "You're launching this · Mark Live →", z 2.4.
-  - f1615: click (real).
-  - f1617 to f1645: all six stepper segments read filled and a green dot "Live" appears (real). The camera pushes z 2.4 → 3.0 on "● Live" over 15 f.
-  - f1645 to f1664: hold.
-- **Source:** v2 beat L1. Fallback: clip 11, f140 to f150 real; hold on f175.
-- **Text:** none. "Live" is the read.
-- **VO:** f1595 to f1640 "It goes live."
-- **Sound:** the brightest moment in the score: a chime on f1617.
-- **Feels:** achievement.
-- **Connects:** a glide down to Outcomes.
+  - f2055 to f2095: the Outcomes sentence (retimed) "Six buyers used it on 18 supplier requests; each one took 15 minutes instead of 55 (timed in October)." with Hours 12 → Report.
+  - f2100 to f2159: the report row "October 2026: 12 hours saved · Not verified yet".
+  - From f2105 an equation builds from the captured numbers: "18 requests × 40 minutes saved = 12 hours".
+- **Fallback:** clip 12, result f395, hold to f421.
+- **VO:** f2060 to f2150 "The team reports what it saved, and how they measured it."
 
-**S18 · 00:55.15 to 00:59.00 · 105 f (1665 to 1769)**
+**S24 · 01:12.00 to 01:14.15 · 75 f (2160 to 2234) · UI (v2 L3)**
 
-- **Purpose:** honest value reporting.
-- **Sees:**
-  - f1665 to f1700: the Outcomes form with the measurement typed (retimed): "Six buyers used it on 18 supplier requests; each one took 15 minutes instead of 55 (timed in October)." Hours 12, Report clicked at f1705.
-  - f1710 to f1769: the report row "October 2026: 12 hours saved · Reported by Louie Morris · Not verified yet".
-  - From f1715 to f1769 a motion-graphic equation builds above the plane from the captured numbers only: "18 requests × 40 minutes saved = 12 hours". Each number flies out of its exact place in the UI sentence.
-- **Source:** v2 beat L2. Fallback: clip 12, typing 4.33 to 9.87 s retimed ×6, hours f300 to f385, click f389, result f395, hold to f421.
-- **Text:** the equation, plus "Acme Group · Demo data".
-- **VO:** f1670 to f1760 "The team reports what it saved, and how they measured it."
-- **Sound:** three ticks as the numbers land.
-- **Feels:** credibility, not hype.
-- **Connects:** the line runs to a new avatar, AM, outside the team.
-
-**S19 · 00:59.00 to 01:01.15 · 75 f (1770 to 1844)**
-
-- **Purpose:** verified by someone outside the team.
-- **Sees:** Alex's view of the report, Verify (secondary button), z 2.6.
-  - f1800: click (real).
-  - f1803: "Verified" (green text) and "Reported by Louie Morris · Verified by Alex Morgan on 7 Oct".
-  - Push to z 3.0 on that line and hold to f1844.
-- **Source:** v2 beat L3. Fallback: clip 13, f250 to f260 real; hold on f285.
+- **Sees:** Verify is clicked at f2185 (real); "Verified by Alex Morgan on 7 Oct". Push z 2.6 → 3.0; hold.
+- **Fallback:** clip 13, f250 to f260, hold f285.
 - **Text:** "It only counts once someone outside the team verifies it."
-- **VO:** f1775 to f1840 "It only counts once someone outside the team checks it."
-- **Sound:** a confident low "stamp".
-- **Feels:** "These numbers are real."
-- **Connects:** the camera pulls back hard to the Leadership plane.
+- **VO:** f2165 to f2230 "It only counts once someone outside the team checks it."
+- **Sound:** a low confident "stamp".
 
-**S20 · 01:01.15 to 01:04.15 · 90 f (1845 to 1934)**
+**S25 · 01:14.15 to 01:19.15 · 150 f (2235 to 2384) · GEN→UI (G11 plus v2 L4)**
 
-- **Purpose:** leadership visibility.
 - **Sees:**
-  - f1845 to f1870: Leadership full frame (z 1.333).
-  - f1850 to f1880: the "Verified hours saved" chart line is revealed by a left-to-right wipe mask of the real captured chart (no new data). "106" is held still. A counting animation is not used, because it would show numbers the product doesn't.
-  - f1880 to f1934: glide to the "Went live" list, z 2.4, on "● Supplier Research Assistant · Louie Morris · Procurement · for Procurement team · 7 October" (or a later date if the dates progress).
-- **Source:** v2 beat L4. Fallback: clip 14, the frame at 2.0 s (f60), held.
+  - f2235 to f2290: a boardroom, morning. Two or three senior leaders in soft focus look at a large wall display (a tracked plate) showing the real Leadership screen.
+  - f2290 to f2314: the camera pushes past them into the display; the dive.
+  - f2314 to f2340: full-frame Leadership (z 1.333), and the chart line is revealed by a left-to-right wipe mask over the real captured chart. No new data.
+  - f2340 to f2384: glide to "Went live · ● Supplier Research Assistant · ... · 7 October", z 2.4, hold.
+- **Fallback:** clip 14 at 2.0 s.
 - **Text:** "Leaders see what AI actually delivered.", plus the demo-data note.
-- **VO:** f1850 to f1930 "And leadership sees what AI actually delivered."
-- **Sound:** the music lifts toward the final bars.
-- **Feels:** confidence for the buyer (the AI programme lead).
-- **Connects:** the line exits right toward the integrations beat.
+- **VO:** f2240 to f2375 "And leadership finally sees what AI is really delivering."
+- **Sound:** a boardroom hush, then the music lifts.
 
-#### ACT 6: Everywhere your work is, and the end (01:04.15 to 01:12.00)
+#### ACT 6: Integrations and the promise (01:19.15 to 01:26.00)
 
-**S21 · 01:04.15 to 01:07.00 · 75 f (1935 to 2009)**
+**S26 · 01:19.15 to 01:22.00 · 75 f (2385 to 2459) · UI (v2 X1)**
 
-- **Purpose:** integrations, clearly separated into built and coming soon.
 - **Sees:**
-  - f1935 to f1985: Admin > Integrations as captured in v2 (Slack and Teams channel rows and the delivery status), z 2.0, with the initiative header crop "Link your Teams or Slack channel · Calendar" sliding in beneath it (clip 07 header at 3.0 s, crop z 2.0).
-  - f1985 to f2009: the plane dims to 40%. Text: "Coming soon: Spine inside Teams chat, Slack and Claude." In grey, with a small outline label "Coming soon".
-- **Source:** v2 beat X1 (new). Fallback: clip 07 header crop only.
-- **Text (f1945 to f1985):** "Posts to your Slack and Teams channels. Plans go straight into your calendar." The wording must stay within what INTEGRATIONS.md says is built; it shows no Slack message mock.
-- **VO:** none. This shot is type-led, to keep the coming-soon line from being heard as a claim.
-- **Sound:** the music continues; one soft tick.
-- **Feels:** "It fits how we work."
-- **Connects:** the camera pulls back to a wide shot.
+  - f2385 to f2430: Admin > Integrations (Slack and Teams channel rows and the last-delivery status), z 2.0, with the initiative header crop "Link your Teams or Slack channel · Calendar" sliding in beneath.
+  - f2430 to f2459: the plane dims, and a grey line with an outlined "Coming soon" label reads "Spine inside Teams chat, Slack and Claude".
+- **Fallback:** clip 07 header crop only.
+- **Text:** f2390 to f2430 "Posts to your Slack and Teams channels. Plans go straight into your calendar."
+- **VO:** none, so the coming-soon line isn't heard as a claim.
 
-**S22 · 01:07.00 to 01:12.00 · 150 f (2010 to 2159)**
+**S27 · 01:22.00 to 01:26.00 · 120 f (2460 to 2579) · Motion graphics plus all plates**
 
-- **Purpose:** the whole product as one spine, then the promise and the action.
 - **Sees:**
-  - f2010 to f2060: a long pull-back reveals every plane from the film arranged in three offset rows, matching the logo bars' proportions: Help Desk planes top, Ideas & Projects middle, Pulse and Leadership bottom. All are connected by the one cobalt line.
-  - f2060 to f2090: the planes recede and the three rows collapse into the logo bars (an exact match-shape).
-  - f2090 to f2159: the end card on navy:
-    - "Spine" wordmark and logo (centre, 160 px).
-    - Line 1, f2095: "Where your company's AI ideas get answered, built and proven." (white, 44 px).
-    - f2110: an outlined cobalt "Book a demo" button and the URL placeholder "[URL TBC]".
-    - The final frame holds 1.5 s.
-- **Source:** motion graphics plus every plane used.
-- **VO:** f2095 to f2150 "Spine. Where your company's AI ideas get answered, built and proven."
-- **Sound:** the final pulse beat on f2090, and the music resolves to the tonic on f2100 with a 2 s tail. Silence on the last 10 frames.
-- **Feels:** a memorable, specific promise.
-- **Connects:** end.
+  - f2460 to f2500: a fast pull-back reveals the six people's moments (frozen frames from G03, G04, G05, G07, G08 and G11) and their Spine screens arranged in three offset rows, matching the logo bars' proportions, linked by a fine cobalt line.
+  - f2500 to f2520: the rows collapse into the logo.
+  - f2520 to f2579: the end card on navy: the "Spine" logo; "Where your company's AI ideas get answered, built and proven." (f2525); an outlined "Book a demo" and "[URL TBC]" (f2540).
+- **VO:** f2525 to f2575 "Spine. Where your company's AI ideas get answered, built and proven."
+- **Sound:** the final heartbeat at f2500, then the resolve and a tail; silence on the last 8 frames.
 
 ### C.2 Timing self-check
 
-- Product UI is on screen from f210 to f2090, which is 1880 of 2160 frames (87%).
-- Held reads: S04 2.5 s, S05 1.0 s, S06 1.8 s, S07 2.8 s, S08 0.8 s, S09 2.1 s, S10 0.6 s, S11 1.0 s, S12 1.6 s, S13 3.0 s, S14 1.3 s, S15 1.8 s, S16 2.0 s, S17 0.6 s, S18 2.0 s, S19 1.4 s, S20 1.8 s, S21 1.6 s.
-- S05, S08, S10 and S17 fall below the hold rule (0.6 s + words/3.5). They are mitigated by the editorial type line, which carries the same content, and by short UI reads ("Live" is one word). **GPT-6 should challenge S08 and S10 in particular.** The cleanest fix, if they prove too fast at the animatic stage, is to drop S10 ("Draft it") and give its 90 f to S08 and S11.
+- **Real UI on screen:** 1830 of 2580 frames (71%), counting composited screens.
+- **World shots:** 750 frames (29%) in 11 plates, each 2 to 3 s.
+- **Shots below the hold rule:** S05 (rescued by type plus VO), S09 and S14. If the rough cut shows they're too fast, drop S12 (Draft it) and give its 90 f to S09 and S14.
 
 ### C.3 Cutdowns
 
-- **30 s:** S03 (logo), S04, S09, S13, S16, S17, S19, S20, S22 (shortened).
-- **15 s:** S04 (60 f), S09 (90 f), S16 (90 f), S19 (75 f), S22 (135 f).
-- **9:16 vertical (72 s):** recomposed rather than cropped. Captures re-run at the mobile viewport (390 × 844, DSF 3 = 1170 × 2532, the same as the supplied phone screenshots) so UI fills the frame natively. The same timeline, and type moved to the upper safe area (y 220 to 560).
-- **Stills ×3:** S09 (Already answered?), S16 (banner gone, line beating), S22 (end card).
-- **Teaser (optional, 15 to 20 s):** "Coming soon" Teams, Slack and Claude, with persistent "Concept · Coming soon" labelling. Out of scope of this plan's master.
+- **45 s:** S01, S02 (half), S03, S07, S08, S10, S13, S15, S17, S18, S20, S21, S24, S25, S27.
+- **15 s:** S03 (UI part), S10 (UI part), S20, S25 (UI part), S27.
+- **9:16:** world plates generated (or re-framed) at 9:16, with the UI re-captured at the mobile viewport so it fills the vertical frame natively.
+- **Stills:** S07 (Mia at her monitor, composite), S10 (Already answered?), S25 (boardroom).
 
 ---
 
-## D. Technical production architecture
+## D. Cinematic and generative shot plan
 
-### D.1 Pipeline
+### D.1 Approach
+
+- **Only short, simple, forgiving shots.** 2 to 3 s used, from 5 s generated; slow camera; no dialogue or lip sync; faces medium or three-quarter, never extreme close-ups; hands only when they rest or type.
+- **Consistent cast.** For each of the six people (Alex, Priya, Mia, Ben, Louie, Jamie, plus Sarah in the group shot), first generate a **reference still** with an image model (Runway `nano-banana-pro`, available on your workspace). Every video shot then starts from a start frame composed with that reference (image-to-video), not from text alone. Wardrobe and hair are locked per person.
+- **Screens are composited, never generated.** Prompts ask for a flat, evenly lit, mid-grey (#808080) screen. The real UI is pinned onto it in compositing (D.3).
+- **One look.** Every plate is graded through one LUT (navy shadows, warm off-white highlights, gentle contrast, fine grain), applied in FFmpeg (`lut3d`) or Remotion, so world and UI belong together.
+- **Model choice (through Runway, the only generator I can drive from here, after an upgrade):**
+  - **Drafts:** Gen-4 Turbo (needs a start image).
+  - **Finals:** Gen-4.5, or Kling 3 Standard as an alternative.
+  - Veo 3.1 only for the hero boardroom dive (S25) if needed.
+  - Credit rates below are from third-party sources and **unverified** (see F).
+- **Upscaling:** Gen-4.5 and Kling 3 Standard output 720p. Plates are shallow-depth-of-field and get upscaled to 1080p (Runway upscale, cost unverified, or a local Lanczos with light sharpening). Text never lives in a plate, so upscale softness is tolerable.
+
+### D.2 Shot specifications
+
+Every prompt ends with this shared style tail, **[STYLE]**: "Shot on a full-frame cinema camera, natural available light, shallow depth of field, subtle film grain, realistic skin and fabric texture, muted navy and warm off-white palette, premium technology commercial, no text, no logos, no watermarks."
+
+| ID | Shot | Why generative improves it | Model | Duration (generated → used) | Ratio | Prompt (plus [STYLE]) | Connects to Spine | Likely failures | Fallback |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| G01 | S01 phone at dusk | Sets the real-world stakes with no people needed | Gen-4.5 from a start frame | 5 → 3 s | 16:9 | "Locked-off shot with a very slow push-in, 35mm. A smartphone lies face-up on a pale oak desk in an open-plan office at dusk. Cool blue window light, warm lamps far in the background, blurred colleagues leaving. The phone screen lights with a plain white notification card, glows, then dims to black." | Its dimming glow matches S02's light | Readable fake text on the phone; flicker | Mask the screen with a clean comp card; or use a still start frame with a light animation in comp |
+| G02 | S02 meeting room | Emotional "quiet" | Gen-4.5 | 5 → 3 s | 16:9 | "Slow lateral dolly left to right across an empty modern meeting room in soft morning light. Chairs pushed back from the table, a half-finished coffee cup, a whiteboard with a faint half-erased marker sketch of boxes and arrows." | Its whiteboard lettering is composited | Warped chairs; gibberish writing on the board | Generate the board blank and comp the sketch; or a static still with parallax |
+| G03 | S03 Alex opens a laptop | The turn: a human starts the day with Spine | Gen-4.5 (Veo 3.1 if Gen-4.5 fails) | 5 → 2 s | 16:9 | "Medium shot from behind and slightly to the side of [Alex reference] at a standing desk by a large window, morning. They set down a coffee and open a thin silver laptop. The laptop screen is a flat, evenly lit pure mid-grey rectangle facing the camera at a slight angle, crisp edges. The camera pushes slowly toward the screen." | Dives into Home | The screen bends or isn't grey; hand artefacts on the lid | Start from an already-open laptop (no hand action) and push only |
+| G04 | S04 Priya on a train | Anyone, anywhere | Gen-4.5 | 5 → 3 s | 16:9 | "Over-the-shoulder shot of [Priya reference] seated by the window on a commuter train, morning, rain streaks on the glass, soft passing light. They hold a phone at chest height; the phone screen is a flat, evenly lit mid-grey rectangle. Subtle natural motion of the train." | The mobile UI is composited, then the dive | Phone geometry drift; extra fingers | Phone resting on a table instead of in the hand |
+| G05 | S07 Mia at her desk | The expert human | Gen-4.5 | 5 → 2.5 s | 16:9 | "Medium side shot of [Mia reference] at a lived-in office desk with headphones around the neck and a plant. The large monitor in front is a flat, evenly lit mid-grey rectangle. They lean in toward the monitor with interest. The camera eases toward the monitor." | The Help Desk queue is composited, then the dive | The monitor plane warps as she leans | Lock the camera; she leans only slightly |
+| G06 | S10 Ben's hands typing | "Weeks later", a new person | Gen-4 Turbo | 5 → 1 s | 16:9 | "Close shot of hands typing on a laptop keyboard at a hot desk, afternoon side light, a notebook and pen beside them; the screen is out of frame." | A cut to the Already answered UI | Bad hands | Use a different angle, or drop the plate and start S10 on UI |
+| G07 | S11 Louie in Procurement | Where the idea comes from | Gen-4.5 | 5 → 2.5 s | 16:9 | "Medium shot of [Louie reference] at a desk crowded with supplier folders and printed spreadsheets, late morning. They push a stack of papers aside and pull the keyboard closer. The monitor is a flat, evenly lit mid-grey rectangle angled toward the camera." | The Propose page is composited, then the dive | The papers morph; the monitor drifts | Lock the camera; remove the paper action |
+| G08 | S16 team table | Collaboration made visible | Gen-4.5 | 5 → 2.5 s | 16:9 | "Medium-wide shot with a slow 10-degree arc around a small table where [Louie], [Jamie] and [Sarah references] work together with laptops and a sketch pad, late-afternoon warm light. One points at a laptop screen that is out of focus. Natural, engaged conversation without speaking to camera." | Leads into the stall | Inconsistent faces with 3 references; merging bodies | Two people, not three; a static camera |
+| G09 | S19 Alex steps in | The human response to Pulse | Gen-4.5 | 5 → 2.5 s | 16:9 | "Tracking shot following [Alex reference] from behind and to the side as they walk through a bright open office to a colleague's desk, lean down and speak briefly; the colleague nods and turns to their keyboard. Screens are out of focus." | Match-cut to the unblock | Walk cycles; the second person's consistency | Shorter: only the lean-in and nod |
+| G10 | S22 buyer benefits | What became useful, for whom | Gen-4.5 | 5 → 2 s | 16:9 | "Slow push-in on a procurement buyer at a sunny desk with a closed supplier folder beside them. They glance at an out-of-focus laptop, give a small satisfied nod and reach for their coffee." | Bridges Live to Outcomes | Over-acted expression | Hands and coffee only |
+| G11 | S25 boardroom | The leadership payoff | Veo 3.1 (fallback Gen-4.5) | 8 → 2 s | 16:9 | "Morning in a glass-walled boardroom. Two senior leaders sit in soft focus in the foreground looking at a large wall-mounted display. The display is a flat, evenly lit mid-grey rectangle with a thin black bezel, viewed slightly off-axis. The camera dollies slowly forward between them toward the display." | The Leadership screen is composited, then the dive | The display plane warps during the dolly | A static camera with a digital push in comp |
+
+### D.3 Compositing real UI into plates
+
+1. **Track:** the screen is a uniform grey quad, so I detect it in each frame (OpenCV threshold, contour, `approxPolyDP` to 4 corners), smooth the corners over time, and hand-correct the outliers. OpenCV is installable from PyPI here; **not yet tested**.
+2. **Pin:** the real UI frame for that moment (from the capture manifest) is mapped through a CSS `matrix3d` corner pin in Remotion.
+3. **Integrate:**
+   - Match the screen's black and white levels to the plate.
+   - A 0.5 to 1.5 px blur matched to the plate's focus.
+   - Add the plate's own luminance from inside the screen region back at 10 to 15% (reflections and fingerprints).
+   - A subtle bloom on bright UI.
+   - Matched grain on top.
+   - A light 1 px chromatic edge on the bezel only.
+4. **Occlusion:** if a hand or head crosses the screen, rotoscope a matte (Runway `remove_video_background` on the plate, paid, or a manual mask). Better: choose plates where nothing crosses the screen.
+5. **The dive:** the S-curve in C.0.
+
+The result must read as filmed, not layered. Any composite that fails review is replaced by its fallback.
+
+---
+
+## E. Technical production architecture
+
+### E.1 Pipeline
 
 ```
-spine-2 app (local, seeded, fixed clock)          Remotion 4.0.537 (React)          FFmpeg 6.1.1
-  └─ capture-v2.mjs (Playwright, Chromium)   →      compositions: Master, 30s,  →     loudnorm, mux,
-     frame-stepped PNG sequences at DSF 3           15s, Vertical, Stills             H.264 / ProRes masters
-     + JSON manifest (beat, frame, event)           planes, camera, line, type
-                                                    audio tracks (VO, music, SFX)
-Audio: Kokoro (local TTS) or human VO · Runway sound-effects (free credits) · music (see E)
-QA: ffprobe, frame extraction, contact sheets, loudness, cut-list diff against this storyboard
+Spine 2.0 app, local (seeded, fixed clock)
+  └─ capture-v2 (Playwright): frame-stepped PNGs at 3× desktop and mobile, plus a manifest
+Runway (via MCP from this session)
+  └─ cast reference stills → start frames → plates (drafts, then finals) → optional upscale
+OpenCV: screen-quad tracking → corner data
+Remotion: plates, UI composites, dive transitions, camera, type, line, end card
+Audio: VO, Runway sound effects, music → FFmpeg mix and loudness
+FFmpeg: grade LUT, encode masters and cutdowns
+QA: frame extraction, contact sheets, automated checks, human review
 ```
 
-### D.2 Capture v2: re-recording the product (verified feasible)
+### E.2 Capture v2 (verified feasible)
 
-**Verified in this session:**
+- **Verified:**
+  - PostgreSQL 16 run locally.
+  - Migrations, seed, `next build` and `next start`.
+  - The repository's own clip recorder re-recorded clip 01.
+  - Home captured at 4× (5760 × 3240).
+  - Typing captured frame by frame at 3× (4320 × 2430, lossless PNG) at **0.44 s per frame**.
+  - Everything shut down and cleaned afterwards.
+- **Method:** per beat, reset the data, optionally set `SPINE_TODAY`, log in as that person, drive the UI step by step with a screenshot after each step, add dwell frames after each result, and write a manifest. The cursor is rendered in Remotion from the manifest, so it can be hidden during reads.
+- **AI beats:**
+  - Option 1: dev fixtures (`SPINE_AI_FIXTURES=1` under `next dev`). Canned text.
+  - Option 2: one or two real Claude calls on your key (a few pence, unverified).
+  - The UI look of both is unverified.
+- **Mobile:** the same script at a 390 × 844 viewport, 3× (1170 × 2532), for S04 and the vertical cut.
 
-- Started PostgreSQL 16 (system binaries, run as the `postgres` user, because embedded-postgres refuses root).
-- Applied migrations, ran the seed, ran `next build` and `next start`.
-- Ran the repository's own `scripts/record-clips.mjs` for clip 01 successfully.
-- Captured Home at device scale 4 (5760 × 3240).
-- Captured a typing sequence frame by frame at DSF 3 (4320 × 2430, lossless PNG) at **0.44 s per frame** (30 frames).
-- Everything was then shut down and removed.
+### E.3 Remotion (verified)
 
-**Method:** a new script that, for each beat:
+- `remotion@4.0.537` installed here. A 3 s 1080p test with a push-in on real footage rendered in 41.8 s on CPU, and its frames were inspected.
+- Full master render time is estimated at 20 to 40 minutes. Not measured.
+- **Licence:** free for individuals, companies with up to 3 employees, and non-profits; otherwise from $25 per month per seat (Remotion's pricing page). **I don't know which applies to you.**
 
-1. Resets the database to the beat's state (the existing record script already does this with direct Prisma updates between clips).
-2. Sets `SPINE_TODAY` per beat, so the dates progress (pending your approval; see A.6, gap 8).
-3. Logs in as the beat's person.
-4. Drives the UI step by step (type one character, click and so on), taking a PNG after each step, plus N identical dwell frames after each result.
-5. Writes a manifest of the frames, with an event label on each.
+### E.4 What I can and cannot do here
 
-CSS transitions: either capture with `animations: "disabled"` (verified to run) and recreate any fade in Remotion, or step real time between screenshots for transitions shorter than 200 ms. The cursor: render it in Remotion from the manifest's pointer coordinates instead of baking it into the pixels, so it can be hidden during reads.
-
-**Throughput estimate (from the measured rate):** about 1,100 captured frames of UI change for the whole master, at roughly 0.44 s each, is about 8 minutes of capture, plus dwell frames, which are duplicated rather than re-captured. Not yet measured for the full set.
-
-**AI beats (Q2, I1):** the app has a dev-only fixture mode (`SPINE_AI_FIXTURES=1`, only when `NODE_ENV` isn't production, so it needs `next dev` rather than `next start`). Fixture text is canned. For example, the instant answer reuses the first line of a shared answer. It is real UI, but not real model output. The alternative is one or two real Claude calls with your `ANTHROPIC_API_KEY`: real output, at a cost of a few pence (unverified exact cost). **Your decision.** Unverified: how either looks on screen.
-
-### D.3 Remotion (verified)
-
-- `remotion@4.0.537` installed from npm here. A test composition rendered a 1920 × 1080, 90-frame H.264 file with an `OffthreadVideo` push-in and Inter type in **41.8 s** (bundling included, concurrency 4, CPU only, using the pre-installed Chromium headless shell).
-- I can extract and view any rendered frame, as done for the test.
-- The full 2,160-frame master at that rate is roughly 15 to 25 minutes per render, extrapolated and not measured. Camera motion blur (`@remotion/motion-blur`) multiplies render time by the sample count. Use it only on fast glides.
-- Licence: free for individuals, for-profit companies with up to 3 employees, and non-profits; otherwise paid (Creators $25 per month per seat, according to Remotion's pricing page). **I don't know which applies to you.** This is a real budget question.
-
-### D.4 Resolution
-
-- 1080p master: sharp to z 3.0 with DSF-3 captures.
-- 4K master: needs DSF-6 captures (8640 × 4860) to stay sharp at the same framing. Untested here; screenshot time and memory will rise. The fallback is a 1080p master plus 4K stills.
-
-### D.5 What I can and cannot execute here
-
-| Task | Can I do it here? | Status |
+| Task | Here? | Status |
 | --- | --- | --- |
-| Read every source file | Yes | Verified |
-| Run Spine 2.0 locally and re-capture | Yes | Verified |
-| Build and render Remotion | Yes | Verified |
-| Extract and inspect rendered frames | Yes | Verified |
-| Encode the final H.264 MP4 and ProRes | Yes (libx264, libx265, prores_ks present) | Verified (present; a final delivery encode not yet run) |
-| Loudness normalisation and measurement | Yes (FFmpeg loudnorm) | Present, not yet run |
-| Local TTS voice (Kokoro, as in the previous trailer) | Probably. onnxruntime 1.29 is installed; the model must be downloaded | Unverified in this session |
-| Runway sound effects | Yes, through the connected Runway MCP, 1 credit per second on your free workspace (500 credits) | Verified available, not used |
-| Runway video and music | **No**. Your Runway workspace is free; `availableVideoModels` is empty, and music needs a paid plan | Verified |
-| Veo, Kling or Grok Imagine directly | **No**. No API keys or connectors here. Their web apps would need you to generate and upload the files | Verified absence |
-| Listen to audio | **No**. I can measure loudness, peaks, spectra and sync points, but not judge the sound | Limitation |
-| Watch the film as a human does | **No**. I review frames and contact sheets, not motion as perceived | Limitation |
-| Push the plan or renders to the repo | Yes, on the designated branch | Done for this plan |
-
-### D.6 Optional generative shots (only if you approve a paid month)
-
-Use only to replace the S02 mock-chat backdrop or to add one human beat before S22. The master works without them.
-
-**G1 (S02 alternative, 4 s, 16:9).**
-
-- **Why:** a real-world texture for "ideas go quiet" before the product enters.
-- **Model:** Runway Gen-4.5 or Veo 3.1 through the Runway MCP. Both are listed in the tool's model enum. Availability on a paid plan and the per-call credit cost are **unverified**, because the cost table was truncated in the tool description.
-- **Prompt:** "Locked-off close shot, 35mm, shallow depth of field. A smartphone lies face-up on a pale oak office desk at dusk, cool blue window light from the left, warm practical lamp far behind out of focus. The phone screen lights with a plain white notification card with no readable text, glows for two seconds, then dims and goes dark. No hands, no people, no logos. Calm, quiet, premium commercial look, natural grain, colour palette of deep navy and warm off-white."
-- **Camera:** locked, with a 2% push added in Remotion.
-- **Connection:** the dimming screen glow becomes the cobalt line (matched by luminance, then crossfaded at f150).
-- **Likely failures:** readable fake text on the screen, warped phone geometry, flicker.
-- **Fallback:** keep the motion-graphic S02 (the default).
-- **Cost:** at the reported 12 credits per second for Gen-4.5, about 48 credits per attempt; plan on 4 attempts (about 200 credits). Unverified.
-
-**G2 (pre-S22, 3 s).**
-
-- **Prompt:** "Slow dolly-in, 50mm. A manager's hands rest beside an open laptop on a meeting-room table in morning light. The laptop screen is a flat, evenly lit, pure mid-grey rectangle facing camera at a slight angle, sharp edges, no reflections. No faces, no text, no logos. Clean modern office, navy and warm white tones, soft shadows."
-- **Compositing:** a four-corner pin of the Leadership capture onto the grey screen, keyed every 5 frames by hand or with OpenCV feature tracking (installable from PyPI here; not tested), applied as a CSS `matrix3d` in Remotion. Add a reflection layer from the plate's screen luminance at 10 to 15%, a slight blur matched to the plate's depth of field, and matched grain.
-- **Likely failures:** the screen bends or drifts (AI geometry), which makes the corner pin swim.
-- **Fallback:** drop the shot.
+| Inspect sources, run the app, re-capture UI | Yes | Verified |
+| Build and render Remotion; inspect frames | Yes | Verified |
+| Generate images (cast references, start frames) through Runway | Yes, on your workspace (image models listed) | Available; per-image cost not shown to me; not used |
+| Generate video through Runway | **Only after you upgrade** (no video models on a free workspace) | Verified gated |
+| Generate sound effects through Runway | Yes, 1 credit per second, free plan | Verified available, not used |
+| Generate music through Runway | Only on a paid plan | Verified gated |
+| Veo, Kling or Grok Imagine directly | No (no keys or connectors); only you, via their web apps | Verified absence |
+| Track screens with OpenCV | Probably (PyPI reachable) | Untested |
+| Encode H.264 or ProRes, measure loudness | Yes | Tools present |
+| Hear audio, or perceive motion as a viewer | **No** | Limitation |
 
 ---
 
-## E. Budget
+## F. Budget
 
-| Item | Cost | Needed? | Verified? |
-| --- | --- | --- | --- |
-| Claude Code (this environment) | Your existing plan | Yes | n/a |
-| Remotion | $0 if you qualify as an individual, a company of 3 or fewer employees, or a non-profit; otherwise from $25 per month per seat | Yes | Licence terms read via search results and the official pricing page summary; **your eligibility is unknown** |
-| Spine capture, FFmpeg, Playwright, Inter font, Kokoro TTS | $0 | Yes | Verified installed, except Kokoro |
-| Runway sound effects | $0 (uses the free plan's existing 500 credits at 1 credit per second) | Recommended | Verified available, not spent |
-| Music, option A: licensed library track you choose and download (for example YouTube Audio Library or Pixabay Music; check each licence for your use) | $0 | One of A, B or C | Licence terms not checked |
-| Music, option B: Runway Standard for one month (also unlocks video generation for G1 and G2) | $15 per month billed monthly, according to search results; GBP price depends on exchange rate and VAT | Optional | Price from third-party sources, not runway.com |
-| Music, option C: local synthesis (as before) | $0 | Fallback only | Previous result judged weak |
-| Voice, option A: Kokoro local | $0 | Default | Unverified here |
-| Voice, option B: you or a colleague record the VO (about 110 words) | $0 | Best quality for free | n/a |
-| Voice, option C: ElevenLabs Starter (commercial use) | About $5 to $6 per month, according to search results | Optional | Not verified on elevenlabs.io |
-| Claude API for real AI-feature captures (Q2, I1) | A few pence (unverified) | Optional | No |
-| Veo through Google AI Pro / Flow | About $19.99 per month, according to search results. Videos may carry a visible watermark on Pro (2025 reports; current status unverified) | Not recommended | No |
-| Kling Standard | About $7 to $10 per month, according to search results (sources disagree) | Not recommended (web only, no API here) | No |
-| Grok Imagine | SuperGrok $30 per month, over budget; the free tier no longer includes video (according to search results) | No | No |
+Runway credit rates are from third-party sources and unverified on runway.com:
 
-**Recommended spend:** $0 to $15 (one month of Runway Standard), plus Remotion only if your organisation doesn't qualify for the free licence. Within £20 either way, unless Remotion needs a paid seat (about $25, which is over the target) or exchange rates move.
+| Model | Rate | Notes |
+| --- | --- | --- |
+| Gen-4 Turbo | about 5 credits/s | Needs a start image |
+| Gen-4.5 | about 12 credits/s | 720p |
+| Kling 3 Standard | about 9 credits/s, silent | 720p |
+| Veo 3.1 | about 20 credits/s silent | 1080p needs 8 s |
+| Runway Standard plan | 625 credits a month | $15 billed monthly |
+
+### F.1 Generation estimate (11 plates)
+
+| Item | Calculation | Credits |
+| --- | --- | --- |
+| Cast references and start frames | about 40 images | Cost not visible to me |
+| Drafts (Gen-4 Turbo) | 11 shots × 2 tries × 5 s × 5 | about 550 |
+| Finals (Gen-4.5) | 11 × 1.5 tries × 5 s × 12 | about 990 |
+| G11 on Veo 3.1 | 2 tries × 8 s × 20 | about 320 |
+| Music (Lyria through Runway) | about 5 tries × 8 | about 40 |
+| Sound effects | about 120 s × 1 | about 120 (free plan covers this today) |
+| **Total** | | **about 2,000 credits plus images** |
+
+That is **about 3 to 4 months of Runway Standard at $15 a month**, within your £20-a-month cap, with production paced to the monthly credit refill. Alternatively, one month of Pro (2,250 credits, about $35) would do it at once, but that's over the cap.
+
+### F.2 Itemised
+
+| Item | Cost | Verified? |
+| --- | --- | --- |
+| Claude Code | Existing | n/a |
+| Runway Standard, 3 to 4 months | $15 a month (GBP depends on exchange rate and VAT) | Third-party price |
+| Remotion | $0 if eligible, else from $25 a month | Your eligibility unknown |
+| Capture, FFmpeg, Playwright, Inter | $0 | Verified installed |
+| Voice | $0 with your own recording or local TTS; ElevenLabs Starter about $5 to $6 a month | TTS unverified here; price third-party |
+| Claude API for the AI-beat captures | Pennies | Unverified |
+
+### F.3 Alternatives I can't drive myself
+
+- **Google AI Pro / Flow:** about $19.99 a month, 1,000 credits, and reportedly about 50 Veo Fast clips. You would generate in the web app and upload. A visible watermark on Pro is reported for 2025; current status unverified.
+- **Kling Standard:** about $7 to $10 a month, web only.
+
+Both are faster if you're willing to operate them. Prompts and start frames from this plan transfer directly.
 
 ---
 
-## F. Risk assessment
+## G. Risk assessment
 
 | # | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- | --- |
-| 1 | I can't hear audio, so the music, VO and mix quality are unjudged by me | Certain | High | You review the audio at the animatic and final stages. I measure loudness (−14 LUFS integrated, −1 dBTP true peak), sync and spectra |
-| 2 | I don't watch motion as a human does. Pacing errors may survive frame review | Likely | High | Render a 540p animatic early. You watch it on a phone and a laptop. A timing-change log follows |
-| 3 | Synthetic VO sounds cheap | Medium | High | Option B: record a human VO. Or a no-VO cut, which is type-led |
-| 4 | The "One Line" device feels gimmicky or cluttered | Medium | Medium | The line is 4 px and only visible between planes and at the three pulse moments. The animatic tests it |
-| 5 | The AI instant answer (S06) or Draft it (S10) UI looks weak, or the fixture text is unconvincing | Medium | Medium | Fallbacks are specified for both shots |
-| 6 | Re-capturing changes the demo data (dates) in ways you don't want | Low | Medium | Ask first (gap 8). The default keeps 7 October |
-| 7 | The fallback (supplied clips only) caps zoom at about 2.0 and the reads become smaller | Certain if capture v2 is refused | High | Capture v2 is the main quality lever |
-| 8 | Remotion licence cost if you aren't eligible | Unknown | Medium | Confirm eligibility first. FFmpeg-plus-Chromium frame rendering (as in the `claude/new-session` trailer) is a licence-free fallback |
-| 9 | Generative plates warp or look like stock AI | High | Medium | Optional only; drop on failure |
-| 10 | Render time grows with motion blur or 4K | Medium | Low | Blur only on glides. 4K only if needed |
-| 11 | Claims drift beyond what's built (integrations, AI) | Medium | High | Every integration and AI line is checked against INTEGRATIONS.md and the code before rendering |
-| 12 | The demo-data inconsistency ("Blocked for 1 day" vs "since 7 Oct") is noticed | Low | Low | Fixed by per-beat clocks in capture v2 |
-| 13 | A session ends mid-render, so long renders are lost | Medium | Low | Render per shot, cache to disk, stitch at the end, commit sources often |
+| 1 | Generated people look synthetic or "stock AI" | Medium to high | High | Short shots, no close-ups or dialogue, reference-locked cast, one grade, strict review. Any shot that fails is replaced by its fallback |
+| 2 | Cast inconsistency between shots | Medium | High | Reference stills and start frames; one person per shot except G08 |
+| 3 | Screen planes warp, so composites swim | Medium | High | Prefer locked cameras with a comp push; drop the plate if tracking fails |
+| 4 | Budget runs out before the plates pass | Medium | Medium | Drafts on the cheapest model first; finals only for approved drafts; spread over months |
+| 5 | Credit costs differ from the third-party figures | Medium | Medium | One cheap test generation after upgrading, to measure real costs before planning further |
+| 6 | 720p plates look soft in a 1080p master | Medium | Medium | Shallow-depth-of-field plates, upscaling, and no text in plates |
+| 7 | I can't hear audio | Certain | High | You review the mix; I measure loudness and sync |
+| 8 | I can't perceive motion as a viewer | Certain | High | Rough cut and final reviewed by you on a phone and a laptop |
+| 9 | AI-beat UI (S06, S12) looks weak | Medium | Medium | Fallbacks specified |
+| 10 | Remotion licence cost | Unknown | Medium | Confirm eligibility first |
+| 11 | Claims overstate integrations or AI | Low to medium | High | Every line checked against INTEGRATIONS.md and the code |
 
 ---
 
-## G. Production readiness
+## H. Production readiness
 
-**Available and verified:**
+**Verified:**
 
-- All 15 clips, 18 screenshots, the brief, the app source, the integrations doc and the brand tokens.
-- A local app build with seed data.
-- A frame-stepped high-DPI capture path.
-- Remotion and FFmpeg rendering.
-- Frame inspection.
-- Runway sound-effect access (free credits).
+- All source footage, screenshots, the app, the brand tokens and the integrations facts.
+- Local re-capture at 3× and 4×.
+- Remotion rendering and frame inspection.
+- Runway access (image and sound effects now; video and music after an upgrade).
 
 **Missing:**
 
-- Captures Q2, Q4, I1 and X1 (none exist).
-- Longer post-result dwells for the click beats.
-- Music.
-- VO.
-- A demo URL.
-- Your decisions in H.1.
+- All 11 world plates and the cast references.
+- Captures Q2, Q4, I1 and X1.
+- Dwell frames for all clicks.
+- Music, voice and the demo URL.
 
 **Unverified:**
 
-- Kokoro installation in this session.
-- The look of the AI answer and Draft it UI.
-- Full-length render time.
-- 4K capture at DSF 6.
-- OpenCV tracking.
-- Runway paid-plan model availability and video credit costs.
-- All third-party prices (search results only; none confirmed on the vendors' own pages).
-- Remotion licence eligibility.
+- Runway paid-plan costs and quality per model.
+- OpenCV tracking on generated plates.
+- The look of the AI-beat UI.
+- Full render times.
+- All third-party prices.
+- Remotion eligibility.
+- Local TTS install.
 
 ---
 
-## H. Schedule, quality control and definition of done
+## I. Schedule, quality control and definition of done
 
-### H.1 Decisions I need from you (once, up front)
+### I.1 Decisions needed once, up front
 
-1. Approve capture v2 (re-recording from the local app). Optional: progressing dates per beat.
-2. AI beats: fixtures (canned, free) or real Claude calls (a few pence, needs your key), or skip S06 and S10.
-3. Music: a library track you pick, Runway Standard for one month, or local synthesis.
-4. Voice: Kokoro, your own recording, or no VO.
-5. Is your organisation eligible for Remotion's free licence?
-6. Approve spending free Runway credits on sound effects (about 60 to 120 credits).
+1. Upgrade Runway to Standard (about $15 a month) when phase 3 starts, and keep it for about 3 to 4 months, or operate Veo or Kling yourself.
+2. Approve re-capturing the product locally. Optional: progressing dates.
+3. AI beats: canned fixtures, real Claude calls, or skip them.
+4. Voice: your own recording (best and free), local TTS, or ElevenLabs.
+5. Remotion licence eligibility.
+6. Approve using free Runway credits on cast reference stills and sound effects.
 
-After these answers, phases 1 to 6 run without further approvals, except the two review checkpoints marked ◆.
+### I.2 Phases
 
-### H.2 Phases
+| Phase | Work | Deliverable | Depends on | Effort | Acceptance |
+| --- | --- | --- | --- | --- | --- |
+| 1 Capture | All UI beats at 3× (desktop and mobile), plus a manifest | PNG sequences and contact sheets | Decisions 2 and 3 | 1 to 2 sessions | Every event frame matches C.1; no loading frames or cursor |
+| 2 Cast and frames | Reference stills for each person; start frames for G01 to G11 | A cast sheet and 11 start frames | Decision 6 | 1 session | ◆ You approve the cast and the look |
+| 3 Rough cut | Remotion timeline with UI, start frames as placeholder plates, temp VO and click track | A 540p rough cut | 1 and 2 | 1 session | ◆ You watch it on a phone and a laptop |
+| 4 Plates | Drafts → finals for G01 to G11, credit-paced over months | Approved plates | Decision 1 | 3 to 4 months elapsed, about 1 session each month | The I.3 artefact check passes, or the fallback is used |
+| 5 Composite and design | Tracking, pins, dives, grade, type, end card | A 1080p picture lock | 3 and 4 | 2 sessions | The I.3 checks pass |
+| 6 Sound | VO, sound effects, music, mix | Master audio | Decision 4 | 1 session | −14 LUFS, −1 dBTP, sync within 1 frame. ◆ You listen |
+| 7 Delivery | Master, 45 s, 15 s, 9:16, stills, SRT | Files and a QA report | 5 and 6 | 1 session | I.4 |
 
-| Phase | Work | Tools | Deliverable | Depends on | Effort (my estimate) | Blockers | Acceptance |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 Capture | Write capture-v2.mjs; capture 18 desktop beats and the vertical set; manifest | Playwright, local app, Postgres | PNG sequences and a manifest; contact sheet per beat | H.1 items 1 and 2 | 1 to 2 sessions | Database state resets between beats | Every beat's event frames match this storyboard; no loading frames; no cursor in the PNGs |
-| 2 Animatic | Remotion project, timeline, planes, camera, placeholder type, temp VO and click track | Remotion | 540p animatic MP4 and a cut list | 1 | 1 session | none | Timings match C.1 within 1 frame. ◆ You watch it and give notes |
-| 3 Design | The line system, type, transitions, the end card, demo-data notes, motion blur | Remotion | 1080p picture lock (silent) | ◆ notes | 1 to 2 sessions | none | QA checklist H.3 passes |
-| 4 Sound | VO, SFX through Runway, music, mix, loudness | Kokoro or human VO, Runway, FFmpeg | Mixed stems and the master WAV | H.1 items 3, 4 and 6 | 1 session | Paid music if chosen | −14 LUFS ±0.5, −1 dBTP; sync points within 1 frame. ◆ You listen |
-| 5 Optional generation | G1 and G2 | Runway (paid) | Plates and composites | Budget approval | 1 session | Credits, failures | Passes the AI-artefact check, or the shot is dropped |
-| 6 Delivery | Master, 30 s, 15 s, 9:16, stills, captions SRT, script | Remotion, FFmpeg | Files on the branch and a QA report | 3 and 4 | 1 session | Repo size (keep MP4s small or use releases) | H.4 definition of done |
+Everything except the three ◆ reviews runs without further approvals.
 
-A "session" is one working session in this environment; five-hour limits may split them.
+### I.3 Quality control
 
-### H.3 Quality control
+1. **Product accuracy:** every UI pixel comes from a manifest capture. A script compares rendered UI regions against their source frames. Every claim line is checked against the code or the integrations doc.
+2. **Feature coverage:** Help Desk (ask, AI first answer, Champion, consent, Already answered); Ideas (draft, approve or auto-approve, join, AI plan); Collaboration (six people acting); Pulse (stall, flag, unblock); Live, report, verify, leadership; Integrations (built versus coming soon). Each is ticked only after review.
+3. **Readability:** text height computed from font size × z; phone check at 390 px wide.
+4. **AI artefacts (plates):** review at 6 fps for hands, faces, warping, morphing, fake text, flicker and cast mismatch. Any doubt means a regenerate or the fallback.
+5. **Compositing:** corner error of 1 px or less after smoothing; levels, blur and grain match; no edge halo; checked on extracted frames at 200%.
+6. **Timing:** automated checks at every boundary and keyframe in C.1; human review at the rough cut and final.
+7. **Sound (measured):** loudness, peaks, sound effects within ±1 frame of the clicks.
+8. **Iteration:** re-render the changed shots only; log what changed and why.
 
-1. **Product accuracy.** Every on-screen UI frame comes from a capture manifest entry. A script diffs the rendered frame regions against their source PNGs (scaled) to prove no UI pixels were painted over, except overlays declared in the storyboard. Every claim line is checked against the code or INTEGRATIONS.md.
-2. **Feature coverage matrix.** Help Desk (ask, AI first answer, Champion, share consent, Already answered); Ideas (draft, approve or auto-approve, join, AI plan, owned steps); Collaboration (Priya, Mia, Ben, Louie, Jamie and Alex each act); Pulse (stall, flag, unblock); Live, report, verify, leadership; Integrations (built versus coming soon). Each is ticked only when its shot passes review.
-3. **Readability.** For each shot, the primary-read text height is computed from its source font size × z and must be at least 30 px x-height at 1080p. Phone check: downscale every hold frame to 390 px wide and inspect.
-4. **Timing.** Automated: extract frames at every shot boundary and keyframe listed in C.1 and compare against the expected content. Human: you watch the animatic and final.
-5. **Visual.** Contact sheets at 2 fps; checks for colour tokens only, no italics, no em dashes, consistent type sizes, safe areas, cursor-free reads, no loading frames.
-6. **Sound (measurable).** Loudness, peaks, SFX on click frames (within ±1 frame), VO not overlapping key reads.
-7. **AI artefacts (optional plates).** Frame-by-frame review at 6 fps for warping, fake text and flicker. Any doubt means the shot is dropped.
-8. **Iteration loop.** Render the changed shots only. Re-run the checks. Update the QA report with what changed and why.
+### I.4 Production-ready means
 
-### H.4 Production-ready means
-
-- Every box in the coverage matrix is ticked.
-- Every primary read passes the readability rule, or carries its verbatim type line.
-- There is no invented UI, no AI scores, and no unlabelled future features. Acme numbers carry the demo-data note.
-- The masters decode cleanly: H.264 High, yuv420p, BT.709, 30 fps CFR, AAC 48 kHz, faststart, −14 LUFS.
-- You have watched and listened on a phone and a laptop and approved.
+- Every coverage item is ticked.
+- Every read passes the readability rule, or carries its verbatim line.
+- There is no invented UI, no AI scores, and no unlabelled future features. Acme numbers are labelled.
+- No plate shows visible AI artefacts.
+- Every composite reads as filmed.
+- Clean encodes: H.264 High, yuv420p, BT.709, 30 fps, AAC 48 kHz, −14 LUFS.
+- You have watched and listened and approved.
 
 ---
 
 ## FINAL VERDICT FOR GPT-6 — INDEPENDENT REVIEW REQUEST
 
-GPT-6, I'm handing you this production plan for an independent assessment. Here is my honest position.
+GPT-6, I'm handing you this production plan for an independent assessment. Please review it critically.
 
 **1. Can I actually build this trailer?**
-**YES, WITH CONDITIONS.** I can build the picture side to a high standard in this environment. The audio side and the final judgement on motion and pacing need a human, because I cannot hear the result and I don't perceive motion the way a viewer does.
+**YES, WITH CONDITIONS.** The conditions:
 
-**2. What I have personally verified (in this session):**
+- A paid Runway plan for the 11 cinematic plates, paced over about 3 to 4 months to stay under £20 a month.
+- Human review of audio and motion, which I can't perceive.
+- Confirmation of the Remotion licence.
 
-- I read the brief and all integration and AI source code.
-- I inspected all 15 clips frame by frame: contact sheets, plus frame-difference timing of every click and result.
-- I viewed all 18 screenshots and the previous 80-second trailer.
-- I built and ran Spine 2.0 locally with its seed data.
-- I re-recorded a clip with the repository's own script.
-- I captured lossless 3× and 4× UI frames, frame-stepped at 0.44 s per frame.
+**2. What I have personally verified:**
+
+- I read the brief, the AI code and the integrations doc.
+- I timed every click and result in all 15 clips frame by frame and viewed all screenshots.
+- I built and ran Spine 2.0 locally and re-recorded footage.
+- I captured lossless 3× and 4× UI frames.
 - I rendered a Remotion 1080p test and inspected its frames.
-- I confirmed FFmpeg encoders and filters.
-- I confirmed my Runway access: a free workspace with 500 credits, sound effects only.
+- I confirmed my Runway access: images and sound effects now, video and music only on a paid plan.
 
 **3. What I can execute myself:**
 
-- Re-capture every product beat at high resolution.
-- Build the full Remotion project (camera, the line system, typography, transitions, end card).
-- Render every version and inspect frames.
-- Run automated QA (timing, readability, loudness, format).
-- Generate sound effects with the free Runway credits.
-- Assemble and encode the deliverables.
-- Iterate on notes.
+- All UI capture.
+- Cast reference images and start frames.
+- All Runway video generation once the plan is upgraded.
+- Screen tracking and compositing (OpenCV tracking untested).
+- The Remotion build, renders and frame QA.
+- Sound effects, the mix and encodes.
 
 **4. External tools I need:**
 
-- Music: a library track you choose, or Runway Standard (paid) to generate one.
-- Optionally a human voice or ElevenLabs.
-- A Remotion licence if the user's organisation isn't eligible for the free one.
-- For any generative video, a paid Runway plan (the only video generator I can drive from here).
+- Runway Standard (paid).
+- A voice source (ideally your own recording).
+- A Remotion licence if you aren't eligible for the free one.
 
 **5. Not possible within £20 a month:**
 
-- A people-first live-action film (Concept 3) at acceptable quality.
-- More than about 50 seconds of generated video per month.
-- Veo watermark-free output (if the visible-watermark rule still applies to Pro).
-- Grok Imagine (SuperGrok is $30).
-- Remotion paid seat plus Runway in the same month, if the user isn't eligible for the free licence.
+- Generating all 11 plates in a single month on Runway.
+- Long or complex continuous generated camera moves (Concept 3).
+- Grok Imagine.
+- Probably watermark-free Veo on Google AI Pro (unverified).
 
-**6. Will it produce genuinely high-end visuals?**
-I believe the picture can look premium: crisp full-frame UI, controlled camera, one strong visual device, a disciplined palette. I'm less sure it will feel *cinematic* in the way the brief imagines. Without live action it is a motion-design film, not a cinema film. That is a deliberate trade-off, and you may disagree with it.
+**6. Genuinely high-end visuals?**
+The UI half: yes, I'm confident. Crisp, full-frame, purposeful camera. The cinematic half depends on current video models delivering believable people in short, simple shots. They often can, but not reliably. The plan contains that risk with references, short durations, one grade and a fallback for every plate. Some plates will likely need several attempts or fallbacks.
 
-**7. Is every major Spine feature demonstrated?**
-On paper, yes, including the AI instant answer, consent to share, Draft it and the integrations, which no previous cut showed. But four of those shots (S06, S08, S10, S21) depend on captures that don't exist yet and UI I haven't seen rendered.
+**7. Every major Spine feature demonstrated?**
+Yes on paper: Help Desk with AI first answer, Champion, consent and reuse; Ideas with AI drafting, approval or auto-approve, joining and the AI plan; Pulse with the stall and rescue; outcomes, verification and leadership; built integrations, plus labelled coming-soon ones. Four shots depend on captures that don't exist yet.
 
-**8. Does the pacing give viewers enough time to read the UI?**
-For most shots, yes (1.3 to 3.0 s still holds, with z 2.3 to 3.0). S05, S08, S10 and S17 are below my own hold rule. I have flagged them. The fix is to drop S10.
+**8. Enough time to read the UI?**
+Mostly: still holds of 1.3 to 3.0 s at z 2.3 to 3.0, with UI on screen for 71% of the film. S05, S09 and S14 are tight, and dropping S12 fixes them.
 
-**9. The biggest weaknesses in my proposal:**
+**9. Biggest weaknesses:**
 
-- (a) I can't hear, so audio quality is the single biggest unknown.
-- (b) 72 s is longer than the brief's recommended 60.
-- (c) The line motif could feel like a device rather than an idea if it's over-used.
-- (d) Two AI beats rely on fixture or canned text or a paid API call.
-- (e) All prices come from third-party search results, not vendor pages.
-- (f) It has no real people. The collaboration story is carried by names, avatars and actions in the UI only.
+- Generated-human quality and consistency.
+- Credit costs taken from third-party sources.
+- I can't hear the soundtrack or perceive motion pacing.
+- 86 s is long for a launch film.
+- Two AI-feature shots depend on unseen UI.
+- The production stretches over months because of the budget.
 
-**10. What you should challenge, improve or reject:**
+**10. What to challenge, improve or reject:**
 
-- Whether 72 s is justified, or whether a 60 s cut without S10 and S21 is stronger.
-- Whether "One Line" is distinctive enough or reads as decoration.
-- Whether the AI instant-answer beat breaks the brief's rule that AI never looks like it's running things.
-- Whether a type-led no-VO version would be more premium than synthetic VO.
-- Whether the mock-chat cold open is clichéd.
-- Whether progressing the dates is worth changing the demo data.
-- Whether the Remotion licence question changes the toolchain.
+- Whether 86 s should become 60 to 70 s.
+- Whether 11 plates is too many, or whether 6 stronger ones would be better.
+- Whether the dive-through transition will feel fresh or gimmicky after the fifth time. Consider using it only three times.
+- Casting and character approach.
+- Whether Veo through Google AI Pro operated by the user beats Runway driven by me.
+- The coming-soon line in the master.
 
-**11. My confidence: 6.5 out of 10** that the result will be *genuinely outstanding*, and **8 out of 10** that it will be clearly better than the previous edit, accurate and readable.
+**11. Confidence: 6 out of 10** that the finished film is genuinely outstanding. 8 out of 10 for the product sections alone, and 5 out of 10 for the generated-people sections until test generations prove otherwise.
 
-- In favour: a verified capture-and-render pipeline, sharpness evidence, exact source timings, a cohesive concept, and a near-zero budget dependency.
-- Against: unheard audio, untested AI-beat UI, a pacing judgement I can't make myself, and no human footage.
-
-**12. My recommendation: PROCEED** with the toolchain as proposed (local capture v2, Remotion, FFmpeg, free Runway sound effects), after the six decisions in H.1. A human review sits at the animatic and at the audio stage. Revise the storyboard after the animatic. Don't reconsider the toolchain unless the Remotion licence is unavailable, in which case switch to the FFmpeg-plus-Chromium frame renderer already proven in the `claude/new-session-41hpt8` branch.
+**12. Recommendation: PROCEED,** starting with the risk-free half: UI capture, cast stills and a rough cut with start frames as placeholders. Then run one paid test month to prove plate quality and real credit costs before committing to the rest. If the test plates fail the artefact review, **RECONSIDER THE TOOLCHAIN** for the world shots: either you operate Veo or Kling, or the film's world shots become fewer and simpler.

@@ -46,6 +46,12 @@ CARD_LINE = (44, 47, 57)
 GREEN = (74, 196, 120)
 
 STAGES = ["Idea", "Approval", "Recruiting", "Building", "Publishing", "Live"]
+
+BPM = 120
+BEAT = 60 / BPM          # 0.5 s; every cut, word and move sits on this grid
+# Shot starts (each shot gets its own gentle push-in).
+SHOTS = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 13.0, 16.0, 19.0, 22.0, 25.0, 28.0, 29.0, 38.0]
+KICK_FROM = 0.0          # the kick starts on the first frame
 HOURS = [6, 16, 30, 42]
 MONTHS = ["Jul", "Aug", "Sep", "Oct"]
 
@@ -61,8 +67,18 @@ def _bg_base():
     return (BG + (GLOW - BG) * glow) * vig
 
 
+def kick_env(t):
+    # matches kick_on() in score.py
+    if 13.0 <= t < 14.0 or 29.0 <= t < 30.5 or t >= 36.0 or (12.0 <= t < 13.0 and (t - 12.0) >= 2 * BEAT):
+        return 0.0
+    return math.exp(-((t - KICK_FROM) % BEAT) / 0.11)
+
+
 def background(t, n, flash=0.0):
     c = _bg_base().copy()
+    pulse = 0.22 * kick_env(t)
+    if pulse > 0:
+        c += (_bg_base() - BG) * pulse
     rng = np.random.default_rng(n)
     c += (rng.random((H // 2, W // 2, 1), np.float32).repeat(2, 0).repeat(2, 1) - 0.5) * 1.4   # fine grain
     if flash > 0:
@@ -100,13 +116,13 @@ def soft_word(c, text, fname, size, color, x, base, g, out=0.0, scale=1.0):
     blend(c, ix, iy, _shift(m, ox - ix, oy - iy) * a, color)
 
 
-def line_words(c, t, text, fname, size, color, x, base, t_in, t_out, align="left", step=0.11, dur=0.55,
+def line_words(c, t, text, fname, size, color, x, base, t_in, t_out, align="left", step=BEAT / 4, dur=0.32,
                scale=1.0):
     """A line that appears word by word and leaves as one."""
     words = text.split(" ")
     total = text_width(text, fname, size) * scale
     x0 = x - (total / 2 if align == "center" else total if align == "right" else 0)
-    out = prog(t, t_out, t_out + 0.5, e_io_cubic) if t_out is not None else 0.0
+    out = prog(t, t_out, t_out + 0.22, e_io_cubic) if t_out is not None else 0.0
     for i, w in enumerate(words):
         pre = text_width(" ".join(words[:i]) + (" " if i else ""), fname, size) * scale
         g = prog(t, t_in + step * i, t_in + step * i + dur, e_out_cubic)
@@ -345,10 +361,10 @@ LINE_LABELS = [("Questions", -1, -1), ("Champions", 1, -1), ("Ideas", -1, 1), ("
 
 
 def draw_join(c, t):
-    if not 13.2 <= t < 16.9:
+    if not 13.0 <= t < 16.1:
         return
-    g = prog(t, 13.35, 14.6, e_io_cubic)
-    out = prog(t, 16.3, 16.8, e_io_cubic)
+    g = prog(t, 13.1, 14.0, e_io_cubic)
+    out = prog(t, 15.75, 16.0, e_io_cubic)
     cx, cy = W / 2, H / 2 - 20
     im = Image.new("L", (W * 2, H * 2), 0)
     d = ImageDraw.Draw(im)
@@ -362,12 +378,12 @@ def draw_join(c, t):
             py = y0 + (cy - y0) * (3 * u * u - 2 * u ** 3)
             pts.append((px * 2, py * 2))
         d.line(pts, fill=int(200 * (1 - out)), width=4, joint="curve")
-        a = prog(t, 13.3, 13.8) * (1 - out)
+        a = prog(t, 13.1, 13.5) * (1 - out)
         tx = x0 + (-20 if sx < 0 else 20)
-        soft_word(c, name, MED, 22, DIM, tx - (0 if sx < 0 else text_width(name, MED, 22)), y0 - (18 if sy < 0 else -44), a)
+        soft_word(c, name, MED, 26, DIM, tx - (0 if sx < 0 else text_width(name, MED, 26)), y0 - (18 if sy < 0 else -44), a)
     m = np.asarray(im.resize((W, H), Image.BOX), np.float32) / 255.0
     blend(c, 0, 0, m, (120, 130, 160))
-    arrive = prog(t, 14.45, 14.75, e_out_expo)
+    arrive = prog(t, 13.85, 14.05, e_out_expo)
     if arrive > 0:
         node(c, cx, cy, 0.6 + 0.4 * arrive, arrive * (1 - out), rings=1.0, t=t)
 
@@ -386,12 +402,12 @@ def _frag_layout():
     for i in range(22):
         out.append(dict(x=rng.uniform(60, W - 360), y=rng.uniform(80, H - 80), text=FRAGS[i % len(FRAGS)],
                         box=rng.random() < 0.45, w=rng.uniform(90, 220), drift=rng.uniform(-14, 14),
-                        t0=rng.uniform(3.0, 10.5)))
+                        t0=4.0 + BEAT * rng.integers(0, 14)))
     return out
 
 
 def draw_fragments(c, t):
-    a_all = prog(t, 3.0, 4.0) * (1 - prog(t, 11.3, 12.4))
+    a_all = prog(t, 4.0, 4.5) * (1 - prog(t, 11.75, 12.0))
     if a_all <= 0:
         return
     for f in _frag_layout():
@@ -415,62 +431,78 @@ def pain(c, t, idx, t0, t1, kicker, l1, l2, card_fn):
     """One everyday failure: a small label, two lines, and a small card underneath."""
     if not t0 - 0.1 <= t < t1 + 0.6:
         return
-    label(c, t, kicker, W / 2, 360, t0, t1, align="center")
-    line_words(c, t, l1, LIGHT, 58, WHITE, W / 2, 452, t0 + 0.1, t1, "center")
-    line_words(c, t, l2, LIGHT, 58, BLUE, W / 2, 522, t0 + 0.55, t1, "center")
-    g = prog(t, t0 + 0.7, t0 + 1.3, e_out_cubic) * (1 - prog(t, t1, t1 + 0.5))
-    place(c, card_fn(t), W / 2, 700 + 18 * (1 - g), 1.0, g)
+    label(c, t, kicker, W / 2, 300, t0, t1, align="center", size=19)
+    line_words(c, t, l1, LIGHT, 92, WHITE, W / 2, 420, t0, t1, "center")
+    line_words(c, t, l2, DREG, 92, BLUE, W / 2, 528, t0 + BEAT, t1, "center")
+    g = prog(t, t0 + BEAT, t0 + 2 * BEAT, e_out_cubic) * (1 - prog(t, t1, t1 + 0.22))
+    place(c, card_fn(t), W / 2, 720 + 18 * (1 - g), 1.05, g)
+
+
+def push_in(c, t):
+    """Every shot drifts gently forward from its first frame (a cut resets it)."""
+    k = max(i for i, a in enumerate(SHOTS[:-1]) if a <= t)
+    u = (t - SHOTS[k]) / (SHOTS[k + 1] - SHOTS[k])
+    z = 1 + 0.03 * u
+    if z <= 1.0005:
+        return c
+    im = Image.fromarray(np.clip(c, 0, 255).astype(np.uint8))
+    w, h = W / z, H / z
+    im = im.transform((W, H), Image.EXTENT, ((W - w) / 2, (H - h) / 2, (W + w) / 2, (H + h) / 2), Image.BICUBIC)
+    return np.asarray(im, np.float32)
 
 
 def render_scene(t):
     n = int(round(t * FPS * 4))
-    flash = prog(t, 13.05, 13.15, e_lin) * (1 - prog(t, 13.15, 13.55, e_out_cubic))
+    flash = prog(t, 12.97, 13.0, e_lin) * (1 - prog(t, 13.0, 13.45, e_out_cubic))
     c = background(t, n, flash)
     draw_fragments(c, t)
 
-    # 1. Opening
-    line_words(c, t, "Your company has AI.", LIGHT, 66, WHITE, W / 2, 520, 0.5, 3.0, "center")
-    line_words(c, t, "So why does so much of it quietly die?", LIGHT, 66, BLUE, W / 2, 600, 1.35, 3.0, "center")
+    # 1. Opening (two bars)
+    line_words(c, t, "Your company has AI.", LIGHT, 96, WHITE, W / 2, 560, 0.25, 1.78, "center")
+    line_words(c, t, "So why does it", LIGHT, 96, WHITE, W / 2, 500, 2.0, 3.78, "center")
+    line_words(c, t, "quietly die?", DREG, 96, BLUE, W / 2, 610, 2.5, 3.78, "center")
 
-    # 2. Three everyday failures
-    pain(c, t, 0, 3.6, 5.6, "01  Questions", "A question about client data.", "Still unanswered.", card_pain_question)
-    pain(c, t, 1, 5.9, 7.9, "02  Ideas", "A build that went quiet.", "No activity for 12 days.", card_pain_build)
-    pain(c, t, 2, 8.2, 10.2, "03  Impact", "Hours saved?", "Nobody can say.", card_pain_impact)
-    line_words(c, t, "Every team. Every week.", LIGHT, 66, WHITE, W / 2, 560, 10.5, 11.6, "center")
+    # 2. Three everyday failures, one bar each
+    pain(c, t, 0, 4.0, 5.78, "01  Questions", "Questions.", "Unanswered.", card_pain_question)
+    pain(c, t, 1, 6.0, 7.78, "02  Ideas", "Builds.", "Gone quiet.", card_pain_build)
+    pain(c, t, 2, 8.0, 9.78, "03  Impact", "Hours saved?", "Nobody knows.", card_pain_impact)
+    line_words(c, t, "Every team.", LIGHT, 96, WHITE, W / 2, 570, 10.0, 10.9, "center")
+    line_words(c, t, "Every week.", LIGHT, 96, WHITE, W / 2, 570, 11.0, 11.9, "center")
 
-    # 3. The turn
-    line_words(c, t, "Your AI needs", LIGHT, 72, WHITE, W / 2, 520, 11.85, 12.85, "center")
-    line_words(c, t, "a spine.", DREG, 72, BLUE, W / 2, 610, 12.3, 12.85, "center")
+    # 3. The turn: the flash lands on the downbeat at 13.0
+    line_words(c, t, "Your AI needs", LIGHT, 104, WHITE, W / 2, 500, 12.0, 12.9, "center")
+    line_words(c, t, "a spine.", DREG, 104, BLUE, W / 2, 620, 12.5, 12.9, "center")
     draw_join(c, t)
-    line_words(c, t, "Spine holds it together.", LIGHT, 52, WHITE, W / 2, 900, 14.9, 16.3, "center")
+    line_words(c, t, "Spine holds it together.", LIGHT, 72, WHITE, W / 2, 930, 14.0, 15.75, "center")
 
     # 4. A first look: real Spine screens, restyled dark; the node travels between them
     CS = 1.1     # card scale on screen
-    cx0, cy0 = W / 2 + 110, 585
+    cx0, cy0 = W / 2 + 110, 610
 
     def at(card_w, card_h, u, v):
         """Screen position of card pixel (u, v) for a card centred at (cx0, cy0)."""
         return (cx0 + (u - card_w / 2) * CS, cy0 + (v - card_h / 2) * CS)
 
     looks = [
-        (16.8, 19.6, card_pulse, "Quiet until a human is needed.", at(980, 410, 882, 112)),          # Review
-        (19.6, 22.4, card_question, "Every question reaches a Champion.", at(860, 330, 168, 196)),   # Claimed
-        (22.4, 25.4, card_project, "Every idea gets an owner, a team and a plan.", at(980, 400, 566, 190)),   # Building
-        (25.4, 28.4, card_value, "Impact, measured in hours.", at(980, 400, 890, 173)),             # 42 hours
+        (16.0, 19.0, card_pulse, "Quiet until you\u2019re needed.", at(980, 410, 882, 112)),        # Review
+        (19.0, 22.0, card_question, "Every question gets a Champion.", at(860, 330, 168, 196)),   # Claimed
+        (22.0, 25.0, card_project, "An owner. A team. A plan.", at(980, 400, 566, 190)),          # Building
+        (25.0, 28.0, card_value, "Impact, in hours.", at(980, 400, 890, 173)),                    # 42 hours
     ]
     for k, (a, b, fn, words, node_at) in enumerate(looks):
-        if a - 0.5 <= t < b + 0.6:
-            gin = prog(t, a - 0.35, a + 0.25, e_out_cubic)
-            gout = prog(t, b - 0.25, b + 0.35, e_in_cubic)
-            x = cx0 + 220 * (1 - gin) - 220 * gout
+        if a - 0.3 <= t < b + 0.3:
+            gin = prog(t, a - 0.2, a + 0.25, e_out_cubic)
+            gout = prog(t, b - 0.2, b + 0.05, e_in_cubic)
+            x = cx0 + 240 * (1 - gin) - 240 * gout
             place(c, fn(t, a), x, cy0, CS, gin * (1 - gout))
-            label(c, t, "A first look", 110, 150, a, b - 0.3) if k == 0 else None
-            line_words(c, t, words, LIGHT, 44, WHITE, 110, 210, a + 0.15, b - 0.35, "left", dur=0.5)
+            if k == 0:
+                label(c, t, "A first look", 110, 140, a, b - 0.2, size=19)
+            line_words(c, t, words, LIGHT, 66, WHITE, 110, 215, a + BEAT / 2, b - 0.22, "left")
     # the node: from the join, across each card's key detail, then into the logo
-    node_track = [(16.6, (W / 2, H / 2 - 20)), (17.5, looks[0][4]), (19.3, looks[0][4]), (20.0, looks[1][4]),
-                  (22.1, looks[1][4]), (22.8, looks[2][4]), (25.1, looks[2][4]), (25.8, looks[3][4]),
-                  (28.2, looks[3][4]), (29.2, (W / 2, 480))]
-    if 16.6 <= t < 29.2:
+    node_track = [(16.0, (W / 2, H / 2 - 20)), (16.75, looks[0][4]), (18.75, looks[0][4]), (19.5, looks[1][4]),
+                  (21.75, looks[1][4]), (22.5, looks[2][4]), (24.75, looks[2][4]), (25.5, looks[3][4]),
+                  (27.75, looks[3][4]), (29.0, (W / 2, 480))]
+    if 16.0 <= t < 29.0:
         for (ta, pa), (tb, pb) in zip(node_track, node_track[1:]):
             if ta <= t <= tb:
                 p = prog(t, ta, tb, e_io_cubic)
@@ -478,16 +510,16 @@ def render_scene(t):
                 resting = tb - ta > 1
                 node(c, x, y, 0.38 if resting else 0.5, 1.0, rings=0.6 if resting else 0.0, t=t)
                 break
-    # a first look, all together
-    if 28.3 <= t < 30.2:
-        g = prog(t, 28.35, 28.9, e_out_cubic) * (1 - prog(t, 29.6, 30.1))
-        for k, (fn, a, (dx, dy)) in enumerate(((card_pulse, 16.8, (-470, -200)), (card_question, 19.6, (470, -210)),
-                                               (card_project, 22.4, (-470, 215)), (card_value, 25.4, (470, 215)))):
+    # a first look, all together (two beats)
+    if 28.0 <= t < 29.3:
+        g = prog(t, 28.0, 28.35, e_out_cubic) * (1 - prog(t, 28.8, 29.05))
+        for k, (fn, a, (dx, dy)) in enumerate(((card_pulse, 16.0, (-470, -200)), (card_question, 19.0, (470, -210)),
+                                               (card_project, 22.0, (-470, 215)), (card_value, 25.0, (470, 215)))):
             place(c, fn(40.0, a), W / 2 + dx * (0.85 + 0.15 * g), H / 2 + dy * (0.85 + 0.15 * g), 0.44, g)
 
     # 5. The logo
     logo(c, t)
-    return c
+    return push_in(c, t) if t < 29.0 else c
 
 
 # ---------------------------------------------------------------- logo and end card
@@ -501,7 +533,7 @@ def logo(c, t):
         return
     # the node splits into the three bars
     for k, (x0, x1, yc) in enumerate(LOGO):
-        p = prog(t, 29.2 + 0.12 * k, 30.3 + 0.12 * k, e_io_quint)
+        p = prog(t, 29.0 + BEAT / 2 * k, 30.0 + BEAT / 2 * k, e_io_quint)     # bars land on 30.0, 30.25, 30.5
         if p <= 0:
             continue
         L = lerp(12, x1 - x0, p)
@@ -509,17 +541,17 @@ def logo(c, t):
         x = lerp(W / 2, (x0 + x1) / 2, p)
         y = lerp(480, yc, p)
         draw_segment(c, SCREEN_CAM, default_seg(x=x, y=y, L=L, T=T, flat=T < 14))
-    nd = 1 - prog(t, 29.15, 29.5)
+    nd = 1 - prog(t, 28.95, 29.3)
     if nd > 0:
         node(c, W / 2, 480, 0.55 * nd, nd)
-    g = prog(t, 30.45, 31.1, e_out_cubic)
+    g = prog(t, 30.5, 31.0, e_out_cubic)
     soft_word(c, "Spine", DSEMI, 172, WHITE, 886, 527, g)   # the approved wordmark's size and position
-    line_words(c, t, "Give your company’s AI a spine.", LIGHT, 46, WHITE, W / 2, 698, 31.7, None, "center")
+    line_words(c, t, "Give your company’s AI a spine.", LIGHT, 46, WHITE, W / 2, 698, 31.5, None, "center")
     bw = lerp(0, 364, prog(t, 33.0, 33.3))
     bh = lerp(10, 80, prog(t, 33.25, 33.5, e_out_quint))
     if bw > 1:
         draw_segment(c, SCREEN_CAM, default_seg(x=959.5, y=841.5, L=max(bw, bh), T=bh, flat=True, color=BLUE_DEEP))
-        rv = prog(t, 33.4, 33.85, e_out_quint)
+        rv = prog(t, 33.5, 33.9, e_out_quint)
         soft_word(c, "Book a demo  →", MED, 32, (255, 255, 255), 959.5 - text_width("Book a demo  →", MED, 32) / 2,
                   852, rv)
 

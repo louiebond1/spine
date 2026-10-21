@@ -71,29 +71,19 @@ KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": jo
 
 # (time s, kind, peak dBFS, pan -1..1). Times match landings in timeline.py.
 CUES = [
-    (3.60, "tick", -32, -0.2),      # 01 Questions
-    (4.15, "tap", -30, 0.0),        # Still unanswered.
-    (5.90, "tick", -32, 0.0),       # 02 Ideas
-    (6.45, "tap", -30, 0.0),        # No activity for 12 days.
-    (8.20, "tick", -32, 0.2),       # 03 Impact
-    (8.75, "tap", -30, 0.0),        # Nobody can say.
-    (14.62, "land", -24, 0.0),      # the four lines meet in the node
-    (17.05, "tick", -33, 0.3),      # Pulse rows appear
-    (17.27, "tick", -33, 0.3),
-    (17.49, "tick", -33, 0.3),
-    (20.50, "tick_hi", -30, -0.3),  # claimed by a Champion
-    (22.9, "tick", -32, -0.1),      # stages fill
-    (23.3, "tick", -32, 0.0),
-    (23.7, "tick", -32, 0.1),
-    (24.0, "land", -29, 0.1),       # Building
-    (30.30, "land", -27, -0.2),     # the logo's bars land
-    (30.42, "land", -28, 0.0),
-    (30.54, "land", -29, 0.2),
-    (33.45, "land", -28, 0.0),      # Book a demo button lands
+    (4.0, "tick", -31, -0.2),       # 01 Questions
+    (4.5, "tap", -29, 0.0),         # Unanswered.
+    (6.0, "tick", -31, 0.0),        # 02 Ideas
+    (6.5, "tap", -29, 0.0),         # Gone quiet.
+    (8.0, "tick", -31, 0.2),        # 03 Impact
+    (8.5, "tap", -29, 0.0),         # Nobody knows.
+    (16.75, "tick_hi", -31, 0.35),  # node lands on Review
+    (20.0, "tick_hi", -30, -0.3),   # claimed by a Champion
+    (22.5, "tick", -32, -0.1),      # node lands on Building
+    (25.5, "tick", -32, 0.3),       # node lands on 42 hours
+    (33.0, "tick", -31, 0.0),       # Book a demo button draws
 ]
-for k in range(4):                  # hours saved: each month's point, rising pitch
-    CUES.append((25.8 + 0.45 * k, "tick", -31, -0.5 + 0.33 * k))
-PITCHED = (25.7, 27.4)              # cues in this window step up a whole tone each
+PITCHED = (0.0, 0.0)                # no pitched sequence in this cut
 
 
 def read_wav(path):

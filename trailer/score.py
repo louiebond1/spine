@@ -1,4 +1,5 @@
 """Original score for the Spine film, synthesised deterministically (no samples). 120 BPM.
+The bass, arpeggio and pads pump against the kick (sidechain) for drive.
 
   python3 score.py out/score.wav
   0 - 12 s    minor groove: kick on every beat, claps on 2 and 4, off-beat hats, syncopated bass
@@ -122,6 +123,7 @@ def kick_on(t):
 
 def build():
     buf = np.zeros((N, 2))
+    mus = np.zeros((N, 2))      # bass, arpeggio and pads: pumped by the kick below
     minor = [(38, [50, 53, 57]), (34, [46, 50, 53]), (36, [48, 52, 55]), (33, [45, 49, 52])]      # Dm Bb C A
     major = [(35, [47, 50, 54]), (31, [43, 47, 50]), (38, [50, 54, 57]), (33, [45, 49, 52])]      # Bm G D A
     for b in range(int(DUR / BEAT)):
@@ -133,7 +135,7 @@ def build():
         root, chord = prog_[bar % 4]
         # drums
         if kick_on(t) and section != "riser" or (section == "riser" and beat < 2):
-            add(buf, t, kick(0.85 if section in ("minor", "outro") else 1.0), 0.55)
+            add(buf, t, kick(0.9 if section in ("minor", "outro") else 1.0), 0.62)
         if section in ("minor", "major", "outro") and beat in (1, 3) and t >= 2.0:
             add(buf, t, clap(), 0.28, 0.1)
         if section in ("minor", "major", "outro") and t >= 4.0:
@@ -144,16 +146,22 @@ def build():
         # bass: syncopated, on the root of the bar's chord
         if section in ("minor", "major", "outro"):
             for off in ((0.0, 0.75) if beat % 2 == 0 else (0.5,)):
-                add(buf, t + off * BEAT, bass(root, 0.22), 0.30 if section == "major" else 0.26)
+                add(mus, t + off * BEAT, bass(root, 0.22), 0.30 if section == "major" else 0.26)
         # arpeggio
         if section == "major" or (section == "minor" and t >= 8.0):
             notes = chord + [chord[0] + 12]
             for k in range(2):
-                add(buf, t + k * BEAT / 2, pluck(notes[(beat * 2 + k) % 4] + 12), 0.08, 0.4 * (1 if k else -1))
+                add(mus, t + k * BEAT / 2, pluck(notes[(beat * 2 + k) % 4] + 12), 0.08, 0.4 * (1 if k else -1))
         # pads per bar
         if beat == 0 and section in ("minor", "major", "outro"):
-            add(buf, t, pad(chord, 4 * BEAT, 1200 if section == "minor" else 2000), 0.10, -0.2)
-            add(buf, t + 0.012, pad(chord, 4 * BEAT, 1200 if section == "minor" else 2000), 0.10, 0.2)
+            add(mus, t, pad(chord, 4 * BEAT, 1200 if section == "minor" else 2000), 0.10, -0.2)
+            add(mus, t + 0.012, pad(chord, 4 * BEAT, 1200 if section == "minor" else 2000), 0.10, 0.2)
+    # sidechain pump: the music ducks on every kick and swells back, then a little drive
+    tt = np.arange(N) / SR
+    on = np.array([kick_on(x) for x in np.floor(tt / BEAT) * BEAT])
+    pump = 1 - 0.55 * on * np.exp(-(tt % BEAT) / 0.11) * np.minimum((tt % BEAT) / 0.004, 1)
+    mus *= pump[:, None]
+    buf += np.tanh(mus * 2.2) / 2.2
     # riser into the flash, and the flash itself
     add(buf, 12.0, riser(1.0), 0.22)
     add(buf, 13.0, kick(1.0), 0.75)

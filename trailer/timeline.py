@@ -1,9 +1,9 @@
-"""Spine launch film: "Holds it together".
+"""Spine launch film: "Holds it together" (six pieces cut).
 
-Dark, warm-neutral and quiet: light type that fades in word by word (second line in Spine blue),
-specific everyday failures shown with tiny cards, a turn to "Your AI needs a spine.", four lines
-that meet in one glowing node, then a first look at real Spine screens (restyled dark) with the
-node travelling between them, and the logo.
+Dark, on a 120 BPM grid. Each everyday failure is underlined in Spine blue, and the underline
+snaps in two as its issue lands. The six halves hang at the edges of frame, slam together into
+the Spine mark on "a spine.", lock back together under each real Spine screen, and finally fly
+in pair by pair to form the logo. Every hit shakes and punches the frame.
 
 Product content (names, rows, stages, figures) is taken from the final mockups in /design and the
 seed data in CLAUDE.md. Everything is a function of time t in seconds.
@@ -342,52 +342,6 @@ def card_value(t, t0):
     return p.done()
 
 
-# ---------------------------------------------------------------- the node
-
-def node(c, x, y, s=1.0, alpha=1.0, rings=0.0, t=0.0):
-    draw_dot(c, x, y, 70 * s, (40, 62, 140), 0.35 * alpha, blur=40 * s)            # soft glow
-    draw_dot(c, x, y, 26 * s, BLUE, alpha, ring=3.2 * s)
-    draw_dot(c, x, y, 12 * s, BLUE, alpha)
-    for j in range(3):
-        if rings <= 0:
-            break
-        ph = ((t * 0.9 + j / 3) % 1.0)
-        draw_dot(c, x, y, (30 + 120 * ph) * s, BLUE, 0.35 * (1 - ph) * rings * alpha, ring=1.6 * s)
-
-
-# ---------------------------------------------------------------- the four lines that meet
-
-LINE_LABELS = [("Questions", -1, -1), ("Champions", 1, -1), ("Ideas", -1, 1), ("Leadership", 1, 1)]
-
-
-def draw_join(c, t):
-    if not 13.0 <= t < 16.1:
-        return
-    g = prog(t, 13.1, 14.0, e_io_cubic)
-    out = prog(t, 15.75, 16.0, e_io_cubic)
-    cx, cy = W / 2, H / 2 - 20
-    im = Image.new("L", (W * 2, H * 2), 0)
-    d = ImageDraw.Draw(im)
-    for name, sx, sy in LINE_LABELS:
-        x0, y0 = cx + sx * 640, cy + sy * 300
-        pts = []
-        for i in range(61):
-            u = i / 60 * g
-            # an S-curve from the corner that arrives horizontally at the node
-            px = lerp(x0, cx, u)
-            py = y0 + (cy - y0) * (3 * u * u - 2 * u ** 3)
-            pts.append((px * 2, py * 2))
-        d.line(pts, fill=int(200 * (1 - out)), width=4, joint="curve")
-        a = prog(t, 13.1, 13.5) * (1 - out)
-        tx = x0 + (-20 if sx < 0 else 20)
-        soft_word(c, name, MED, 26, DIM, tx - (0 if sx < 0 else text_width(name, MED, 26)), y0 - (18 if sy < 0 else -44), a)
-    m = np.asarray(im.resize((W, H), Image.BOX), np.float32) / 255.0
-    blend(c, 0, 0, m, (120, 130, 160))
-    arrive = prog(t, 13.85, 14.05, e_out_expo)
-    if arrive > 0:
-        node(c, cx, cy, 0.6 + 0.4 * arrive, arrive * (1 - out), rings=1.0, t=t)
-
-
 # ---------------------------------------------------------------- background fragments (the noise of the problem)
 
 FRAGS = ["Has anyone tried Claude for this?", "Who owns this now?", "Is this approved yet?",
@@ -425,36 +379,258 @@ def draw_fragments(c, t):
             soft_word(c, f["text"], REG, 18, (70, 76, 94), x, f["y"], a)
 
 
+
+
+# ---------------------------------------------------------------- impacts (shake, punch, colour split)
+
+# (time, strength): every snap, the slam at 13.0, each fusion, and each logo bar landing.
+IMPACTS = [(4.5, 1.0), (6.5, 1.0), (8.5, 1.0), (13.0, 2.0), (20.0, 0.45), (23.0, 0.45), (26.0, 0.45),
+           (30.0, 0.8), (30.25, 0.8), (30.5, 1.3)]
+
+
+def impact_state(t):
+    sx = sy = punch = split = 0.0
+    for ti, a in IMPACTS:
+        u = t - ti
+        if 0 <= u < 0.7:
+            d = math.exp(-u / 0.1)
+            sx += a * 13 * d * math.sin(2 * math.pi * 17 * u + 1.3 + ti)
+            sy += a * 9 * d * math.cos(2 * math.pi * 21 * u + ti * 3)
+            punch += 0.035 * a * math.exp(-u / 0.13)
+            split += 5 * a * math.exp(-u / 0.07)
+    return sx, sy, punch, split
+
+
+def snap_flash(t):
+    f = 0.0
+    for ti, a in IMPACTS:
+        u = t - ti
+        if 0 <= u < 0.4 and ti != 13.0:
+            f += 0.16 * min(a, 1.0) * math.exp(-u / 0.06)
+    return f
+
+
+def post(c, t):
+    """Shot push-in, impact punch and shake in one transform, then a brief colour split on hits."""
+    z = 1.0
+    if t < 29.0:
+        k = max(i for i, a in enumerate(SHOTS[:-1]) if a <= t)
+        z = 1 + 0.03 * (t - SHOTS[k]) / (SHOTS[k + 1] - SHOTS[k])
+    sx, sy, punch, split = impact_state(t)
+    z *= 1 + punch
+    z = max(z, 1 + 2 * max(abs(sx) / W, abs(sy) / H) + 0.002) if (sx or sy) else z
+    if z > 1.0005:
+        im = Image.fromarray(np.clip(c, 0, 255).astype(np.uint8))
+        w, h = W / z, H / z
+        x0, y0 = (W - w) / 2 - sx, (H - h) / 2 - sy
+        im = im.transform((W, H), Image.EXTENT, (x0, y0, x0 + w, y0 + h), Image.BICUBIC)
+        c = np.asarray(im, np.float32).copy()
+    d = int(round(split))
+    if d >= 1:
+        c[:, d:, 0] = c[:, :-d, 0].copy()
+        c[:, :-d, 2] = c[:, d:, 2].copy()
+    return c
+
+
+# ---------------------------------------------------------------- the six pieces
+
+# Three underlines, one under each problem, snap in two on the issue word. The six halves drift
+# through the film, slam together into the logo mark on "a spine.", and fuse again into the logo.
+PAINS = [(4.0, "01  Questions", "Questions.", "Unanswered.", card_pain_question),
+         (6.0, "02  Ideas", "Builds.", "Gone quiet.", card_pain_build),
+         (8.0, "03  Impact", "Hours saved?", "Nobody knows.", card_pain_impact)]
+PAIN_SIZE = 104
+UL_Y, UL_T = 448, 14
+ANG = [12, -14, 10, -12, 15, -10]                    # tilt of each half after its snap: the inner ends drop (degrees)
+DEBRIS = [(250, 300), (1670, 250), (300, 800), (1620, 840), (170, 560), (1750, 560)]
+RING = [(560, 250), (1360, 250), (470, 790), (1450, 790), (300, 520), (1620, 520)]
+
+# The approved logo geometry (from the end card): bars (x0, x1, centre y).
+LOGO = [(736.0, 831.0, 397.5), (708.0, 835.0, 469.5), (700.0, 779.0, 541.5)]
+LOGO_C = (767.5, 469.5)
+MARK_AT, MARK_S = (W / 2, 450), 1.7                   # the mark on "a spine." (13 - 16 s)
+
+
+def half_slot(i, scale, cx, cy):
+    """Centre, length and thickness of half i of the logo bar i // 2, for the mark at (cx, cy)."""
+    x0, x1, yc = LOGO[i // 2]
+    mid = (x0 + x1) / 2
+    hx = (x0 + mid) / 2 if i % 2 == 0 else (mid + x1) / 2
+    return cx + (hx - LOGO_C[0]) * scale, cy + (yc - LOGO_C[1]) * scale, (x1 - x0) / 2 * scale, 40 * scale
+
+
+def bar_len(k):
+    return text_width(PAINS[k][2], LIGHT, PAIN_SIZE) + 40
+
+
+def snapped(i, t):
+    """Position of half i from its snap until it leaves the problem scene."""
+    k, s = i // 2, (-1 if i % 2 == 0 else 1)
+    L = bar_len(k)
+    u = max(0.0, t - PAINS[k][0] - 0.5)
+    sep = 1 - math.exp(-u / 0.09) * math.cos(2 * math.pi * 3.2 * u)      # a damped spring: kick, overshoot, settle
+    x = W / 2 + s * (L / 4 + 60 * sep)
+    y = UL_Y + 12 * sep
+    return x, y, L / 2, UL_T, 0.75 * ANG[i] * sep
+
+
+def drifting(i, t):
+    x, y = DEBRIS[i]
+    x += 10 * math.sin(0.7 * t + i)
+    y += 8 * math.sin(0.9 * t + 2 * i)
+    rz = ANG[i] * 1.6 + 3 * math.sin(0.5 * t + i) + 2.5 * kick_env(t) * (-1) ** i
+    return x, y, 120.0, 12.0, rz
+
+
+def piece(i, t):
+    """(x, y, L, T, rz, alpha, inner_flat) for half i, or None when it isn't on screen."""
+    k = i // 2
+    t0 = PAINS[k][0]
+    if t < t0 or t >= 16.1:
+        return None
+    if t < t0 + 0.5:                                   # the underline wipes in under the first line
+        L = bar_len(k)
+        D = L * e_out_expo(prog(t, t0 + 0.05, t0 + 0.4, e_lin))
+        if i % 2 == 0:
+            ln = min(D, L / 2)
+            return W / 2 - L / 2 + ln / 2, UL_Y, ln, UL_T, 0.0, 1.0, D >= L / 2
+        ln = max(0.0, D - L / 2)
+        return W / 2 + ln / 2, UL_Y, ln, UL_T, 0.0, 1.0, True
+    if t < t0 + 1.75:
+        x, y, L, T, rz = snapped(i, t)
+        return x, y, L, T, rz, 1.0, True
+    a = snapped(i, t0 + 1.75)
+    if t < 11.75:                                      # out to the edges, where they hang
+        p = prog(t, t0 + 1.75, t0 + 2.3, e_io_cubic)
+        b = drifting(i, t)
+        x, y, L, T, rz = (lerp(a[j], b[j], p) for j in range(5))
+        return x, y, L, T, rz, lerp(1.0, 0.75, p), True
+    if t < 12.85:                                      # pulled in around "Your AI needs a spine.", trembling
+        p = prog(t, 11.75, 12.4, e_io_cubic)
+        b = drifting(i, t)
+        tense = prog(t, 12.0, 12.85, e_in_cubic)
+        x = lerp(b[0], RING[i][0], p) + 5 * tense * math.sin(53 * t + i)
+        y = lerp(b[1], RING[i][1], p) + 4 * tense * math.cos(47 * t + 2 * i)
+        rz = lerp(b[4], ANG[i] * 0.6, p) + 7 * tense * math.sin(41 * t + i)
+        return x, y, lerp(b[2], 150, p), lerp(b[3], 16, p), rz, lerp(0.75, 1.0, p), True
+    mx = MARK_AT[0] - 1700 * prog(t, 15.7, 16.05, e_in_cubic)
+    sc = MARK_S * (1 + 0.06 * prog(t, 13.0, 15.75, e_lin))
+    sx_, sy_, sL, sT = half_slot(i, sc, mx, MARK_AT[1])
+    if t < 13.0:                                       # the slam: accelerating into the slot
+        p = prog(t, 12.85, 13.0, e_in_cubic)
+        x, y = lerp(RING[i][0], sx_, p), lerp(RING[i][1], sy_, p)
+        return x, y, lerp(150, sL, p), lerp(16, sT, p), lerp(ANG[i] * 0.6, 0, p), 1.0, True
+    return sx_, sy_, sL, sT, 0.0, 1.0, True
+
+
+def draw_bar(c, x, y, L, T, rz=0.0, alpha=1.0, rl=1.0, rr=1.0, color=None):
+    draw_segment(c, SCREEN_CAM, default_seg(x=x, y=y, L=L, T=T, rz=rz, rl=rl, rr=rr,
+                                            alpha=alpha, flat=True, color=color))
+
+
+def sparks(c, t, x0, y0, t0, seed, n=12, spread=1.0):
+    u = t - t0
+    if not 0 <= u < 0.55:
+        return
+    rng = np.random.default_rng(seed)
+    for _ in range(n):
+        a = rng.uniform(-math.pi, math.pi)
+        v = rng.uniform(380, 950) * spread
+        life = rng.uniform(0.3, 0.55)
+        if u > life:
+            continue
+        x = x0 + math.cos(a) * v * u
+        y = y0 + math.sin(a) * v * u + 900 * u * u
+        draw_dot(c, x, y, rng.uniform(1.6, 3.2), (200, 214, 255), 1 - u / life)
+
+
+def glint(c, t, x, y, t0, size=1.0):
+    u = t - t0
+    if 0 <= u < 0.4:
+        draw_dot(c, x, y, 46 * size, (150, 175, 255), 0.5 * math.exp(-u / 0.08), blur=18 * size)
+        draw_dot(c, x, y, 7 * size, (255, 255, 255), math.exp(-u / 0.06))
+
+
+def draw_pieces(c, t):
+    if t >= 13.0:
+        # fused: one whole bar per pair, with a glint where the halves met
+        mx = MARK_AT[0] - 1700 * prog(t, 15.7, 16.05, e_in_cubic)
+        sc = MARK_S * (1 + 0.06 * prog(t, 13.0, 15.75, e_lin))
+        if t < 16.1:
+            for k, (x0, x1, yc) in enumerate(LOGO):
+                cx = mx + ((x0 + x1) / 2 - LOGO_C[0]) * sc
+                cy = MARK_AT[1] + (yc - LOGO_C[1]) * sc
+                draw_bar(c, cx, cy, (x1 - x0) * sc, 40 * sc)
+                glint(c, t, cx, cy, 13.0, 1.6)
+            u = t - 13.0
+            if u < 0.6:   # shockwave
+                draw_dot(c, MARK_AT[0], MARK_AT[1], 120 + 1500 * e_out_cubic(u / 0.6), (120, 150, 255),
+                         0.5 * (1 - u / 0.6), ring=6)
+        return
+    for i in range(6):
+        s = piece(i, t)
+        if s is None:
+            continue
+        x, y, L, T, rz, a, flat = s
+        left = i % 2 == 0
+        draw_bar(c, x, y, L, T, rz, a, rl=1.0 if left else (0.0 if flat else 1.0),
+                 rr=(0.0 if flat else 1.0) if left else 1.0)
+    for k, (t0, *_r) in enumerate(PAINS):
+        sparks(c, t, W / 2, UL_Y, t0 + 0.5, 40 + k)
+        glint(c, t, W / 2, UL_Y, t0 + 0.5)
+
+
+# ---------------------------------------------------------------- type that slams in on a hit
+
+def slam_line(c, t, text, fname, size, color, cx, base, t_hit, t_out):
+    if t < t_hit - 0.05:
+        return
+    s = 1 + 0.38 * (1 - e_out_expo(prog(t, t_hit - 0.05, t_hit + 0.22, e_lin)))
+    g = prog(t, t_hit - 0.05, t_hit + 0.02, e_lin)
+    out = prog(t, t_out, t_out + 0.22, e_io_cubic) if t_out is not None else 0.0
+    total = text_width(text, fname, size) * s
+    soft_word(c, text, fname, size, color, cx - total / 2, base + 30 * (s - 1), g, out, s)
+
+
 # ---------------------------------------------------------------- scenes
 
-def pain(c, t, idx, t0, t1, kicker, l1, l2, card_fn):
-    """One everyday failure: a small label, two lines, and a small card underneath."""
+def pain(c, t, t0, kicker, l1, l2, card_fn):
+    """One everyday failure: a label, the subject with its underline, the issue slamming in, a card."""
+    t1 = t0 + 1.78
     if not t0 - 0.1 <= t < t1 + 0.6:
         return
-    label(c, t, kicker, W / 2, 300, t0, t1, align="center", size=19)
-    line_words(c, t, l1, LIGHT, 92, WHITE, W / 2, 420, t0, t1, "center")
-    line_words(c, t, l2, DREG, 92, BLUE, W / 2, 528, t0 + BEAT, t1, "center")
-    g = prog(t, t0 + BEAT, t0 + 2 * BEAT, e_out_cubic) * (1 - prog(t, t1, t1 + 0.22))
-    place(c, card_fn(t), W / 2, 720 + 18 * (1 - g), 1.05, g)
+    label(c, t, kicker, W / 2, 290, t0, t1, align="center", size=19)
+    line_words(c, t, l1, LIGHT, PAIN_SIZE, WHITE, W / 2, 410, t0, t1, "center")
+    slam_line(c, t, l2, DREG, PAIN_SIZE, BLUE, W / 2, 604, t0 + 0.5, t1)
+    g = prog(t, t0 + 0.5, t0 + 0.8, e_out_cubic) * (1 - prog(t, t1, t1 + 0.22))
+    place(c, card_fn(t), W / 2, 795 + 18 * (1 - g), 1.05, g)
 
 
-def push_in(c, t):
-    """Every shot drifts gently forward from its first frame (a cut resets it)."""
-    k = max(i for i, a in enumerate(SHOTS[:-1]) if a <= t)
-    u = (t - SHOTS[k]) / (SHOTS[k + 1] - SHOTS[k])
-    z = 1 + 0.03 * u
-    if z <= 1.0005:
-        return c
-    im = Image.fromarray(np.clip(c, 0, 255).astype(np.uint8))
-    w, h = W / z, H / z
-    im = im.transform((W, H), Image.EXTENT, ((W - w) / 2, (H - h) / 2, (W + w) / 2, (H + h) / 2), Image.BICUBIC)
-    return np.asarray(im, np.float32)
+def fuse_underline(c, t, x, y, L, a, b, fuse):
+    """A healed underline: two halves slide in and lock together on `fuse` (or wipe in when fuse is None)."""
+    gin = prog(t, a + 0.45, a + 0.75, e_out_cubic)
+    out = prog(t, b - 0.22, b, e_io_cubic)
+    alpha = gin * (1 - out)
+    if alpha <= 0:
+        return
+    if fuse is None:
+        D = L * e_out_expo(prog(t, a + 0.5, a + 0.85, e_lin))
+        draw_bar(c, x + D / 2, y, D, 10, alpha=alpha)
+        return
+    if t >= fuse:
+        draw_bar(c, x + L / 2, y, L, 10, alpha=alpha)
+        glint(c, t, x + L / 2, y, fuse, 0.8)
+        sparks(c, t, x + L / 2, y, fuse, int(fuse * 10), n=8, spread=0.6)
+        return
+    gap = 160 * (1 - prog(t, a + 0.5, fuse, e_in_cubic))
+    draw_bar(c, x + L / 4 - gap / 2, y, L / 2, 10, alpha=alpha, rr=0.0)
+    draw_bar(c, x + 3 * L / 4 + gap / 2, y, L / 2, 10, alpha=alpha, rl=0.0)
 
 
 def render_scene(t):
     n = int(round(t * FPS * 4))
-    flash = prog(t, 12.97, 13.0, e_lin) * (1 - prog(t, 13.0, 13.45, e_out_cubic))
-    c = background(t, n, flash)
+    flash = prog(t, 12.97, 13.0, e_lin) * (1 - prog(t, 13.0, 13.45, e_out_cubic)) + snap_flash(t)
+    c = background(t, n, min(flash, 1.0))
     draw_fragments(c, t)
 
     # 1. Opening (two bars)
@@ -462,34 +638,28 @@ def render_scene(t):
     line_words(c, t, "So why does it", LIGHT, 96, WHITE, W / 2, 500, 2.0, 3.78, "center")
     line_words(c, t, "quietly die?", DREG, 96, BLUE, W / 2, 610, 2.5, 3.78, "center")
 
-    # 2. Three everyday failures, one bar each
-    pain(c, t, 0, 4.0, 5.78, "01  Questions", "Questions.", "Unanswered.", card_pain_question)
-    pain(c, t, 1, 6.0, 7.78, "02  Ideas", "Builds.", "Gone quiet.", card_pain_build)
-    pain(c, t, 2, 8.0, 9.78, "03  Impact", "Hours saved?", "Nobody knows.", card_pain_impact)
+    # 2. Three everyday failures: each underline snaps as its issue lands
+    for t0, kicker, l1, l2, fn in PAINS:
+        pain(c, t, t0, kicker, l1, l2, fn)
     line_words(c, t, "Every team.", LIGHT, 96, WHITE, W / 2, 570, 10.0, 10.9, "center")
     line_words(c, t, "Every week.", LIGHT, 96, WHITE, W / 2, 570, 11.0, 11.9, "center")
 
-    # 3. The turn: the flash lands on the downbeat at 13.0
+    # 3. The turn: the six pieces slam together into the mark on the downbeat at 13.0
     line_words(c, t, "Your AI needs", LIGHT, 104, WHITE, W / 2, 500, 12.0, 12.9, "center")
     line_words(c, t, "a spine.", DREG, 104, BLUE, W / 2, 620, 12.5, 12.9, "center")
-    draw_join(c, t)
-    line_words(c, t, "Spine holds it together.", LIGHT, 72, WHITE, W / 2, 930, 14.0, 15.75, "center")
+    draw_pieces(c, t)
+    line_words(c, t, "Spine holds it together.", LIGHT, 72, WHITE, W / 2, 820, 14.0, 15.6, "center")
 
-    # 4. A first look: real Spine screens, restyled dark; the node travels between them
-    CS = 1.1     # card scale on screen
-    cx0, cy0 = W / 2 + 110, 610
-
-    def at(card_w, card_h, u, v):
-        """Screen position of card pixel (u, v) for a card centred at (cx0, cy0)."""
-        return (cx0 + (u - card_w / 2) * CS, cy0 + (v - card_h / 2) * CS)
-
+    # 4. A first look: real Spine screens, restyled dark; each line's underline locks back together
+    CS = 1.1
+    cx0, cy0 = W / 2 + 110, 640
     looks = [
-        (16.0, 19.0, card_pulse, "Quiet until you\u2019re needed.", at(980, 410, 882, 112)),        # Review
-        (19.0, 22.0, card_question, "Every question gets a Champion.", at(860, 330, 168, 196)),   # Claimed
-        (22.0, 25.0, card_project, "An owner. A team. A plan.", at(980, 400, 566, 190)),          # Building
-        (25.0, 28.0, card_value, "Impact, in hours.", at(980, 400, 890, 173)),                    # 42 hours
+        (16.0, 19.0, card_pulse, "Quiet until you’re needed.", None),
+        (19.0, 22.0, card_question, "Every question gets a Champion.", 20.0),
+        (22.0, 25.0, card_project, "An owner. A team. A plan.", 23.0),
+        (25.0, 28.0, card_value, "Impact, in hours.", 26.0),
     ]
-    for k, (a, b, fn, words, node_at) in enumerate(looks):
+    for k, (a, b, fn, words, fuse) in enumerate(looks):
         if a - 0.3 <= t < b + 0.3:
             gin = prog(t, a - 0.2, a + 0.25, e_out_cubic)
             gout = prog(t, b - 0.2, b + 0.05, e_in_cubic)
@@ -498,18 +668,7 @@ def render_scene(t):
             if k == 0:
                 label(c, t, "A first look", 110, 140, a, b - 0.2, size=19)
             line_words(c, t, words, LIGHT, 66, WHITE, 110, 215, a + BEAT / 2, b - 0.22, "left")
-    # the node: from the join, across each card's key detail, then into the logo
-    node_track = [(16.0, (W / 2, H / 2 - 20)), (16.75, looks[0][4]), (18.75, looks[0][4]), (19.5, looks[1][4]),
-                  (21.75, looks[1][4]), (22.5, looks[2][4]), (24.75, looks[2][4]), (25.5, looks[3][4]),
-                  (27.75, looks[3][4]), (29.0, (W / 2, 480))]
-    if 16.0 <= t < 29.0:
-        for (ta, pa), (tb, pb) in zip(node_track, node_track[1:]):
-            if ta <= t <= tb:
-                p = prog(t, ta, tb, e_io_cubic)
-                x, y = lerp(pa[0], pb[0], p), lerp(pa[1], pb[1], p)
-                resting = tb - ta > 1
-                node(c, x, y, 0.38 if resting else 0.5, 1.0, rings=0.6 if resting else 0.0, t=t)
-                break
+            fuse_underline(c, t, 112, 252, text_width(words, LIGHT, 66), a, b, fuse)
     # a first look, all together (two beats)
     if 28.0 <= t < 29.3:
         g = prog(t, 28.0, 28.35, e_out_cubic) * (1 - prog(t, 28.8, 29.05))
@@ -519,31 +678,30 @@ def render_scene(t):
 
     # 5. The logo
     logo(c, t)
-    return push_in(c, t) if t < 29.0 else c
+    return post(c, t)
 
 
 # ---------------------------------------------------------------- logo and end card
 
-# The approved logo geometry (from the end card): bars (x0, x1, centre y) and the wordmark box.
-LOGO = [(736.0, 831.0, 397.5), (708.0, 835.0, 469.5), (700.0, 779.0, 541.5)]
-
-
 def logo(c, t):
-    if t < 29.0:
+    if t < 29.4:
         return
-    # the node splits into the three bars
+    # each bar's two halves fly in from either side and lock together on the beat
     for k, (x0, x1, yc) in enumerate(LOGO):
-        p = prog(t, 29.0 + BEAT / 2 * k, 30.0 + BEAT / 2 * k, e_io_quint)     # bars land on 30.0, 30.25, 30.5
+        land = 30.0 + BEAT / 2 * k
+        L = x1 - x0
+        if t >= land:
+            draw_bar(c, (x0 + x1) / 2, yc, L, 40)
+            glint(c, t, (x0 + x1) / 2, yc, land, 1.2)
+            sparks(c, t, (x0 + x1) / 2, yc, land, 70 + k, n=10, spread=0.8)
+            continue
+        p = prog(t, land - 0.5, land, e_in_cubic)
         if p <= 0:
             continue
-        L = lerp(12, x1 - x0, p)
-        T = lerp(12, 40, p)
-        x = lerp(W / 2, (x0 + x1) / 2, p)
-        y = lerp(480, yc, p)
-        draw_segment(c, SCREEN_CAM, default_seg(x=x, y=y, L=L, T=T, flat=T < 14))
-    nd = 1 - prog(t, 28.95, 29.3)
-    if nd > 0:
-        node(c, W / 2, 480, 0.55 * nd, nd)
+        lx = lerp(-200, x0 + L / 4, p)
+        rx = lerp(W + 200, x1 - L / 4, p)
+        draw_bar(c, lx, yc, L / 2, 40, rr=0.0)
+        draw_bar(c, rx, yc, L / 2, 40, rl=0.0)
     g = prog(t, 30.5, 31.0, e_out_cubic)
     soft_word(c, "Spine", DSEMI, 172, WHITE, 886, 527, g)   # the approved wordmark's size and position
     line_words(c, t, "Give your company’s AI a spine.", LIGHT, 46, WHITE, W / 2, 698, 31.5, None, "center")

@@ -66,22 +66,66 @@ def snap(seed=0):
     return crack + click + knock
 
 
-KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": join, "tap": tap,
-         "snap0": lambda: snap(0), "snap1": lambda: snap(1), "snap2": lambda: snap(2)}
+def boom(f0=90.0, f1=42.0, dur=0.6, tau=0.22):
+    """A sub drop under a hit."""
+    return thud(f0, f1, dur, tau)
 
-# (time s, kind, peak dBFS, pan -1..1). Times match landings in timeline.py.
+
+def swell(dur=0.35, seed=7):
+    """Reversed-noise suck into a hit: rises and stops dead at the end."""
+    n = int(SR * dur)
+    rng = np.random.default_rng(seed)
+    x = np.diff(np.r_[0, rng.standard_normal(n)])
+    x = np.convolve(x, np.ones(6) / 6, "same")
+    return x * (np.arange(n) / n) ** 3
+
+
+def crack(seed=0):
+    """A bar snapping: a hard broadband crack, a bright splinter and a sub boom."""
+    n = int(SR * 0.6)
+    t = np.arange(n) / SR
+    rng = np.random.default_rng(200 + seed)
+    noise = np.diff(np.r_[0, rng.standard_normal(n)])
+    x = noise * env(n, 0.0003, 0.02) * 0.9
+    x += rng.standard_normal(n) * env(n, 0.0005, 0.045) * 0.35
+    x += np.sin(2 * np.pi * 2300 * t) * env(n, 0.0004, 0.008) * 0.5
+    x += boom()[:n] * 0.9
+    return x
+
+
+def clack(big=False):
+    """Two halves locking together: a double click, a knock and a short metallic ring."""
+    n = int(SR * (0.7 if big else 0.4))
+    t = np.arange(n) / SR
+    x = np.zeros(n)
+    for d, g in ((0.0, 1.0), (0.009, 0.7)):
+        k = tick(3000.0, 0.05) * g
+        i = int(d * SR)
+        x[i:i + len(k)] += k
+    k = thud(200.0, 120.0, 0.25, 0.05) * 0.8
+    x[:len(k)] += k
+    x += np.sin(2 * np.pi * 1760 * t) * env(n, 0.0005, 0.09) * 0.18
+    if big:
+        k = boom(80.0, 38.0, 0.7, 0.3)[:n] * 1.1
+        x[:len(k)] += k
+    return x
+
+
+KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": join, "tap": tap,
+         "swell": swell, "crack0": lambda: crack(0), "crack1": lambda: crack(1), "crack2": lambda: crack(2),
+         "clack": clack, "slam": lambda: clack(True)}
+
+# (time s, kind, peak dBFS, pan -1..1). Times match the hits in timeline.py (IMPACTS).
 CUES = [
-    (4.0, "tick", -31, -0.2),       # 01 Questions
-    (4.5, "tap", -29, 0.0),         # Unanswered.
-    (6.0, "tick", -31, 0.0),        # 02 Ideas
-    (6.5, "tap", -29, 0.0),         # Gone quiet.
-    (8.0, "tick", -31, 0.2),        # 03 Impact
-    (8.5, "tap", -29, 0.0),         # Nobody knows.
-    (16.75, "tick_hi", -31, 0.35),  # node lands on Review
-    (20.0, "tick_hi", -30, -0.3),   # claimed by a Champion
-    (22.5, "tick", -32, -0.1),      # node lands on Building
-    (25.5, "tick", -32, 0.3),       # node lands on 42 hours
-    (33.0, "tick", -31, 0.0),       # Book a demo button draws
+    (4.15, "swell", -20, 0.0), (4.5, "crack0", -13, -0.1),       # Questions. / Unanswered.
+    (6.15, "swell", -20, 0.0), (6.5, "crack1", -13, 0.1),        # Builds. / Gone quiet.
+    (8.15, "swell", -20, 0.0), (8.5, "crack2", -13, 0.0),        # Hours saved? / Nobody knows.
+    (12.65, "swell", -16, 0.0), (13.0, "slam", -10, 0.0),        # the six pieces slam into the mark
+    (20.0, "clack", -16, -0.3),     # underline locks: Every question gets a Champion.
+    (23.0, "clack", -16, -0.3),     # An owner. A team. A plan.
+    (26.0, "clack", -16, -0.3),     # Impact, in hours.
+    (30.0, "slam", -14, -0.3), (30.25, "slam", -14, 0.3), (30.5, "slam", -11, 0.0),   # logo bars lock
+    (33.0, "tick", -24, 0.0),       # Book a demo button draws
 ]
 PITCHED = (0.0, 0.0)                # no pitched sequence in this cut
 

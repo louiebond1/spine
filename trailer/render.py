@@ -18,9 +18,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PLATES = os.path.join(HERE, "assets", "plates")
 
 # Windows with fast camera or object moves get 180-degree-shutter motion blur.
-BLUR = [(4.55, 5.1, 4), (5.45, 5.9, 4), (9.4, 10.3, 4), (11.95, 12.4, 4), (15.3, 16.2, 4), (18.3, 19.6, 3),
+BLUR = [(3.3, 5.45, 3), (5.45, 5.9, 4), (9.4, 10.3, 4), (11.95, 12.4, 4), (15.3, 16.2, 4), (18.3, 19.6, 3),
         (19.85, 20.3, 4), (22.45, 22.95, 6), (26.4, 27.3, 4), (27.9, 28.65, 4), (32.6, 33.6, 4), (36.2, 36.95, 4),
-        (41.5, 44.0, 4), (44.1, 46.2, 3), (48.4, 50.2, 4), (50.4, 51.45, 4)]
+        (41.5, 44.1, 4), (44.1, 46.2, 3), (48.4, 50.2, 4), (50.4, 51.45, 4)]
 
 SHUTTER = 0.5 / FPS
 
@@ -40,7 +40,7 @@ def frame(n):
         return quantise(tl.end_card(t, plate()))
     if n >= tl.HANDOFF:
         return np.asarray(Image.open(os.path.join(PLATES, f"f{n:04d}.png")).convert("RGB"))
-    sub = next((k for a, b, k in BLUR if a <= t < b), 1)
+    sub = next((k for a, b, k in BLUR if a <= t + tl.SHIFT < b), 1)     # BLUR is in story time
     if sub > 1:
         acc = np.zeros((H, W, 3), np.float32)
         for k in range(sub):

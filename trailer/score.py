@@ -185,6 +185,10 @@ def build():
     add(buf, 22.5, lp(rng.standard_normal(int(1.2 * SR)), 6000) * np.exp(-np.arange(int(1.2 * SR)) / SR / 0.3), 0.10)
     add(buf, 22.5, pad([50, 54, 57, 62], 3.0, 2400, 0.25, 1.0), 0.14)
     add(buf, 23.0, bell(74, 2.5), 0.05, 0.2)
+    # the 42 lands on a beat of its own
+    add(buf, 46.2, kick(1.0), 0.5)
+    add(buf, 46.2, pad([47, 50, 54, 59], 1.2, 2600, 0.01, 0.8), 0.12)
+    add(buf, 46.2, bell(78, 1.6), 0.05, 0.3)
     # the pull back to the connected world: the drums fall away under a held chord and a riser,
     # one note for each bar as it lands in the mark, then the logo locks on a resolved chord
     add(buf, 48.5, pad([50, 54, 57], 2.9, 1800, 0.3, 1.0), 0.15)
@@ -206,7 +210,8 @@ def build():
     mus *= pump[:, None]
     buf += np.tanh(mus * 2.2) / 2.2
     # the solutions build: each resolved problem a little fuller than the last
-    keys = [(0.0, 1.0), (27.5, 0.82), (33.6, 0.9), (43.0, 1.0), (48.4, 1.08), (48.6, 1.0), (DUR, 1.0)]
+    keys = [(0.0, 1.0), (5.48, 1.0), (5.56, 0.0), (5.95, 0.0), (6.2, 1.0),       # the snap: everything stops for a beat
+            (27.5, 0.82), (33.6, 0.9), (43.0, 1.0), (48.4, 1.08), (48.6, 1.0), (DUR, 1.0)]
     kt = np.array([k[0] for k in keys])
     kv = np.array([k[1] for k in keys])
     buf *= np.interp(tt, kt, kv)[:, None]

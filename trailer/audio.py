@@ -124,8 +124,7 @@ KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": jo
 
 # (time s, kind, peak dBFS, pan -1..1). Times match the hits in timeline.py (IMPACTS).
 CUES = [
-    (4.6, "tick_hi", -26, 0.3),                                   # the question is sent
-    (5.15, "swell", -22, 0.2), (5.5, "crack0", -14, 0.3),         # the route ahead snaps
+    (5.15, "swell", -22, 0.2), (5.5, "crack0", -12, 0.3),         # the route ahead snaps; the music cuts out
     (11.65, "swell", -22, 0.0), (12.0, "crack1", -14, 0.1),       # the track snaps at Building
     (19.55, "swell", -24, 0.4), (19.9, "crack2", -16, 0.5),       # the line to the chart snaps
     (22.15, "swell", -16, 0.0), (22.5, "slam", -10, 0.0),         # everything lines up on the spine
@@ -137,7 +136,7 @@ CUES = [
 ] + [(40.6 + 0.3 * k, "tap", -24, -0.2) for k in range(4)] + [    # each step ticked
 ] + [(44.1 + 0.03 * i + 0.65, "tickf%.0f" % (1400 * 2 ** (i / 30)), -33, -0.4 + 0.017 * i)
      for i in range(47)] + [                                     # the hours stack up, unit by unit
-    (46.2, "land", -18, 0.3),                                     # 42 hours saved in October
+    (46.2, "land", -15, 0.3),                                     # 42 hours saved in October
     (48.4, "swell", -24, 0.0), (48.95, "clack", -16, 0.0),        # the chart closes into one bar
     (49.6, "tick", -30, -0.3), (49.85, "tick", -30, 0.3),         # the three are joined up
     (51.4, "slam", -10, 0.0),                                     # the mark locks: the logo
@@ -179,6 +178,9 @@ def duck_curve(vo, depth_db=-7.0, attack=0.06, release=0.35):
     return np.repeat(g, hop)[:len(vo)][:, None]
 
 
+FILM_START = 3.4      # the film opens 3.4 s into the story (timeline.SHIFT); the mix is cut to match
+
+
 def build(score_path, dst, vo_path=None):
     base = read_wav(score_path) * 10 ** (-3 / 20)
     fx = np.zeros_like(base)
@@ -202,6 +204,8 @@ def build(score_path, dst, vo_path=None):
         vo = read_wav(vo_path)[:len(mix_)]
         vo = np.pad(vo, ((0, len(mix_) - len(vo)), (0, 0)))
         mix_ = mix_ * duck_curve(vo) + vo
+    mix_ = mix_[int(FILM_START * SR):].copy()
+    mix_[:int(0.012 * SR)] *= np.linspace(0, 1, int(0.012 * SR))[:, None]
     write_wav(dst, mix_)
     pk = np.max(np.abs(mix_))
     print(f"mix peak {20 * np.log10(pk):.2f} dBFS (before limiter)")

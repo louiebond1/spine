@@ -125,23 +125,29 @@ KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": jo
 # (time s, kind, peak dBFS, pan -1..1). Times match the hits in timeline.py (IMPACTS).
 CUES = [
     (5.15, "swell", -22, 0.2), (5.5, "crack0", -12, 0.3),         # the route ahead snaps; the music cuts out
-] + [(tj, "tap", -26, -0.3 + 0.3 * k) for k, tj in enumerate((10.85, 11.0, 11.15))] + [   # the team joins
-    (11.65, "swell", -22, 0.0), (12.0, "crack1", -14, 0.1),       # the track snaps at Building
+    (10.45, "tick", -28, -0.3), (10.85, "tick", -28, -0.1),       # the idea reaches Approval, then Recruiting
+    (11.65, "swell", -22, 0.3), (12.0, "crack1", -14, 0.3),       # the line to the passers-by snaps
     (19.55, "swell", -24, 0.4), (19.9, "crack2", -16, 0.5),       # the line to the chart snaps
     (22.15, "swell", -16, 0.0), (22.5, "slam", -10, 0.0),         # everything lines up on the spine
 ] + [(27.6 + 0.1 * k, "tick", -30, 0.3 + 0.2 * k) for k in range(3)] + [   # the question reaches the Champions
     (28.25, "tick_hi", -25, 0.5),                                 # Mia takes it
     (28.9, "clack", -15, 0.1), (29.3, "tap", -24, -0.1),          # she claims it; her answer
-    (32.6, "tick_hi", -28, 0.0), (33.6, "tap", -22, 0.0),         # the project's name lifts out and lands
-    (34.8, "beep", -19, 0.0),                                     # Pulse flags the stalled project
-] + [(35.6 + 0.08 * k, "tickf2600", -27, -0.4 + 0.4 * k) for k in range(3)] + [   # the people are pinged
-    (36.6, "clack", -18, 0.0),                                    # they are back on it
-] + [(37.95 + 0.05 * k, "tap", -25, -0.3 + 0.3 * k) for k in range(3)] + [   # each takes a step
-] + [(tk, "tap", -22, -0.2 + 0.2 * k) for k, tk in enumerate((39.25, 39.7, 40.15))] + [   # each step done
-    (40.6, "land", -19, 0.2),                                     # Publishing: moving again
-] + [(43.45, 'tickf1400', -34, -0.4), (43.472, 'tickf1433', -34, -0.383), (43.494, 'tickf1466', -34, -0.366), (44.0, 'tickf1500', -34, -0.349), (44.022, 'tickf1536', -34, -0.332), (44.044, 'tickf1571', -34, -0.315), (44.066, 'tickf1608', -34, -0.298), (44.088, 'tickf1646', -34, -0.281), (44.11, 'tickf1684', -34, -0.264), (44.132, 'tickf1724', -34, -0.247), (44.154, 'tickf1764', -34, -0.23), (44.55, 'tickf1805', -34, -0.213), (44.572, 'tickf1847', -34, -0.196), (44.594, 'tickf1890', -34, -0.179), (44.616, 'tickf1935', -34, -0.162), (44.638, 'tickf1980', -34, -0.145), (44.66, 'tickf2026', -34, -0.128), (44.682, 'tickf2074', -34, -0.111), (44.704, 'tickf2122', -34, -0.094), (44.726, 'tickf2172', -34, -0.077), (44.748, 'tickf2222', -34, -0.06), (44.77, 'tickf2274', -34, -0.043), (44.792, 'tickf2327', -34, -0.026), (44.814, 'tickf2382', -34, -0.009), (44.836, 'tickf2438', -34, 0.008), (44.858, 'tickf2495', -34, 0.025), (45.1, 'tickf2553', -34, 0.042), (45.122, 'tickf2612', -34, 0.059), (45.144, 'tickf2674', -34, 0.076), (45.166, 'tickf2736', -34, 0.093), (45.188, 'tickf2800', -34, 0.11), (45.21, 'tickf2865', -34, 0.127), (45.232, 'tickf2932', -34, 0.144), (45.254, 'tickf3001', -34, 0.161), (45.276, 'tickf3071', -34, 0.178), (45.298, 'tickf3143', -34, 0.195), (45.32, 'tickf3216', -34, 0.212), (45.342, 'tickf3292', -34, 0.229), (45.364, 'tickf3368', -34, 0.246), (45.386, 'tickf3447', -34, 0.263), (45.408, 'tickf3528', -34, 0.28), (45.43, 'tickf3610', -34, 0.297), (45.452, 'tickf3695', -34, 0.314), (45.474, 'tickf3781', -34, 0.331), (45.496, 'tickf3869', -34, 0.348), (45.518, 'tickf3960', -34, 0.365), (45.54, 'tickf4052', -34, 0.382)] + [                                                        # the hours teams log, stacking up
-    (47.3, "swell", -26, 0.0),
-    (51.4, "slam", -10, 0.0),                                     # the mark locks: the logo
+    (32.6, "tick_hi", -28, 0.0), (33.6, "tap", -22, -0.2),        # the project's name lifts out and lands on the board
+    (35.3, "swell", -26, 0.0),                                    # the card grows into the frame
+    (36.38, "tap", -22, 0.4), (36.75, "clack", -16, 0.2),         # Ben presses Join project; takes his seat
+    (37.08, "tap", -22, 0.4), (37.45, "clack", -21, 0.3),         # Priya (softer: it lands just before a kick)
+    (38.0, "land", -18, 0.0),                                     # the team is full: Building
+] + [(38.4 + 0.15 * k, "tick", -30, 0.2 * k) for k in range(3)] + [   # the plan, a step for each of them
+    (41.8, "beep", -19, -0.2),                                    # Pulse flags it
+    (42.3, "tickf2400", -24, 0.5), (42.42, "tickf3200", -24, 0.5),   # the digest arrives in Slack
+    (43.1, "tap", -22, 0.4),                                      # Open
+    (43.7, "clack", -16, -0.2), (44.4, "clack", -17, 0.0),        # Mia, then Ben, tick their steps
+    (45.85, "clack", -17, 0.2), (46.15, "tick", -26, 0.2), (46.6, "land", -17, 0.2),   # Priya; Publishing; Live
+    (47.0, "tick_hi", -26, -0.2),                                 # the team logs its hours
+] + [(48.4, 'tickf1400', -34, -0.4), (48.412, 'tickf1433', -34, -0.38), (48.424, 'tickf1466', -34, -0.36), (48.58, 'tickf1500', -34, -0.34), (48.592, 'tickf1536', -34, -0.32), (48.604, 'tickf1571', -34, -0.3), (48.616, 'tickf1608', -34, -0.28), (48.628, 'tickf1646', -34, -0.26), (48.64, 'tickf1684', -34, -0.24), (48.652, 'tickf1724', -34, -0.22), (48.664, 'tickf1764', -34, -0.2), (48.76, 'tickf1805', -34, -0.18), (48.772, 'tickf1847', -34, -0.16), (48.784, 'tickf1890', -34, -0.14), (48.796, 'tickf1935', -34, -0.12), (48.808, 'tickf1980', -34, -0.1), (48.82, 'tickf2026', -34, -0.08), (48.832, 'tickf2074', -34, -0.06), (48.844, 'tickf2122', -34, -0.04), (48.856, 'tickf2172', -34, -0.02), (48.868, 'tickf2222', -34, 0.0), (48.88, 'tickf2274', -34, 0.02), (48.892, 'tickf2327', -34, 0.04), (48.904, 'tickf2382', -34, 0.06), (48.916, 'tickf2438', -34, 0.08), (48.928, 'tickf2495', -34, 0.1), (48.94, 'tickf2553', -34, 0.12), (48.952, 'tickf2612', -34, 0.14), (48.964, 'tickf2674', -34, 0.16), (48.976, 'tickf2736', -34, 0.18), (48.988, 'tickf2800', -34, 0.2), (49.0, 'tickf2865', -34, 0.22), (49.012, 'tickf2932', -34, 0.24), (49.024, 'tickf3001', -34, 0.26), (49.036, 'tickf3071', -34, 0.28), (49.048, 'tickf3143', -34, 0.3), (49.06, 'tickf3216', -34, 0.32), (49.072, 'tickf3292', -34, 0.34), (49.084, 'tickf3368', -34, 0.36), (49.096, 'tickf3447', -34, 0.38), (49.108, 'tickf3528', -34, 0.4), (49.12, 'tickf3610', -34, 0.42), (49.132, 'tickf3695', -34, 0.44)] + [                                                        # the months stack up
+    (49.4, "clack", -15, 0.4),                                    # the project's hours land on October
+    (51.0, "swell", -26, 0.0),
+    (56.55, "slam", -10, 0.0),                                    # the mark locks: the logo
 ]
 PITCHED = (0.0, 0.0)                # no pitched tick sequence in this cut
 

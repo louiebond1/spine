@@ -131,6 +131,8 @@ CUES = [
     (27.0, "clack", -15, -0.5), (45.5, "clack", -15, 0.0), (51.5, "clack", -15, 0.5),   # each stop on the journey lights
 ] + [(44.5 - 1.0 + 0.2 * k, "tick", -22, -0.5 + 0.2 * k) for k in range(6)] + [     # six pieces become six stages
 ] + [(39.5 + 1.2 + f, "beep", -22, 0.0) for f in (0.25, 0.47, 0.69)] + [           # Pulse heartbeats
+] + [(34.5 + j, "tap", -20, 0.3) for j in (0.9, 1.25, 1.6)] + [                   # Join project, three times
+] + [(37.0 + 0.95 + 0.12 * k, "tick_hi", -31, -0.3 + 0.07 * k) for k in range(9)] + [  # the plan writes itself
 ] + [(a, "tick", -27, 0.25) for a in (17.0, 19.5, 22.0, 24.5, 29.5, 32.0, 34.5, 37.0, 39.5, 42.5, 48.5)] + [
     (54.0, "slam", -14, -0.3), (54.25, "slam", -14, 0.3), (54.5, "slam", -11, 0.0),   # logo bars lock
     (56.5, "tick", -24, 0.0),       # Book a demo button draws

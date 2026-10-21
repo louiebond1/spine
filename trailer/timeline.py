@@ -222,13 +222,18 @@ def card_pain_build(t):
 
 
 def card_pain_impact(t):
+    """Nothing measured: an empty hours-saved chart."""
     p = Pen(620, 190)
     p.tracked(32, 44, "Hours saved", 12, DIM)
+    x0, x1, y0, y1 = 70, 588, 150, 70
+    for v in range(3):
+        y = y0 - (y0 - y1) * v / 2
+        p.line([(x0, y), (x1, y)], (40, 43, 52), 1)
+    for xd in range(int(x0), int(x1), 18):          # a flat dashed line at zero
+        p.line([(xd, y0), (min(xd + 9, x1), y0)], (70, 75, 92), 2)
     for k in range(4):
-        x = 60 + k * 140
-        p.rrect(x, 80, x + 56, 150, 6, outline=(70, 75, 92), width=1)
-        p.text(x + 28, 124, "?", 26, (90, 96, 114), DSEMI, anchor="ms")
-        p.text(x + 28, 176, MONTHS[k], 13, DIM, MED, anchor="ms")
+        p.text(x0 + 30 + (x1 - x0 - 60) * k / 3, 176, MONTHS[k], 13, DIM, MED, anchor="ms")
+    p.text((x0 + x1) / 2, 118, "No data yet", 17, DIM, MED, anchor="ms")
     return p.done()
 
 
@@ -256,35 +261,33 @@ def card_pulse(t, t0):
     return p.done()
 
 
+PLAN_STEPS = [   # the last three are the seeded open steps; the six before them are invented to match the brief
+    ("Collect sample supplier invoices", "SK", "15 Sep"), ("Map the invoice approval steps", "JC", "18 Sep"),
+    ("Draft the extraction prompts", "MT", "22 Sep"), ("Build the first working version", "JC", "26 Sep"),
+    ("Connect to the finance inbox", "SK", "30 Sep"), ("Review results with the finance team", "MT", "3 Oct"),
+    ("Test against real supplier cases", "JC", "9 Oct"), ("Fix edge cases from testing", "MT", "14 Oct"),
+    ("Prepare for publishing", "JC", "16 Oct")]
+PLAN_ROW0, PLAN_DY = 166, 38          # first step row (card px) and row pitch
+PLAN_T0, PLAN_STEP_T = 0.95, 0.12     # the first step is written 0.95 s into the shot, then one every 0.12 s
+
+
 def card_project(t, t0):
-    p = Pen(980, 400)
-    p.tracked(36, 52, "Ideas & Projects", 12, DIM)
+    """AI writes the build plan: nine steps, each with an owner and a date, from the project brief."""
+    p = Pen(980, 520)
+    p.tracked(36, 52, "Ideas & Projects  ·  Plan", 12, DIM)
     p.text(36, 104, "AI Invoice Assistant", 30, WHITE, DSEMI)
-    p.text(36, 138, "Jamie Chen  ·  Finance  ·  App  ·  Target 19 November", 16, DIM)
-    xs = [56 + 170 * k for k in range(6)]
-    fill_to = lerp(0, 3, prog(t, t0 + 0.4, t0 + 1.6, e_io_cubic))
-    p.line([(xs[0], 190), (xs[-1], 190)], (52, 56, 68), 3)
-    p.line([(xs[0], 190), (xs[0] + (xs[3] - xs[0]) * fill_to / 3, 190)], BLUE, 3)
-    for k, x in enumerate(xs):
-        on = fill_to >= k - 1e-3
-        if on:
-            p.circle(x, 190, 11, fill=BLUE)
-        else:
-            p.circle(x, 190, 10, fill=CARD, outline=(70, 75, 92), width=2)
-        p.text(x, 228, STAGES[k], 14, WHITE if k == 3 else DIM, SEMI if k == 3 else MED, anchor="ms",
-               alpha=1.0)
-    g = prog(t, t0 + 1.4, t0 + 1.9, e_out_cubic)
-    p.text(36, 280, "Next: Jamie is testing supplier cases", 17, WHITE, MED, alpha=g)
-    steps = [("Test against real supplier cases", "JC", "9 Oct"), ("Fix edge cases from testing", "MT", "14 Oct")]
-    for k, (s_, who, d) in enumerate(steps):
-        y = 322 + k * 42
-        gk = prog(t, t0 + 1.7 + 0.15 * k, t0 + 2.2 + 0.15 * k, e_out_cubic)
-        p.rrect(36, y - 14, 54, y + 4, 4, outline=(80, 86, 104), width=1, alpha=gk)
-        p.text(70, y + 1, s_, 16, WHITE, alpha=gk)
-        p.circle(700, y - 5, 14, fill=(38, 41, 50), alpha=gk)
-        p.text(700, y, who, 11, DIM, SEMI, anchor="ms", alpha=gk)
-        p.text(740, y + 1, d, 15, DIM, alpha=gk)
-    p.text(944, 52, "Generated from project brief", 13, DIM, anchor="rs", alpha=g)
+    p.text(36, 136, "Jamie Chen  ·  Finance  ·  App  ·  Target 19 November", 16, DIM)
+    p.text(944, 52, "Generated from project brief", 13, DIM, anchor="rs")
+    for k, (s_, who, d) in enumerate(PLAN_STEPS):
+        y = PLAN_ROW0 + PLAN_DY * k
+        gk = prog(t, t0 + PLAN_T0 + PLAN_STEP_T * k, t0 + PLAN_T0 + PLAN_STEP_T * k + 0.2, e_out_cubic)
+        if k:
+            p.line([(36, y - 6), (944, y - 6)], CARD_LINE, 1, alpha=gk)
+        p.rrect(36, y + 6, 54, y + 24, 4, outline=(80, 86, 104), width=1, alpha=gk)
+        n = int(len(s_) * prog(t, t0 + PLAN_T0 + PLAN_STEP_T * k, t0 + PLAN_T0 + PLAN_STEP_T * k + 0.25, e_lin))
+        p.text(72, y + 21, s_[:n], 16, WHITE, alpha=gk)
+        _avatar(p, 760, y + 15, who, r=14, size=11, alpha=gk)
+        p.text(800, y + 21, d, 15, DIM, alpha=gk)
     return p.done()
 
 
@@ -514,24 +517,46 @@ def card_approval(t, t0):
     return p.done()
 
 
+JOINS = [0.9, 1.25, 1.6]     # seconds into the shot: each Join press adds one person
+
+
 def card_recruit(t, t0):
     p = Pen(980, 330)
     p.tracked(36, 52, "Ideas & Projects  ·  Team", 12, DIM)
     p.text(36, 104, "Client Brief Generator", 30, WHITE, DSEMI)
     p.text(36, 138, "Alex Morgan  ·  Sales  ·  Cowork-native", 16, DIM)
-    _stages(p, t, t0, ["Idea", "Recruiting", "Building", "Approval", "Publishing", "Live"], 1)
-    for k in range(4):
-        g = prog(t, t0 + 0.6 + 0.2 * k, t0 + 0.9 + 0.2 * k, e_out_cubic)
-        x = 60 + k * 54
-        if k == 0:
-            _avatar(p, x, 284, "AM", r=22, alpha=g)
-        elif k < 3:
-            p.circle(x, 284, 22, fill=(38, 41, 50), alpha=g)
+    full = t0 + JOINS[-1] + 0.2
+    names = ["Idea", "Recruiting", "Building", "Approval", "Publishing", "Live"]
+    xs = [56 + 170 * k for k in range(6)]
+    fill_to = 1 + prog(t, full, full + 0.35, e_io_cubic)
+    p.line([(xs[0], 190), (xs[-1], 190)], (52, 56, 68), 3)
+    p.line([(xs[0], 190), (xs[0] + 170 * fill_to, 190)], BLUE, 3)
+    for k, x in enumerate(xs):
+        if fill_to >= k - 1e-3:
+            p.circle(x, 190, 11, fill=BLUE)
         else:
-            p.circle(x, 284, 21, outline=(80, 86, 104), width=2, alpha=g)
-    g = prog(t, t0 + 1.4, t0 + 1.8, e_out_cubic)
-    p.text(290, 290, "3 of 4 people  ·  Next: Recruit 1 more person to begin", 17, WHITE, MED, alpha=g)
-    _button(p, 790, 30, 944, 74, "Join project", alpha=g, size=15)
+            p.circle(x, 190, 10, fill=CARD, outline=(70, 75, 92), width=2)
+        cur = k == (2 if t >= full + 0.2 else 1)
+        p.text(x, 228, names[k], 14, WHITE if cur else DIM, SEMI if cur else MED, anchor="ms")
+    n = 1 + sum(t >= t0 + j for j in JOINS)
+    for k, ini in enumerate(["AM", "LM", "PS", "BC"]):
+        x = 60 + k * 54
+        if k == 0 or t >= t0 + JOINS[k - 1]:
+            pop = 1.0 if k == 0 else 0.7 + 0.3 * e_out_cubic(prog(t, t0 + JOINS[k - 1], t0 + JOINS[k - 1] + 0.15, e_lin))
+            p.circle(x, 284, 22 * pop, fill=(38, 41, 50) if k == 0 else (40, 54, 100))
+            p.text(x, 289, ini, 13, DIM if k == 0 else WHITE, SEMI, anchor="ms")
+        else:
+            p.circle(x, 284, 21, outline=(80, 86, 104), width=2)
+    left = 4 - n
+    line = (f"{n} of 4 people  \u00b7  Next: Recruit {left} more {'person' if left == 1 else 'people'} to begin"
+            if left else "4 of 4 people  \u00b7  Team full")
+    p.text(290, 290, line, 17, WHITE, MED)
+    gone = prog(t, full, full + 0.25)
+    for j in JOINS:     # the button dips as each press lands
+        press = prog(t, t0 + j - 0.02, t0 + j + 0.04) * (1 - prog(t, t0 + j + 0.04, t0 + j + 0.2))
+        if press > 0:
+            p.rrect(790, 30, 944, 74, 10, fill=(40, 54, 100), alpha=press * (1 - gone))
+    _button(p, 790, 30, 944, 74, "Join project", alpha=1 - gone, size=15)
     return p.done()
 
 
@@ -589,7 +614,7 @@ def card_home(t, t0):
 # ---------------------------------------------------------------- impacts (shake, punch, colour split)
 
 # (time, strength): every snap, the slam at 13.0, each fusion, and each logo bar landing.
-IMPACTS = [(4.5, 1.0), (6.5, 1.0), (8.5, 1.0), (13.0, 2.0), (27.0, 0.35), (44.5, 0.3), (45.5, 0.35), (51.5, 0.35),
+IMPACTS = [(4.5, 1.0), (6.5, 1.0), (8.5, 1.0), (13.0, 2.0), (27.0, 0.35), (36.3, 0.25), (44.5, 0.3), (45.5, 0.35), (51.5, 0.35),
            (54.0, 0.8), (54.25, 0.8), (54.5, 1.3)]
 
 
@@ -905,10 +930,10 @@ def draw_route(c, t):
 
 CARD_DIM = {card_ask: (900, 330), card_claim: (860, 260), card_thread: (940, 420), card_leaderboard: (760, 400),
             card_propose: (960, 430), card_review: (960, 440), card_approval: (980, 360),
-            card_recruit: (980, 330), card_project: (980, 400), card_live: (980, 320), card_pulse: (980, 410),
+            card_recruit: (980, 330), card_project: (980, 520), card_live: (980, 320), card_pulse: (980, 410),
             card_home: (980, 400), card_value: (980, 400)}
 CARD_OFF = {card_ask: 1.0, card_claim: 0.55, card_thread: 0.95, card_leaderboard: 0.0, card_propose: 1.05,
-            card_review: 0.9, card_approval: -0.1, card_recruit: 0.7, card_project: -0.25, card_live: 0.0,
+            card_review: 0.9, card_approval: -0.1, card_recruit: 0.0, card_project: 0.0, card_live: 0.0,
             card_pulse: 1.2, card_home: 1.2, card_value: 1.0}
 
 
@@ -924,7 +949,7 @@ def _scan(rs, rects):
 
 _HOME_ROWS = [("c", 30, 172 + k * 82 - 36, 950, 172 + k * 82 + 36) for k in range(3)]
 _REVIEW_ROWS = [("c", 30, 100 + k * 74 - 26, 930, 100 + k * 74 + 44) for k in range(4)]
-_PLAN_ROWS = [("c", 30, 322 + k * 42 - 22, 780, 322 + k * 42 + 12) for k in range(2)]
+_PLAN_ROWS = [("c", 30, PLAN_ROW0 + PLAN_DY * k - 4, 950, PLAN_ROW0 + PLAN_DY * k + 32) for k in range(9)]
 _VALUE_PTS = [("d", 90 + 30 + (920 - 90 - 60) * k / 3, 320 - 210 * HOURS[k] / 60, 18) for k in range(4)]
 
 ACTORS = {
@@ -940,8 +965,10 @@ ACTORS = {
     card_propose: [[(0.9, "peel", 1.0)] + _land(1.2, ("c", 36, 104, 924, 148))],
     card_review: [[(0.9, "peel", 1.0)] + _scan([1.2, 1.4, 1.6, 1.8], _REVIEW_ROWS)],
     card_approval: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 684, 190, 920, 238))],
-    card_recruit: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 38, 262, 234, 306))],
-    card_project: [[(1.1, "peel", 1.0)] + _scan([1.45, 1.6], _PLAN_ROWS)],
+    # three pieces drop from the marker onto Join project, one per new team member
+    card_recruit: [[(j - 0.3, "peel", 1.0)] + _land(j, ("c", 790, 30, 944, 74), 0.15) for j in JOINS],
+    # the piece writes the plan, row by row
+    card_project: [[(0.7, "peel", 1.0)] + _scan([PLAN_T0 + PLAN_STEP_T * k for k in range(9)], _PLAN_ROWS)],
     # six pieces shoot out of the underline one after another and become the six stages
     card_live: [[(LIVE_LAND - 0.3 + LIVE_STEP * k, "peel", 1.0),
                  (LIVE_LAND + LIVE_STEP * k, ("c", 45 + 170 * k, 179, 67 + 170 * k, 201), 1.0),

@@ -23,7 +23,7 @@ mockups in `/design` and the brief and seed data in `CLAUDE.md`.
 | 10 - 13 s | "Every team. Every week." / "Your AI needs a spine." The six halves slam into the mark |
 | 13 - 16.5 s | "Spine is your AI project manager." |
 | 17 - 27 s | Questions: "Ask anything about AI." / "Someone who knows picks it up." / "Sorted, one to one." / "Helpers get the credit." |
-| 27 - 45.5 s | Builds: "Anyone can pitch an idea." / "AI reviews it, privately." / "Approvals can't stall." / "A team forms around it." / "AI writes the build plan." / "Nothing goes quiet unnoticed." / "From idea to Live." |
+| 27 - 45.5 s | Builds (three Join presses fill the team; the plan writes all nine steps): "Anyone can pitch an idea." / "AI reviews it, privately." / "Approvals can't stall." / "A team forms around it." / "AI writes the build plan." / "Nothing goes quiet unnoticed." / "From idea to Live." |
 | 45.5 - 51.5 s | Hours saved: "Everyone knows what to do first." / "Every hour saved, counted." |
 | 51.5 - 60 s | The journey folds into the logo; "Give your company's AI a spine." and "Book a demo" |
 

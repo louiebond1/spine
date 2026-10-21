@@ -127,20 +127,20 @@ CUES = [
     (4.6, "tick_hi", -26, 0.3),                                   # the question is sent
     (5.15, "swell", -22, 0.2), (5.5, "crack0", -14, 0.3),         # the route ahead snaps
     (11.65, "swell", -22, 0.0), (12.0, "crack1", -14, 0.1),       # the track snaps at Building
-    (17.95, "swell", -24, 0.4), (18.3, "crack2", -16, 0.5),       # the line to the chart snaps
+    (19.55, "swell", -24, 0.4), (19.9, "crack2", -16, 0.5),       # the line to the chart snaps
     (22.15, "swell", -16, 0.0), (22.5, "slam", -10, 0.0),         # everything lines up on the spine
-    (26.1, "tick_hi", -27, 0.4), (27.2, "clack", -15, 0.1),       # someone who knows arrives and docks
-    (27.6, "tap", -24, -0.1),                                     # the answer
-    (33.36, "beep", -20, 0.1),                                    # Pulse catches the stall
-    (35.7, "clack", -15, -0.1),                                   # the team docks
-] + [(39.4 + 0.3 * k, "tap", -24, -0.2) for k in range(4)] + [    # each step ticked
-] + [(42.9 + 0.03 * i + 0.65, "tickf%.0f" % (1400 * 2 ** (i / 30)), -33, -0.4 + 0.017 * i)
+    (27.5, "tick_hi", -27, 0.4), (28.6, "clack", -15, 0.1),       # Mia arrives and docks with the question
+    (29.0, "tap", -24, -0.1),                                     # her answer
+    (32.6, "tick_hi", -28, 0.0), (33.6, "tap", -22, 0.0),         # the project's name lifts out and lands
+    (34.56, "beep", -20, 0.1),                                    # Pulse catches the stall
+    (36.9, "clack", -15, -0.1),                                   # the team docks
+] + [(40.6 + 0.3 * k, "tap", -24, -0.2) for k in range(4)] + [    # each step ticked
+] + [(44.1 + 0.03 * i + 0.65, "tickf%.0f" % (1400 * 2 ** (i / 30)), -33, -0.4 + 0.017 * i)
      for i in range(47)] + [                                     # the hours stack up, unit by unit
-    (45.0, "land", -18, 0.3),                                     # 42 hours saved in October
-    (47.4, "swell", -22, 0.0), (47.95, "clack", -16, 0.0),        # the chart closes into one bar
-    (31.8, "tap", -26, -0.6), (42.4, "tap", -26, -0.6), (48.8, "tap", -26, -0.6),   # each bar parks in the corner
-    (50.2, "slam", -9, 0.0),                                      # the mark becomes the logo
-    (53.0, "tick", -24, 0.0),                                     # Book a demo button draws
+    (46.2, "land", -18, 0.3),                                     # 42 hours saved in October
+    (48.4, "swell", -24, 0.0), (48.95, "clack", -16, 0.0),        # the chart closes into one bar
+    (49.6, "tick", -30, -0.3), (49.85, "tick", -30, 0.3),         # the three are joined up
+    (51.4, "slam", -10, 0.0),                                     # the mark locks: the logo
 ]
 PITCHED = (0.0, 0.0)                # no pitched tick sequence in this cut
 

@@ -111,9 +111,16 @@ def clack(big=False):
     return x
 
 
+def beep(freq=1320.0, dur=0.16):
+    """A soft monitor beep for each heartbeat in Pulse."""
+    n = int(SR * dur)
+    t = np.arange(n) / SR
+    return (np.sin(2 * np.pi * freq * t) + 0.2 * np.sin(2 * np.pi * 2 * freq * t)) * env(n, 0.003, 0.05)
+
+
 KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": join, "tap": tap,
          "swell": swell, "crack0": lambda: crack(0), "crack1": lambda: crack(1), "crack2": lambda: crack(2),
-         "clack": clack, "slam": lambda: clack(True)}
+         "clack": clack, "slam": lambda: clack(True), "beep": beep}
 
 # (time s, kind, peak dBFS, pan -1..1). Times match the hits in timeline.py (IMPACTS).
 CUES = [
@@ -121,15 +128,17 @@ CUES = [
     (6.15, "swell", -20, 0.0), (6.5, "crack1", -13, 0.1),        # Builds. / Gone quiet.
     (8.15, "swell", -20, 0.0), (8.5, "crack2", -13, 0.0),        # Hours saved? / Nobody knows.
     (12.65, "swell", -16, 0.0), (13.0, "slam", -10, 0.0),        # the six pieces slam into the mark
-    (21.0, "clack", -16, -0.3),     # underline locks: A colleague claims it.
-    (41.0, "clack", -16, -0.3),     # AI writes the build plan.
-    (53.0, "clack", -16, -0.3),     # Leaders see the impact.
+    (21.0, "clack", -16, -0.3),     # the Questions pair is repaired: A colleague claims it.
+    (41.0, "clack", -16, -0.3),     # the Builds pair is repaired: AI writes the build plan.
+    (53.0, "clack", -16, -0.3),     # the Hours pair is repaired: Leaders see the impact.
     (28.0, "land", -18, 0.0), (46.0, "land", -18, 0.0),          # into Ideas & Projects, into Pulse
+] + [(44.0 + 0.2 * k, "tick", -22, -0.5 + 0.2 * k) for k in range(6)] + [      # six pieces become six stages
+] + [(46.0 + 1.2 + f, "beep", -22, 0.0) for f in (0.25, 0.47, 0.69)] + [       # Pulse heartbeats
 ] + [(a, "tick", -27, 0.25) for a in (17.0, 20.0, 23.0, 26.0, 31.0, 34.0, 37.0, 40.0, 43.0, 49.0, 52.0)] + [
     (56.0, "slam", -14, -0.3), (56.25, "slam", -14, 0.3), (56.5, "slam", -11, 0.0),   # logo bars lock
     (58.5, "tick", -24, 0.0),       # Book a demo button draws
 ]
-PITCHED = (0.0, 0.0)                # no pitched sequence in this cut
+PITCHED = (43.95, 45.1)             # the six stage ticks rise a whole tone each
 
 
 def read_wav(path):

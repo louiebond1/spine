@@ -544,13 +544,30 @@ def card_recruit(t, t0):
     return p.done()
 
 
+LIVE_LAND, LIVE_STEP = 1.0, 0.2     # the first stage piece lands 1.0 s into the shot, then one every 0.2 s
+
+
 def card_live(t, t0):
     p = Pen(980, 320)
     p.tracked(36, 52, "Ideas & Projects", 12, DIM)
     p.text(36, 104, "Claude Onboarding Guide", 30, WHITE, DSEMI)
     p.text(36, 138, "Priya Shah  ·  People  ·  Cowork-native", 16, DIM)
-    _stages(p, t, t0 - 0.2, ["Idea", "Recruiting", "Building", "Approval", "Publishing", "Live"], 5)
-    g = prog(t, t0 + 1.3, t0 + 1.7, e_out_cubic)
+    # six pieces land one by one as the six stages (see ACTORS)
+    names = ["Idea", "Recruiting", "Building", "Approval", "Publishing", "Live"]
+    xs = [56 + 170 * k for k in range(6)]
+    lands = [t0 + LIVE_LAND + LIVE_STEP * k for k in range(6)]
+    done = sum(t >= x for x in lands)
+    head = clamp((t - lands[0]) / LIVE_STEP / 5) * 5
+    p.line([(xs[0], 190), (xs[-1], 190)], (52, 56, 68), 3)
+    if t >= lands[0]:
+        p.line([(xs[0], 190), (xs[0] + 170 * head, 190)], BLUE, 3)
+    for k, x in enumerate(xs):
+        if k < done:
+            p.circle(x, 190, 11, fill=BLUE)
+        else:
+            p.circle(x, 190, 10, fill=CARD, outline=(70, 75, 92), width=2)
+        p.text(x, 228, names[k], 14, WHITE if k == 5 else DIM, SEMI if k == 5 else MED, anchor="ms")
+    g = prog(t, lands[-1] + 0.15, lands[-1] + 0.5, e_out_cubic)
     p.circle(44, 278, 7, fill=GREEN, alpha=g)
     p.text(60, 284, "Live  ·  14 hours saved this month", 18, WHITE, MED, alpha=g)
     p.text(944, 284, "Published by Alex Morgan", 15, DIM, anchor="rs", alpha=g)
@@ -620,7 +637,7 @@ def draw_fragments(c, t):
 # ---------------------------------------------------------------- impacts (shake, punch, colour split)
 
 # (time, strength): every snap, the slam at 13.0, each fusion, and each logo bar landing.
-IMPACTS = [(4.5, 1.0), (6.5, 1.0), (8.5, 1.0), (13.0, 2.0), (21.0, 0.45), (28.0, 0.3), (41.0, 0.45), (46.0, 0.3),
+IMPACTS = [(4.5, 1.0), (6.5, 1.0), (8.5, 1.0), (13.0, 2.0), (21.0, 0.45), (28.0, 0.3), (41.0, 0.45), (45.0, 0.35), (46.0, 0.3),
            (53.0, 0.45), (56.0, 0.8), (56.25, 0.8), (56.5, 1.3)]
 
 
@@ -671,7 +688,7 @@ def post(c, t):
 # ---------------------------------------------------------------- the six pieces
 
 # Three underlines, one under each problem, snap in two on the issue word. The six halves drift
-# through the film, slam together into the logo mark on "a spine.", and fuse again into the logo.
+# through the film, slam together into the logo mark on "a spine.", and are repaired one pair per chapter before they form the logo.
 PAINS = [(4.0, "01  Questions", "Questions.", "Unanswered.", card_pain_question),
          (6.0, "02  Ideas", "Builds.", "Gone quiet.", card_pain_build),
          (8.0, "03  Impact", "Hours saved?", "Nobody knows.", card_pain_impact)]
@@ -789,7 +806,7 @@ def glint(c, t, x, y, t0, size=1.0):
 
 def draw_pieces(c, t):
     if t >= 13.0:
-        # fused: one whole bar per pair, with a glint where the halves met
+        # held in the mark: one bar per pair, with a glint where the halves met
         mx = MARK_AT[0] - 1700 * prog(t, 16.7, 17.05, e_in_cubic)
         sc = MARK_S * (1 + 0.06 * prog(t, 13.0, 16.7, e_lin))
         if t < 17.1:
@@ -797,6 +814,9 @@ def draw_pieces(c, t):
                 cx = mx + ((x0 + x1) / 2 - LOGO_C[0]) * sc
                 cy = MARK_AT[1] + (yc - LOGO_C[1]) * sc
                 draw_bar(c, cx, cy, (x1 - x0) * sc, 40 * sc)
+                # held together, not yet fixed: a hairline crack stays where each pair met
+                draw_segment(c, SCREEN_CAM, default_seg(x=cx + 2, y=cy + 3, L=40 * sc + 2, T=2.4, rz=82,
+                                                        flat=True, color=(16, 16, 19)))
                 glint(c, t, cx, cy, 13.0, 1.6)
             u = t - 13.0
             if u < 0.6:   # shockwave
@@ -842,43 +862,48 @@ def pain(c, t, t0, kicker, l1, l2, card_fn):
     place(c, card_fn(t), W / 2, 795 + 18 * (1 - g), 1.05, g)
 
 
-def fuse_underline(c, t, x, y, L, a, b, fuse):
-    """A healed underline: two halves slide in and lock together on `fuse` (or wipe in when fuse is None)."""
+# Each chapter's underline is one of the broken pairs from the opening. It stays cracked until the
+# shot that solves its problem: questions on the claim, builds on the plan, hours on the impact.
+HEAL = [(17.0, 28.0, 21.0), (28.0, 46.0, 41.0), (46.0, 55.0, 53.0)]     # (chapter start, end, heals at)
+
+
+def chapter_underline(c, t, x, y, L, a, b):
     gin = prog(t, a + 0.45, a + 0.75, e_out_cubic)
     out = prog(t, b - 0.22, b, e_io_cubic)
     alpha = gin * (1 - out)
     if alpha <= 0:
         return
-    if fuse is None:
-        D = L * e_out_expo(prog(t, a + 0.5, a + 0.85, e_lin))
-        draw_bar(c, x + D / 2, y, D, 10, alpha=alpha)
-        return
-    if t >= fuse:
+    heal = next(h for c0, c1, h in HEAL if c0 <= a < c1)
+    if t >= heal:
         draw_bar(c, x + L / 2, y, L, 10, alpha=alpha)
-        glint(c, t, x + L / 2, y, fuse, 0.8)
-        sparks(c, t, x + L / 2, y, fuse, int(fuse * 10), n=8, spread=0.6)
+        glint(c, t, x + L / 2, y, heal, 0.8)
+        sparks(c, t, x + L / 2, y, heal, int(heal * 10), n=8, spread=0.6)
         return
-    gap = 160 * (1 - prog(t, a + 0.5, fuse, e_in_cubic))
-    draw_bar(c, x + L / 4 - gap / 2, y, L / 2, 10, alpha=alpha, rr=0.0)
-    draw_bar(c, x + 3 * L / 4 + gap / 2, y, L / 2, 10, alpha=alpha, rl=0.0)
+    f = 1 - prog(t, heal - 0.3, heal, e_in_cubic)       # 1 = broken, 0 = fixed
+    gap, drop, tilt = 22 * f, 5 * f, 5 * f
+    D = e_out_expo(prog(t, a + 0.5, a + 0.85, e_lin))  # wipes in, already broken
+    if D <= 0:
+        return
+    draw_bar(c, x + L / 4 * D - gap / 2, y + drop, L / 2 * D, 10, tilt, alpha, rr=0.0)
+    draw_bar(c, x + L / 2 + L / 4 * D + gap / 2, y + drop, L / 2 * D, 10, -tilt, alpha * (D > 0.5), rl=0.0)
 
 
-# (start, end, card, headline, explanation, time the underline locks or None)
+# (start, end, card, headline, explanation)
 SHOTS_HOW = [
-    (17.0, 20.0, card_ask, "Anyone asks an AI question.", "Named or anonymous.", None),
-    (20.0, 23.0, card_claim, "A colleague claims it.", "Someone your company has chosen to answer AI questions.", 21.0),
-    (23.0, 26.0, card_thread, "They sort it out in a private chat.", "Files and all, until it\u2019s resolved.", None),
-    (26.0, 28.0, card_leaderboard, "The best helpers top the Leaderboard.", "One point for every question they resolve.", None),
-    (28.0, 31.0, card_propose, "Anyone proposes an idea.", "The problem, who benefits, and how it gets built.", None),
-    (31.0, 34.0, card_review, "AI reviews it.", "Advisory scores. Only the idea\u2019s owner sees them.", None),
-    (34.0, 37.0, card_approval, "Leadership approves.", "Or it auto-approves when time runs out.", None),
-    (37.0, 40.0, card_recruit, "A team joins.", "Colleagues sign up until the team is full.", None),
-    (40.0, 43.0, card_project, "AI writes the build plan.", "Steps, owners and due dates, from the project brief.", 41.0),
-    (43.0, 46.0, card_live, "Published, then Live.", "A publishing specialist takes it Live.", None),
+    (17.0, 20.0, card_ask, "Anyone asks an AI question.", "Named or anonymous."),
+    (20.0, 23.0, card_claim, "A colleague claims it.", "Someone your company has chosen to answer AI questions."),
+    (23.0, 26.0, card_thread, "They sort it out in a private chat.", "Files and all, until it\u2019s resolved."),
+    (26.0, 28.0, card_leaderboard, "The best helpers top the Leaderboard.", "One point for every question they resolve."),
+    (28.0, 31.0, card_propose, "Anyone proposes an idea.", "The problem, who benefits, and how it gets built."),
+    (31.0, 34.0, card_review, "AI reviews it.", "Advisory scores. Only the idea\u2019s owner sees them."),
+    (34.0, 37.0, card_approval, "Leadership approves.", "Or it auto-approves when time runs out."),
+    (37.0, 40.0, card_recruit, "A team joins.", "Colleagues sign up until the team is full."),
+    (40.0, 43.0, card_project, "AI writes the build plan.", "Steps, owners and due dates, from the project brief."),
+    (43.0, 46.0, card_live, "Published, then Live.", "A publishing specialist takes it Live."),
     (46.0, 49.0, card_pulse, "Pulse spots anything going quiet.",
-     "Approvals near timeout, unclaimed questions, stalled builds. Daily in Slack.", None),
-    (49.0, 52.0, card_home, "Everyone sees what needs them first.", "Spine stays quiet until a human is needed.", None),
-    (52.0, 55.0, card_value, "Leaders see the impact.", "What went Live, and the hours it saved.", 53.0),
+     "Approvals near timeout, unclaimed questions, stalled builds. Daily in Slack."),
+    (49.0, 52.0, card_home, "Everyone sees what needs them first.", "Spine stays quiet until a human is needed."),
+    (52.0, 55.0, card_value, "Leaders see the impact.", "What went Live, and the hours it saved."),
 ]
 SECTIONS = [("01  Help Desk", 17.0, 28.0), ("02  Ideas & Projects", 28.0, 46.0), ("03  Pulse", 46.0, 49.0),
             ("04  Home", 49.0, 52.0), ("05  Programme", 52.0, 55.0)]
@@ -899,8 +924,8 @@ CARD_DIM = {card_ask: (900, 330), card_claim: (860, 260), card_thread: (940, 420
             card_recruit: (980, 330), card_project: (980, 400), card_live: (980, 320), card_pulse: (980, 410),
             card_home: (980, 400), card_value: (980, 400)}
 CARD_OFF = {card_ask: 1.0, card_claim: 0.55, card_thread: 0.95, card_leaderboard: 0.0, card_propose: 1.05,
-            card_review: 0.9, card_approval: -0.1, card_recruit: 0.7, card_project: -0.25, card_live: 1.0,
-            card_pulse: 0.95, card_home: 1.2, card_value: 1.0}
+            card_review: 0.9, card_approval: -0.1, card_recruit: 0.7, card_project: -0.25, card_live: 0.0,
+            card_pulse: 1.2, card_home: 1.2, card_value: 1.0}
 
 
 def _land(r, rect, hold=0.25):
@@ -913,7 +938,6 @@ def _scan(rs, rects):
     return keys + [(rs[-1] + 0.25, rects[-1], 0.0)]
 
 
-_PULSE_ROWS = [("c", 30, 112 + k * 98 - 38, 950, 112 + k * 98 + 38) for k in range(3)]
 _HOME_ROWS = [("c", 30, 172 + k * 82 - 36, 950, 172 + k * 82 + 36) for k in range(3)]
 _REVIEW_ROWS = [("c", 30, 100 + k * 74 - 26, 930, 100 + k * 74 + 44) for k in range(4)]
 _PLAN_ROWS = [("c", 30, 322 + k * 42 - 22, 780, 322 + k * 42 + 12) for k in range(2)]
@@ -923,15 +947,24 @@ ACTORS = {
     card_ask: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 36, 76, 864, 126))],
     card_claim: [[(1.1, "peel", 1.0)] + _land(1.45, ("c", 36, 180, 300, 216))],
     card_thread: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 92, 190, 640, 232))],
-    card_leaderboard: [[(0.8, "peel", 1.0)] + _land(1.1, ("c", 24, 322, 736, 382))],
+    # the piece splits into five bars, each as long as that person's points
+    card_leaderboard: [[(0.75, "peel", 1.0), (1.05 + 0.07 * k, ("c", 130, 104 + 62 * k - 22,
+                                                               130 + 540 * pts / 18, 104 + 62 * k + 22), 1.0),
+                        (1.8, ("c", 130, 104 + 62 * k - 22, 130 + 540 * pts / 18, 104 + 62 * k + 22), 1.0),
+                        (2.0, ("c", 130, 104 + 62 * k - 22, 130 + 540 * pts / 18, 104 + 62 * k + 22), 0.0)]
+                       for k, pts in enumerate((18, 14, 11, 8, 6))],
     card_propose: [[(0.9, "peel", 1.0)] + _land(1.2, ("c", 36, 104, 924, 148))],
     card_review: [[(0.9, "peel", 1.0)] + _scan([1.2, 1.4, 1.6, 1.8], _REVIEW_ROWS)],
     card_approval: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 684, 190, 920, 238))],
     card_recruit: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 38, 262, 234, 306))],
     card_project: [[(1.1, "peel", 1.0)] + _scan([1.45, 1.6], _PLAN_ROWS)],
-    card_live: [[(0.9, "peel", 1.0), (1.2, ("c", 50, 186, 62, 194), 1.0), (2.2, ("c", 50, 186, 912, 194), 1.0),
-                 (2.45, ("c", 50, 186, 912, 194), 0.0)]],
-    card_pulse: [[(0.9, "peel", 1.0)] + _scan([1.2, 1.42, 1.64], _PULSE_ROWS)],
+    # six pieces shoot out of the underline one after another and become the six stages
+    card_live: [[(LIVE_LAND - 0.3 + LIVE_STEP * k, "peel", 1.0),
+                 (LIVE_LAND + LIVE_STEP * k, ("c", 45 + 170 * k, 179, 67 + 170 * k, 201), 1.0),
+                 (LIVE_LAND + LIVE_STEP * k + 0.12, ("c", 45 + 170 * k, 179, 67 + 170 * k, 201), 0.0)]
+                for k in range(6)],
+    # the piece drops to the foot of the card and becomes a flat line that beats (draw_heartbeat)
+    card_pulse: [[(0.9, "peel", 1.0), (1.15, ("c", 36, 376, 60, 380), 1.0), (1.3, ("c", 36, 376, 60, 380), 0.0)]],
     card_value: [[(1.1, "peel", 1.0)] + [(1.4 + 0.4667 * k, p, 1.0) for k, p in enumerate(_VALUE_PTS)]
                  + [(3.0, _VALUE_PTS[-1], 0.0)]],
     # Home: the piece splits into the logo's three bars, which become the three things that need you
@@ -974,6 +1007,51 @@ def draw_actor(c, t, a, keys, shot_x, cy, dims, scale, peel):
         if al > 0:
             X = _rect_of(g, shot_x, cy, dims, scale, peel)
             glint(c, t, X[0], X[1], a + r, 0.7)
+
+
+# ---------------------------------------------------------------- Pulse: a heartbeat across the card
+
+BEATS = [0.25, 0.47, 0.69]          # where along the line each beat sits (matches the rows' reveal times)
+
+
+def draw_polyline(c, pts, width, color, alpha=1.0):
+    if alpha <= 0.004 or len(pts) < 2:
+        return
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    x0, y0 = int(min(xs) - width - 4), int(min(ys) - width - 4)
+    x1, y1 = int(max(xs) + width + 4), int(max(ys) + width + 4)
+    k = 4
+    im = Image.new("L", ((x1 - x0) * k, (y1 - y0) * k), 0)
+    ImageDraw.Draw(im).line([((x - x0) * k, (y - y0) * k) for x, y in pts], fill=255, width=int(width * k),
+                            joint="curve")
+    m = np.asarray(im.resize((x1 - x0, y1 - y0), Image.BOX), np.float32) / 255.0
+    blend(c, x0, y0, m * alpha, color)
+
+
+def draw_heartbeat(c, t, a, shot_x, cy, dims, scale):
+    t0, dur = a + 1.2, 1.0
+    if t < t0:
+        return
+    alpha = 1 - prog(t, a + 2.5, a + 2.8)
+    cw, ch = dims
+    X = lambda u: shot_x + (u - cw / 2) * scale
+    Y = lambda v: cy + (v - ch / 2) * scale
+    u0, u1, v = 36, 944, 378
+    head = u0 + (u1 - u0) * clamp((t - t0) / dur)
+    blip = [(-24, 0), (-16, 4), (-8, -34), (0, 22), (8, -6), (16, 0)]
+    pts = [(u0, v)]
+    for f in BEATS:
+        bx = u0 + (u1 - u0) * f
+        for du, dv in blip:
+            if bx + du <= head:
+                pts.append((bx + du, v + dv))
+    pts.append((head, v))
+    draw_polyline(c, [(X(u), Y(vv)) for u, vv in pts], 3.0, (120, 150, 255), alpha)
+    if t < t0 + dur:
+        draw_dot(c, X(head), Y(v), 5, (210, 222, 255), alpha)
+        draw_dot(c, X(head), Y(v), 22, (90, 120, 255), 0.4 * alpha, blur=10)
+    for f in BEATS:
+        glint(c, t, X(u0 + (u1 - u0) * f), Y(v - 34), t0 + dur * f, 0.6)
 
 
 # ---------------------------------------------------------------- chapter wipes: the logo, blown up
@@ -1020,7 +1098,7 @@ def render_scene(t):
     # 4. How it works: real Spine screens, restyled dark, one idea per shot
     CS = 1.1
     cx0, cy0 = W / 2 + 110, 650
-    for k, (a, b, fn, title, sub, fuse) in enumerate(SHOTS_HOW):
+    for k, (a, b, fn, title, sub) in enumerate(SHOTS_HOW):
         if a - 0.3 <= t < b + 0.3:
             gin = prog(t, a - 0.2, a + 0.25, e_out_cubic)
             gout = prog(t, b - 0.2, b + 0.05, e_in_cubic)
@@ -1028,9 +1106,11 @@ def render_scene(t):
             place(c, fn(t, a + CARD_OFF[fn]), x, cy0, CS, gin * (1 - gout))
             line_words(c, t, title, LIGHT, 66, WHITE, 110, 215, a + BEAT / 2, b - 0.22, "left")
             tw = text_width(title, LIGHT, 66)
-            fuse_underline(c, t, 112, 252, tw, a, b, fuse)
+            chapter_underline(c, t, 112, 252, tw, a, b)
             for keys in ACTORS[fn]:
                 draw_actor(c, t, a, keys, x, cy0, CARD_DIM[fn], CS, (112 + tw - 50, 252, 100, 10))
+            if fn is card_pulse:
+                draw_heartbeat(c, t, a, x, cy0, CARD_DIM[fn], CS)
             line_words(c, t, sub, REG, 30, DIM, 112, 318, a + 0.75, b - 0.22, "left", step=0.0, dur=0.4)
     for name, a, b in SECTIONS:
         label(c, t, name, 110, 132, a, b - 0.2, size=19)
@@ -1046,7 +1126,7 @@ def render_scene(t):
 def logo(c, t):
     if t < LOGO_T - 0.6:
         return
-    # each bar's two halves fly in from either side and lock together on the beat
+    # the three repaired bars fly in whole and lock into the logo on the beat
     for k, (x0, x1, yc) in enumerate(LOGO):
         land = LOGO_T + BEAT / 2 * k
         L = x1 - x0
@@ -1058,10 +1138,8 @@ def logo(c, t):
         p = prog(t, land - 0.5, land, e_in_cubic)
         if p <= 0:
             continue
-        lx = lerp(-200, x0 + L / 4, p)
-        rx = lerp(W + 200, x1 - L / 4, p)
-        draw_bar(c, lx, yc, L / 2, 40, rr=0.0)
-        draw_bar(c, rx, yc, L / 2, 40, rl=0.0)
+        side = -1 if k != 1 else 1          # the repaired bars, whole now, fly in from alternate sides
+        draw_bar(c, lerp((x0 + x1) / 2 + side * (W / 2 + 300), (x0 + x1) / 2, p), yc, L, 40)
     w0 = LOGO_T + 0.5
     g = prog(t, w0, w0 + 0.5, e_out_cubic)
     soft_word(c, "Spine", DSEMI, 172, WHITE, 886, 527, g)   # the approved wordmark's size and position

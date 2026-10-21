@@ -9,11 +9,17 @@ underline snaps in two as its issue slams in. The six broken halves slam togethe
 mark on "a spine.". Then the film explains the product one idea per shot, each with a real Spine
 screen (restyled dark), a headline and one plain line of explanation; underlines lock back together
 on the key moments, and the logo's bars fly in as halves to finish. Every hit shakes, punches and
-briefly splits the frame. In every explainer shot a piece peels off the headline's underline and
-becomes the thing the line describes (the claim, the reply, the Approve press, the plan's steps, the
-line to Live, the chart); on Home it splits into the logo's three bars, which become the three things
-that need you. The chapters change behind the logo's three bars blown up to full frame. Product content comes from the final mockups in `/design` and the brief
-and seed data in `CLAUDE.md`.
+briefly splits the frame.
+
+The six pieces carry one story through the whole film. On "a spine." they slam into the mark but
+keep hairline cracks: held together, not yet fixed. Each chapter's underline is one broken pair, and
+it is repaired on the shot that solves its problem: the Questions pair on "A colleague claims it.",
+the Builds pair on "AI writes the build plan.", the Hours pair on "Leaders see the impact." The logo
+at the end is built from the three repaired bars. Along the way a piece peels off each underline and
+becomes the thing the line describes: the leaderboard's five bars sized to each person's points, six
+pieces that land as the six stages from Idea to Live, Pulse's heartbeat that finds one quiet item per
+beat, and on Home the logo's three bars becoming the three things that need you. Chapters change
+behind the logo's three bars blown up to full frame.
 
 | Time | Scene |
 | --- | --- |
@@ -43,11 +49,11 @@ python3 render.py stills 4.6 22.4 42.4      # PNG stills in out/stills
 
 | File | Purpose |
 | --- | --- |
-| `timeline.py` | The whole film: `BPM`, `SHOTS` (cut points), `SHOTS_HOW` (the explainer shots and their copy), `ACTORS` (where each shot's piece lands), `WIPES`, `SECTIONS`, `IMPACTS`, `piece()` (the six halves), the cards, logo and end card |
+| `timeline.py` | The whole film: `BPM`, `SHOTS` (cut points), `SHOTS_HOW` (the explainer shots and their copy), `HEAL` (when each pair is repaired), `ACTORS` (where each shot's piece lands), `draw_heartbeat`, `WIPES`, `SECTIONS`, `IMPACTS`, `piece()` (the six halves), the cards, logo and end card |
 | `engine.py` | Shared drawing primitives |
 | `render.py` | Frame dispatch, motion blur on moves and hits, parallel encode |
 | `score.py` | Original synthesised 120 BPM score: minor groove, riser and flash, major groove with lifts at 28 and 46 s, drop and logo chord |
-| `audio.py` | Snap, lock, slam and shot-change sounds (`CUES`); optional voiceover with ducking |
+| `audio.py` | Snap, repair, slam, rising stage ticks, heartbeat beeps and shot-change sounds (`CUES`); optional voiceover with ducking |
 | `master.py` | Gain plus look-ahead peak limiter (ceiling -2 dBFS) before AAC encoding |
 | `build.sh` | Render, score, mix, measure loudness, master, mux with fast-start |
 

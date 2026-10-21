@@ -18,8 +18,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PLATES = os.path.join(HERE, "assets", "plates")
 
 # Windows with fast camera or object moves get 180-degree-shutter motion blur.
-BLUR = [(2.85, 3.3, 12), (5.1, 5.6, 16), (7.15, 7.65, 16), (9.25, 9.7, 12), (12.1, 12.7, 12),
-        (16.2, 16.8, 12), (22.15, 22.75, 12), (26.45, 27.05, 12), (29.45, 30.95, 8)]
+BLUR = [(16.3, 17.2, 6), (19.2, 20.1, 6), (22.0, 22.9, 6), (25.0, 25.9, 6), (28.2, 29.0, 6),
+        (29.1, 30.6, 6)]
 SHUTTER = 0.5 / FPS
 
 _plate = None
@@ -56,7 +56,7 @@ def encode(out_path, workers):
     cmd = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
            "-r", str(FPS), "-i", "-",
            "-vf", "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p",
-           "-c:v", "libx264", "-preset", "slow", "-crf", "15", "-profile:v", "high", "-level", "4.1",
+           "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-profile:v", "high", "-level", "4.1",
            "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
            "-g", "60", out_path]
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE)

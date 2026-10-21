@@ -71,25 +71,29 @@ KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": jo
 
 # (time s, kind, peak dBFS, pan -1..1). Times match landings in timeline.py.
 CUES = [
-    (3.70, "snap0", -21, 0.25),     # the line falls short of the question
-    (5.95, "snap1", -21, 0.25),     # the idea's line sags
-    (8.00, "snap2", -21, 0.25),     # impact's line breaks up
-    (9.55, "join", -24, 0.0),       # pulled taut: Spine
-    (14.20, "tick_hi", -30, 0.3),   # the line reaches the Champion
-    (15.00, "land", -28, 0.3),      # Answered.
-    (18.00, "tick", -32, -0.2),     # Recruiting
-    (18.75, "tick", -31, 0.0),      # Building
-    (19.80, "tap", -26, 0.0),       # Pulse: heartbeat as Spine flags the stall
-    (20.12, "tap", -29, 0.0),
-    (20.44, "tap", -32, 0.0),
-    (21.45, "tick", -32, 0.3),      # Publishing
-    (21.95, "land", -28, 0.45),     # Live
-    (27.90, "tick_hi", -32, 0.0),   # from idea to live: the line completes
-    (34.50, "land", -28, 0.0),      # Book a demo button lands
+    (3.60, "tick", -32, -0.2),      # 01 Questions
+    (4.15, "tap", -30, 0.0),        # Still unanswered.
+    (5.90, "tick", -32, 0.0),       # 02 Ideas
+    (6.45, "tap", -30, 0.0),        # No activity for 12 days.
+    (8.20, "tick", -32, 0.2),       # 03 Impact
+    (8.75, "tap", -30, 0.0),        # Nobody can say.
+    (14.62, "land", -24, 0.0),      # the four lines meet in the node
+    (17.05, "tick", -33, 0.3),      # Pulse rows appear
+    (17.27, "tick", -33, 0.3),
+    (17.49, "tick", -33, 0.3),
+    (20.50, "tick_hi", -30, -0.3),  # claimed by a Champion
+    (22.9, "tick", -32, -0.1),      # stages fill
+    (23.3, "tick", -32, 0.0),
+    (23.7, "tick", -32, 0.1),
+    (24.0, "land", -29, 0.1),       # Building
+    (30.30, "land", -27, -0.2),     # the logo's bars land
+    (30.42, "land", -28, 0.0),
+    (30.54, "land", -29, 0.2),
+    (33.45, "land", -28, 0.0),      # Book a demo button lands
 ]
 for k in range(4):                  # hours saved: each month's point, rising pitch
-    CUES.append((23.10 + 0.42 * k, "tick", -31, -0.5 + 0.33 * k))
-PITCHED = (23.0, 24.6)              # cues in this window step up a whole tone each
+    CUES.append((25.8 + 0.45 * k, "tick", -31, -0.5 + 0.33 * k))
+PITCHED = (25.7, 27.4)              # cues in this window step up a whole tone each
 
 
 def read_wav(path):

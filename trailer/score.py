@@ -18,12 +18,11 @@ SR = 48000
 DUR = 38.0
 N = int(SR * DUR)
 BEAT = 60 / 108
-LIFT = 9.55                          # the line pulls taut
-FOLD_TONES = [30.55, 30.70, 30.85]   # the three pieces land as the logo's bars
-LOGO = 30.95                         # wordmark rises in
-DROP = 28.55                         # the line gathers into the centre
-WHIPS = [(2.85, 3.25, 1), (5.1, 5.55, 1), (7.15, 7.6, 1), (9.25, 9.65, 1), (12.1, 12.65, 1),
-         (16.2, 16.75, 1), (22.15, 22.7, 1), (26.45, 27.0, 1)]
+LIFT = 13.12                         # the blue flash: "Your AI needs a spine."
+FOLD_TONES = [30.30, 30.42, 30.54]   # the node splits into the logo's three bars
+LOGO = 30.50                         # wordmark resolves
+DROP = 28.4                          # all four screens together, then into the logo
+WHIPS = [(16.45, 17.0, -1), (19.3, 19.85, -1), (22.1, 22.65, -1), (25.1, 25.65, -1)]
 
 rng = np.random.default_rng(11)
 t_all = np.arange(N) / SR
@@ -154,12 +153,22 @@ def build():
     buf = np.zeros((N, 2))
     # --- problem: D minor drone, heartbeat from the first snap
     pad(buf, 0.0, LIFT - 0.3, [38, 45, 50, 53], 0.16, cutoff=700, attack=2.5, release=0.8)
-    # the line pulls taut: a plucked low string
-    add(buf, LIFT, pluck(hz(38), 1.6, 1200), 0.35)
+    # a low pulse under the everyday failures
+    t = 3.6
+    while t < LIFT - 1.3:
+        add(buf, t, sub(hz(38), 0.24), 0.32)
+        add(buf, t + BEAT / 2, sub(hz(38), 0.16), 0.16)
+        t += BEAT * 2
+    # the flash: a hit
+    add(buf, LIFT, kick(), 0.5)
+    add(buf, LIFT, sub(hz(33), 1.4) * np.exp(-np.arange(int(1.4 * SR)) / SR / 0.5), 0.5)
+    add(buf, LIFT, lp_fast(rng.standard_normal(int(1.2 * SR)), 5000) * np.exp(-np.arange(int(1.2 * SR)) / SR / 0.35), 0.10)
     # reverse swell into the lift
-    n = int(0.9 * SR)
+    n = int(1.25 * SR)
     sw = lp_fast(rng.standard_normal(n), 2500) * np.linspace(0, 1, n) ** 3
-    add(buf, LIFT - 0.9, sw, 0.12)
+    add(buf, LIFT - 1.25, sw, 0.16)
+    tt = np.arange(n) / SR
+    add(buf, LIFT - 1.25, np.sin(2 * np.pi * np.cumsum(120 + 500 * (tt / 1.25) ** 2) / SR) * (tt / 1.25) ** 2, 0.06)
     # --- lift: D major, vi IV I V per bar
     prog = [([47, 50, 54, 59], 35), ([43, 50, 55, 59], 31), ([50, 54, 57, 62], 38), ([45, 49, 52, 57], 33)]
     bar = 4 * BEAT
@@ -176,7 +185,7 @@ def build():
             if tk >= DROP - 0.05:
                 break
             add(buf, tk, pluck(hz(arp[k % len(arp)] + 12)), 0.10 + 0.03 * (k % 2 == 0), 0.35 * (1 if k % 2 else -1))
-        if t >= 12.3:
+        if t >= 16.75:
             for k in range(4):
                 tk = t + k * BEAT
                 if tk < DROP - 0.05:
@@ -192,10 +201,10 @@ def build():
         buf[i:i + n, 0] += s[:n] * 0.10 * np.sqrt(1 - pan_curve[:n])
         buf[i:i + n, 1] += s[:n] * 0.10 * np.sqrt(1 + pan_curve[:n])
     # --- drop and fold
-    n = int((29.45 - DROP) * SR)
+    n = int((29.2 - DROP) * SR)
     sw = lp_fast(rng.standard_normal(n), 1800) * np.linspace(0, 1, n) ** 4
     add(buf, DROP, sw, 0.08)
-    add(buf, 29.45, kick(), 0.22)
+    add(buf, 29.2, kick(), 0.22)
     for k, tt in enumerate(FOLD_TONES):
         add(buf, tt, pluck(hz([62, 64, 66, 69, 71][k]), 0.6, 5000), 0.16, -0.5 + 0.25 * k)
     # --- logo

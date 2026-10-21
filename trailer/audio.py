@@ -121,11 +121,13 @@ CUES = [
     (6.15, "swell", -20, 0.0), (6.5, "crack1", -13, 0.1),        # Builds. / Gone quiet.
     (8.15, "swell", -20, 0.0), (8.5, "crack2", -13, 0.0),        # Hours saved? / Nobody knows.
     (12.65, "swell", -16, 0.0), (13.0, "slam", -10, 0.0),        # the six pieces slam into the mark
-    (20.0, "clack", -16, -0.3),     # underline locks: Every question gets a Champion.
-    (23.0, "clack", -16, -0.3),     # An owner. A team. A plan.
-    (26.0, "clack", -16, -0.3),     # Impact, in hours.
-    (30.0, "slam", -14, -0.3), (30.25, "slam", -14, 0.3), (30.5, "slam", -11, 0.0),   # logo bars lock
-    (33.0, "tick", -24, 0.0),       # Book a demo button draws
+    (21.0, "clack", -16, -0.3),     # underline locks: A colleague claims it.
+    (41.0, "clack", -16, -0.3),     # AI writes the build plan.
+    (53.0, "clack", -16, -0.3),     # Leaders see the impact.
+    (28.0, "land", -18, 0.0), (46.0, "land", -18, 0.0),          # into Ideas & Projects, into Pulse
+] + [(a, "tick", -27, 0.25) for a in (17.0, 20.0, 23.0, 26.0, 31.0, 34.0, 37.0, 40.0, 43.0, 49.0, 52.0)] + [
+    (56.0, "slam", -14, -0.3), (56.25, "slam", -14, 0.3), (56.5, "slam", -11, 0.0),   # logo bars lock
+    (58.5, "tick", -24, 0.0),       # Book a demo button draws
 ]
 PITCHED = (0.0, 0.0)                # no pitched sequence in this cut
 

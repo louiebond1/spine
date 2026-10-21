@@ -5,10 +5,11 @@
   12 - 15.5   the idea waits for people; 15.5 - 21 scattered, under the empty chart
   21 - 22.5   a held breath and a riser; 22.5 the slam as everything lines up on the spine
   22.5 - 27.5 the turn: a major chord held under "Spine is your AI project manager."
-  27.5 - 41   major, building as the question is answered and the team forms
-  41 - 43.7   the project goes quiet: the drums stop under one held chord, until someone acts
-  43.7 - 51   moving again; the hours stack up; 49.7 the 42 lands on its own beat
-  51 - 56.55  the recap: a soft pulse building into the logo; 56.55 the logo chord
+  27.5 - 42   major, building as the question is answered, the project is found and the team forms
+  42 - 47.5   the project goes quiet: the drums stop under one held chord, through Pulse and Slack,
+              until Mia acts; 47.5 the groove comes back with her step
+  47.5 - 54.2 moving again; the hours stack up; 52.5 the 42 lands on its own beat
+  54.2 - 59.55 the recap: a soft pulse building into the logo; 59.55 the logo chord
 The bass, arpeggio and pads pump against the kick. kick_on() matches kick_env() in timeline.py.
 """
 import sys
@@ -17,7 +18,7 @@ import wave
 import numpy as np
 
 SR = 48000
-DUR = 60.1
+DUR = 63.2
 N = int(SR * DUR)
 BEAT = 0.5
 rng = np.random.default_rng(21)
@@ -120,13 +121,13 @@ def riser(dur):
 
 def kick_on(t):
     # matches kick_on() in timeline.py
-    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (27.5 <= t < 41.0) or (43.7 <= t < 51.0) or (56.55 <= t < 59.2)
+    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (27.5 <= t < 42.0) or (47.5 <= t < 54.2) or (60.0 <= t < 62.2)
 
 
 def section(t):
     for end, name in ((4.0, "intro"), (12.0, "problem"), (15.5, "stall"), (21.0, "chaos"), (22.5, "hold"),
-                      (27.5, "turn"), (33.6, "solveA"), (41.0, "solveB"), (43.7, "quiet"), (51.0, "solveC"),
-                      (56.55, "drop"), (59.2, "outro")):
+                      (27.5, "turn"), (36.3, "solveA"), (42.0, "solveB"), (47.5, "quiet"), (54.2, "solveC"),
+                      (59.55, "drop"), (62.2, "outro")):
         if t < end:
             return name
     return "tail"
@@ -188,26 +189,26 @@ def build():
     add(buf, 22.5, pad([50, 54, 57, 62], 3.0, 2400, 0.25, 1.0), 0.14)
     add(buf, 23.0, bell(74, 2.5), 0.05, 0.2)
     # Pulse: the project goes quiet; the groove thins to a held chord until someone acts
-    add(buf, 41.0, pad([47, 50, 54], 2.7, 1400, 0.4, 0.8), 0.14)
+    add(buf, 42.0, pad([47, 50, 54], 5.5, 1400, 0.4, 0.8), 0.14)
     # the 42 lands on a beat of its own
-    add(buf, 49.7, kick(1.0), 0.5)
-    add(buf, 49.7, pad([47, 50, 54, 59], 1.2, 2600, 0.01, 0.8), 0.12)
-    add(buf, 49.7, bell(78, 1.6), 0.05, 0.3)
+    add(buf, 52.5, kick(1.0), 0.5)
+    add(buf, 52.5, pad([47, 50, 54, 59], 1.2, 2600, 0.01, 0.8), 0.12)
+    add(buf, 52.5, bell(78, 1.6), 0.05, 0.3)
     # the recap: a held chord and a soft pulse that builds into the logo
-    add(buf, 51.0, pad([50, 54, 57], 5.5, 1800, 0.3, 1.0), 0.2)
+    add(buf, 54.2, pad([50, 54, 57], 5.4, 1800, 0.3, 1.0), 0.2)
     for k in range(11):
-        add(buf, 51.0 + 0.5 * k, kick(0.7), 0.14 + 0.02 * k)
-    add(buf, 55.55, riser(1.0), 0.2)
-    for k, (tk, m) in enumerate(((56.15, 62), (56.35, 66))):     # one note as each bar takes its place
+        add(buf, 54.0 + 0.5 * k, kick(0.7), 0.14 + 0.02 * k)
+    add(buf, 58.55, riser(1.0), 0.2)
+    for k, (tk, m) in enumerate(((59.15, 62), (59.35, 66))):     # one note as each bar takes its place
         add(buf, tk, pluck(m, 0.7, 6000), 0.18, -0.4 + 0.4 * k)
-    add(buf, 56.55, kick(1.0), 0.65)
+    add(buf, 59.55, kick(1.0), 0.65)
     n = int(2.5 * SR)
-    add(buf, 56.55, np.sin(2 * np.pi * hz(26) * np.arange(n) / SR) * np.exp(-np.arange(n) / SR / 0.9), 0.5)
-    add(buf, 56.55, pad([50, 54, 57, 62, 66], 5.0, 3000, 0.05, 2.0), 0.16)
-    add(buf, 56.55, bell(74), 0.10, 0.2)
+    add(buf, 59.55, np.sin(2 * np.pi * hz(26) * np.arange(n) / SR) * np.exp(-np.arange(n) / SR / 0.9), 0.5)
+    add(buf, 59.55, pad([50, 54, 57, 62, 66], 5.0, 3000, 0.05, 2.0), 0.16)
+    add(buf, 59.55, bell(74), 0.10, 0.2)
     for k, m in enumerate((62, 66, 69)):             # the light passing along the three bars
-        add(buf, 56.8 + 0.12 * k, pluck(m + 12, 0.6, 6000), 0.06, -0.4 + 0.4 * k)
-    add(buf, 57.8, bell(81, 2.0), 0.05, 0.1)
+        add(buf, 59.8 + 0.12 * k, pluck(m + 12, 0.6, 6000), 0.06, -0.4 + 0.4 * k)
+    add(buf, 60.8, bell(81, 2.0), 0.05, 0.1)
     # sidechain pump: the music ducks on every kick and swells back, then a little drive
     tt = np.arange(N) / SR
     on = np.array([kick_on(x) for x in np.floor(tt / BEAT) * BEAT])
@@ -216,7 +217,7 @@ def build():
     buf += np.tanh(mus * 2.2) / 2.2
     # the solutions build: each resolved problem a little fuller than the last
     keys = [(0.0, 1.0), (5.48, 1.0), (5.56, 0.0), (5.95, 0.0), (6.2, 1.0),       # the snap: everything stops for a beat
-            (27.5, 0.82), (33.6, 0.88), (41.0, 0.95), (43.7, 1.0), (50.8, 1.08), (51.0, 1.0), (DUR, 1.0)]
+            (27.5, 0.82), (36.3, 0.88), (42.0, 0.95), (47.5, 1.0), (53.8, 1.08), (54.0, 1.0), (DUR, 1.0)]
     kt = np.array([k[0] for k in keys])
     kv = np.array([k[1] for k in keys])
     buf *= np.interp(tt, kt, kv)[:, None]

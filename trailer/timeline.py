@@ -1,7 +1,8 @@
-"""Spine launch film: "Holds it together" (product cut, 56.7 s).
+"""Spine launch film: "Holds it together" (final director's cut, 57.5 s).
 
-One continuous world seen through one camera. Every beat shows a start, an action and a result, and
-what is shown follows the product brief. See the notes above render_scene() for the choreography.
+One continuous world seen through one camera. Three problems are shown, not told, then the same three
+objects are resolved in the same order, and the three resolved bars lift out of the world to become the
+Spine logo. See the notes above render_scene() for the whole choreography.
 """
 import math
 import os
@@ -234,26 +235,26 @@ def draw_polyline(c, pts, width, color, alpha=1.0):
 # Live projects log hours saved each month.
 #
 #   Questions go unanswered   Ben's question travels, the route ahead snaps, it is stranded.
-#   Ideas lose momentum       Contract Clause Checker reaches Recruiting and waits, one person and two
-#                             empty seats; people pass by without seeing it; the line to them snaps.
+#   Ideas lose momentum       Contract Clause Checker reaches Recruiting and waits: Mia and two empty
+#                             seats; people pass by; the line reaching out to them snaps.
 #   Impact goes unseen        the Hours saved card, large and empty; the line reaching it snaps.
 # "Your AI needs a spine."    every loose piece lines up on a spine; "Spine is your AI project manager."
-#   Questions                 shown to the Champions; Mia claims it; her answer names her project, and
-#                             the name carries the camera to the Ideas & Projects board.
-#   Ideas & Projects          a board of the company's ideas; Contract Clause Checker grows into view;
-#                             Ben and Priya press Join project and take the two empty seats; the team is
-#                             full, it moves to Building and the plan appears, a step for each of them.
-#   Pulse                     12 days inactive; Pulse flags it; the digest lands in Slack; the team opens
-#                             it; Mia ticks her step, then Ben; it is moving again.
-#   Impact                    Priya finishes the last step; it goes Live and the team logs 8 hours saved;
-#                             those hours travel to the company's chart and land on October: 42.
-# The end: one line runs through the answered question, the project and its team, and the 42; they
-# condense into the three bars of the Spine mark.
+#   Questions                 shown to the Champions; Mia claims it; her answer names her project.
+#   Discover                  the name lands on its card among the company's projects; it is picked out.
+#   Join                      it grows into frame; Ben, then Priya, press Join project and take a seat;
+#                             each seat links to the last; 3 of 3: the team is full.
+#   Plan                      Building: each person moves to their own step of the generated plan.
+#   Pulse                     Stalled (no activity, the days count up), Detected (Pulse's heartbeat flags
+#                             it), Notified (the Slack digest), Action (Mia presses Open), Progress (the
+#                             steps tick, it goes Live, 8 hours saved this month).
+#   Impact                    those 8 hours travel to the company's chart and complete October: 42.
+# The end: one line runs through the answered question, the project, and the 42; they condense into the
+# three bars of the Spine mark.
 #
 # Times are story time; the film opens SHIFT seconds in.
 
 SHIFT = 3.4
-TOTAL = 1701                 # 56.7 s
+TOTAL = 1791                 # 59.7 s
 END_PLATE = TOTAL + 1
 HANDOFF = END_PLATE
 HOURS = [6, 16, 30, 42]
@@ -271,25 +272,24 @@ def kick_env(t):
 
 
 def kick_on(t):
-    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (27.5 <= t < 41.0) or (43.7 <= t < 51.0) or (56.55 <= t < 59.2)
+    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (27.5 <= t < 42.0) or (47.5 <= t < 54.2) or (60.0 <= t < 62.2)
 
 
 # ---------------------------------------------------------------- camera
 
 SNAP1 = 5.5
 BX = 1060.0                  # where the question is stranded (world x)
-CARD_C = (960.0, 1400.0)     # Contract Clause Checker, the big card (world)
-BOARD_C = (960.0, 1400.0)    # the Ideas & Projects board is laid out around it
+CARD_C = (960.0, 1460.0)     # Contract Clause Checker, the big card (world)
 
 CAM = [  # (time, (centre x, centre y, zoom)) in world pixels; held between equal keys
     (5.5, (1060, 540, 1.0)),
     (9.4, (1060, 540, 1.0)), (10.3, (960, 1400, 1.0)),
     (15.3, (960, 1400, 1.0)), (16.2, (3300, 1003, 0.72)),          # the empty chart, close
     (26.4, (3300, 1003, 0.72)), (27.3, (1250, 590, 1.0)),          # back to the stranded question
-    (32.6, (1250, 590, 1.0)), (33.6, (960, 1400, 0.6)),            # following the name to the board
-    (35.3, (960, 1400, 0.6)), (36.2, (960, 1400, 1.0)),            # in on Contract Clause Checker
-    (47.3, (960, 1400, 1.0)), (48.2, (3300, 1003, 0.72)),          # the hours travel to the chart
-    (60.0, (3300, 1003, 0.72)),
+    (32.6, (1250, 590, 1.0)), (33.6, (960, 1430, 0.9)),            # following the name to the projects
+    (35.4, (960, 1430, 0.9)), (36.3, (960, 1400, 1.0)),            # in on Contract Clause Checker
+    (50.0, (960, 1400, 1.0)), (50.9, (3300, 1003, 0.72)),          # the hours travel to the chart
+    (64.0, (3300, 1003, 0.72)),
 ]
 
 
@@ -502,20 +502,28 @@ def draw_champions(c, t):
 
 # ---------------------------------------------------------------- 2. Contract Clause Checker
 #
-# One card carries the whole journey. Its state is a function of time: the stage it is in, who is on the
-# team, which plan steps are done, and the one line under it.
+# One large card carries the whole journey. Its state is a function of time: the stage it is in, who is on
+# the team, which plan steps are done, and the one line at its foot that says what happens next. The
+# people (seats, joiners, plan owners) are drawn over it in world space so they can move.
 
-CARD_W, CARD_H = 1180, 600
-STAGE_TIMES = [  # (time, stage index) the card's stage moves through: Idea, Approval, Recruiting, ...
-    (0.0, 0), (10.45, 1), (10.85, 2), (38.0, 3), (46.15, 4), (46.6, 5)]
-SEATS = [("MT", "Mia Thompson", None), ("BC", "Ben Carter", 36.75), ("PS", "Priya Shah", 37.45)]   # (who, joins)
-PLAN = [("Test with real contracts", "MT", "testing real contracts", 43.7),
-        ("Fix missed clause types", "BC", "fixing missed clause types", 44.4),
-        ("Write the user guide", "PS", "writing the user guide", 45.85)]       # (step, owner, phrase, done)
-PLAN_IN = 38.4           # the plan appears, generated from the project brief
-QUIET = (41.0, 43.7)     # 12 days inactive, until Mia acts
-LIVE_T = 46.6
-LOGGED = 47.0            # the team logs its hours saved
+CARD_W, CARD_H = 1400, 660
+CARD_X0, CARD_Y0 = CARD_C[0] - CARD_W / 2, CARD_C[1] - CARD_H / 2
+STAGE_TIMES = [  # (time, stage index): Idea, Approval, Recruiting, Building, Publishing, Live
+    (0.0, 0), (10.45, 1), (10.85, 2), (38.75, 3), (48.75, 4), (49.25, 5)]
+SEATS = [("MT", "Mia Thompson", None), ("BC", "Ben Carter", 37.25), ("PS", "Priya Shah", 38.25)]   # (who, seated)
+PRESS = 0.45             # each joiner presses Join project this long before taking their seat
+PLAN = [("Test with real contracts", "MT", "testing real contracts", 47.25),
+        ("Fix missed clause types", "BC", "fixing missed clause types", 47.75),
+        ("Write the user guide", "PS", "writing the user guide", 48.25)]       # (step, owner, phrase, done)
+PLAN_IN = 39.0           # the plan appears, generated from the project brief
+ROWS = [292, 392, 492]   # plan rows (card baselines)
+QUIET = (42.0, 47.25)    # stalled, until Mia ticks her step
+FLAG = 44.0              # Pulse detects it
+SLACK_IN, SLACK_OPEN, SLACK_FLY = 44.9, 46.4, (46.6, 47.1)
+LIVE_T = 49.25
+LOGGED = 49.6            # the team logs its hours saved
+FIRST = {"MT": "Mia", "BC": "Ben", "PS": "Priya"}
+QUIET_C = (156, 162, 178)
 
 
 def stage_at(t):
@@ -526,126 +534,163 @@ def team_at(t):
     return [ini for ini, _, j in SEATS if j is None or t >= j]
 
 
-def card_project(t, compact=False):
+def seat_pos(k):
+    """World position of team seat k on the card."""
+    return CARD_X0 + 170 + 200 * k, CARD_Y0 + 360
+
+
+def row_avatar(k):
+    return CARD_X0 + 1310, CARD_Y0 + ROWS[k] - 16
+
+
+def seat_move(k):
+    """When person k leaves their seat for their step in the plan."""
+    t0 = PLAN_IN + 0.1 * k
+    return t0, t0 + 0.5
+
+
+def card_project(t):
     """Contract Clause Checker as it stands at time t."""
     p = Pen(CARD_W, CARD_H)
     st = stage_at(t)
-    p.tracked(48, 64, "Ideas & Projects", 15, DIM)
-    p.text(48, 136, REPLY_B, 58, WHITE, DSEMI)
-    p.text(48, 182, "Mia Thompson  ·  Legal  ·  App", 30, DIM)
-    # stages
-    xs = [80 + 204 * k for k in range(6)]
-    fill = stage_at(t)
-    p.line([(xs[0], 250), (xs[-1], 250)], (52, 56, 68), 4)
-    p.line([(xs[0], 250), (xs[fill], 250)], BLUE, 4)
+    p.text(60, 102, REPLY_B, 72, WHITE, DSEMI)
+    p.text(60, 156, "Mia Thompson  ·  Legal", 34, DIM)
+    # the six stages as dots; only the current one is named
+    xs = [990 + 70 * k for k in range(6)]
+    p.line([(xs[0], 74), (xs[-1], 74)], (52, 56, 68), 4)
+    p.line([(xs[0], 74), (xs[st], 74)], BLUE, 4)
     for k, x in enumerate(xs):
-        if k <= fill:
-            p.circle(x, 250, 13, fill=BLUE)
+        if k <= st:
+            p.circle(x, 74, 12, fill=GREEN if k == 5 else BLUE)
         else:
-            p.circle(x, 250, 12, fill=CARD, outline=(70, 75, 92), width=3)
-        p.text(x, 296, STAGES[k], 24, WHITE if k == st else DIM, SEMI if k == st else MED, anchor="ms")
-    if st == 2:      # recruiting: seats, and the button anyone can press
+            p.circle(x, 74, 11, fill=CARD, outline=(70, 75, 92), width=3)
+    lab = STAGES[st]
+    lx = min(xs[st], CARD_W - 50 - text_width(lab, SEMI, 32) / 2)
+    p.text(lx, 136, lab, 32, WHITE, SEMI, anchor="ms")
+    p.line([(60, 200), (CARD_W - 60, 200)], CARD_LINE, 2)
+    if st == 2:      # recruiting: the count, the button anyone can press, and what it needs next
         team = team_at(t)
         left = 3 - len(team)
+        p.text(770, 336, f"{len(team)} of 3 people", 56, WHITE, DSEMI)
         if left:
-            line = f"Next: Recruit {left} more {'person' if left == 1 else 'people'} to begin"
-        else:
-            line = "3 of 3 people"
-        p.text(48, 520, line, 36, WHITE, MED)
-        p.text(48, 380, f"{len(team)} of 3 people", 30, DIM)
-        if left:
-            _button(p, CARD_W - 300, 40, CARD_W - 48, 100, "Join project", size=28)
+            pressed = any(j - PRESS <= t < j for _, _, j in SEATS if j)
+            _button(p, 770, 380, 1140, 466, "Join project", primary=pressed, size=36)
+            p.text(60, 610, f"Next: Recruit {left} more {'person' if left == 1 else 'people'} to begin", 40,
+                   BLUE, MED)
     elif st >= 3:    # building and after: the plan, a step for each person
-        p.text(CARD_W - 48, 64, "Generated from project brief", 22, DIM, anchor="rs",
-               alpha=prog(t, PLAN_IN, PLAN_IN + 0.4))
         for k, (step, who, phrase, done_t) in enumerate(PLAN):
             g = prog(t, PLAN_IN + 0.15 * k, PLAN_IN + 0.15 * k + 0.35, e_out_cubic)
-            y = 370 + 66 * k
+            y = ROWS[k]
             done = t >= done_t
             if done:
-                p.rrect(48, y - 30, 82, y + 4, 8, fill=BLUE, alpha=g)
-                p.line([(56, y - 13), (63, y - 5), (75, y - 22)], (255, 255, 255), 3, alpha=g)
+                p.rrect(60, y - 42, 108, y + 6, 10, fill=BLUE, alpha=g)
+                p.line([(71, y - 18), (81, y - 8), (98, y - 30)], (255, 255, 255), 4, alpha=g)
             else:
-                p.rrect(48, y - 30, 82, y + 4, 8, outline=(110, 116, 136), width=2, alpha=g)
-            p.text(104, y, step, 36, DIM if done else WHITE, alpha=g)
-            p.circle(CARD_W - 90, y - 13, 26, fill=(40, 54, 100), alpha=g)
-            p.text(CARD_W - 90, y - 4, who, 20, WHITE, SEMI, anchor="ms", alpha=g)
-        # the one line that says what happens next
+                p.rrect(60, y - 42, 108, y + 6, 10, outline=(110, 116, 136), width=2, alpha=g)
+            p.text(140, y, step, 46, DIM if done else WHITE, alpha=g)
+            ga = prog(t, seat_move(k)[1] - 0.04, seat_move(k)[1])
+            ax, ay = row_avatar(k)
+            p.circle(ax - CARD_X0, ay - CARD_Y0, 36, fill=(40, 54, 100), alpha=ga)
+            p.text(ax - CARD_X0, ay - CARD_Y0 + 9, who, 24, WHITE, SEMI, anchor="ms", alpha=ga)
         if st == 3:
-            nxt = next((ph for s_, w, ph, dt in PLAN if t < dt), None)
-            first = {"MT": "Mia", "BC": "Ben", "PS": "Priya"}
-            who = next((w for s_, w, ph, dt in PLAN if t < dt), None)
+            nxt = next(((w, ph) for s_, w, ph, dt in PLAN if t < dt), None)
             if nxt and t >= PLAN_IN + 0.6:
-                p.text(48, 576, f"Next: {first[who]} is {nxt}", 30, BLUE, MED)
+                p.text(60, 612, f"Next: {FIRST[nxt[0]]} is {nxt[1]}", 40, BLUE, MED)
+                p.text(CARD_W - 60, 612, "Generated from project brief", 28, DIM, anchor="rs")
         elif st == 5:
             g = prog(t, LOGGED, LOGGED + 0.3)
-            p.circle(58, 566, 8, fill=GREEN)
-            p.text(76, 576, "Live", 30, WHITE, MED)
-            p.text(76 + text_width("Live", MED, 30) + 14, 576, "·  8 hours saved this month", 30, WHITE, MED,
+            p.circle(72, 598, 10, fill=GREEN)
+            p.text(96, 612, "Live", 40, WHITE, MED)
+            p.text(96 + text_width("Live", MED, 40) + 16, 612, "·  8 hours saved this month", 40, WHITE, MED,
                    alpha=g)
     return p.done()
 
 
-def seat_pos(k):
-    """World position of team seat k on the big card."""
-    return CARD_C[0] - CARD_W / 2 + 290 + 92 * k, CARD_C[1] - CARD_H / 2 + 372
+def card_dim(t):
+    waiting = prog(t, 12.2, 12.8) * (1 - prog(t, 33.6, 34.2))
+    quiet = prog(t, QUIET[0], QUIET[0] + 0.6) * (1 - prog(t, QUIET[1], QUIET[1] + 0.3))
+    slack = prog(t, SLACK_IN, SLACK_IN + 0.4) * (1 - prog(t, *SLACK_FLY))
+    return 1 - 0.45 * max(waiting, quiet) - 0.3 * slack
 
 
 def draw_card(c, t):
-    if not 9.9 <= t < 50.0:
+    if not 9.9 <= t < 51.0 or GRID_T <= t < GROW[0]:
         return
-    a = prog(t, 9.9, 10.4) * world_dim(t) * (1 - prog(t, 47.8, 48.4))
-    # it waits, and dims, until people come
-    waiting = prog(t, 12.2, 12.8) * (1 - prog(t, 33.6, 34.2))
-    quiet = prog(t, QUIET[0], QUIET[0] + 0.5) * (1 - prog(t, QUIET[1], QUIET[1] + 0.3))
-    dim = 1 - 0.45 * max(waiting, quiet)
-    # on the board it sits small in the Recruiting column, then grows into the frame
-    grow = prog(t, 35.3, 36.2, e_io_quint)
-    on_board = 33.4 <= t < 36.2
-    bx, by, bs = BOARD_SLOT
-    x = lerp(bx, CARD_C[0], grow) if on_board or t < 36.2 else CARD_C[0]
-    y = lerp(by, CARD_C[1], grow) if on_board or t < 36.2 else CARD_C[1]
-    s = lerp(bs, 1.0, grow) if on_board else 1.0
-    if t < 33.4:
-        x, y, s = CARD_C[0], CARD_C[1], 1.0
-    wcard(c, t, card_project(t), x, y, a * dim, s)
-    if on_board and grow < 1:      # on the board, it is the one lit up
-        hl = prog(t, 33.6, 34.0) * (1 - prog(t, 35.3, 35.8))
-        sx0, sy0 = ws(x - CARD_W / 2 * s - 10, y - CARD_H / 2 * s - 10, t)
-        sx1, sy1 = ws(x + CARD_W / 2 * s + 10, y + CARD_H / 2 * s + 10, t)
-        for (ax, ay), (bx_, by_) in (((sx0, sy0), (sx1, sy0)), ((sx1, sy0), (sx1, sy1)), ((sx1, sy1), (sx0, sy1)),
-                                     ((sx0, sy1), (sx0, sy0))):
-            draw_polyline(c, [(ax, ay), (bx_, by_)], 3.0, BLUE, 0.9 * hl)
-    # the seats: the owner, and the empty ones waiting for someone to join
-    if stage_at(t) == 2 and s > 0.98:
-        team = team_at(t)
-        for k in range(3):
-            sx, sy = ws(*seat_pos(k), t)
-            z = cam(t)[2]
-            if k < len(team):
-                j = SEATS[k][2]
-                pop = 1.0 if j is None else e_out_cubic(prog(t, j, j + 0.2))
-                avatar_at(c, sx, sy, SEATS[k][0], 34 * z * (0.7 + 0.3 * pop), a * dim,
-                          ring=prog(t, j, j + 0.6) if j and t < j + 0.6 else 0.0)
-            else:
-                pulse = 0.5 + 0.5 * math.sin(6 * t) if 12.5 <= t < 33.6 else 1.0
-                avatar_at(c, sx, sy, "", 34 * z, a * dim * (0.5 + 0.5 * pulse), dashed=True)
-    # the one line under the card that says how it is doing
-    if 12.6 <= t < 33.6:
-        pass
-    g = quiet * (1 - prog(t, QUIET[1], QUIET[1] + 0.3))
-    wtext(c, t, "12 days inactive", MED, 50, DIM, CARD_C[0], CARD_C[1] + CARD_H / 2 + 80, a * g)
-    g2 = prog(t, QUIET[1], QUIET[1] + 0.3) * (1 - prog(t, 45.6, 45.9))
-    wtext(c, t, "Moving again", MED, 50, BLUE, CARD_C[0], CARD_C[1] + CARD_H / 2 + 80, a * g2)
+    a = prog(t, 9.9, 10.4) * world_dim(t) * (1 - prog(t, 50.6, 51.0)) * card_dim(t)
+    if t < GRID_T:
+        wcard(c, t, card_project(t), *CARD_C, a)
+    else:            # grows out of its place among the other projects
+        g = prog(t, *GROW, e_io_quint)
+        x = lerp(GRID_SLOT[0], CARD_C[0], g)
+        y = lerp(GRID_SLOT[1], CARD_C[1], g)
+        wcard(c, t, card_project(t), x, y, a * prog(t, GROW[0], GROW[0] + 0.5), lerp(SLOT_W / CARD_W, 1.0, g))
     # a tick lands with each step done
-    for step, who, phrase, done_t in PLAN:
-        k = [w for _, w, _, _ in PLAN].index(who)
-        cx = CARD_C[0] - CARD_W / 2 + 65
-        cy = CARD_C[1] - CARD_H / 2 + 370 + 66 * k - 13
-        glint_w(c, t, cx, cy, done_t)
+    for k, (step, who, phrase, done_t) in enumerate(PLAN):
+        glint_w(c, t, CARD_X0 + 84, CARD_Y0 + ROWS[k] - 18, done_t)
+    # what the state means, said once, under the card
+    y = CARD_Y0 + CARD_H + 92
+    g = prog(t, QUIET[1], QUIET[1] + 0.3) * (1 - prog(t, 48.6, 48.9))
+    wtext(c, t, "Moving again", MED, 52, BLUE, CARD_C[0], y, a * g)
+
+
+def grow_scale(t):
+    if GROW[0] <= t < GROW[1]:
+        return lerp(SLOT_W / CARD_W, 1.0, prog(t, *GROW, e_io_quint))
+    return 1.0
+
+
+def on_card(x, y, t):
+    """A point on the card, carried with it while it grows out of the grid."""
+    if not GROW[0] <= t < GROW[1]:
+        return x, y
+    g = prog(t, *GROW, e_io_quint)
+    s = grow_scale(t)
+    cx, cy = lerp(GRID_SLOT[0], CARD_C[0], g), lerp(GRID_SLOT[1], CARD_C[1], g)
+    return cx + (x - CARD_C[0]) * s, cy + (y - CARD_C[1]) * s
+
+
+def draw_seats(c, t):
+    """The team: Mia's seat and the empty ones; the people who join; each moving to their step."""
+    if not (10.85 <= t < GRID_T or GROW[0] + 0.3 <= t < PLAN_IN + 0.8):
+        return
+    a = prog(t, 10.85, 11.2) * world_dim(t) * card_dim(t)
+    if t >= GROW[0]:
+        a = prog(t, GROW[0] + 0.3, GROW[0] + 0.6)
+    z = cam(t)[2] * grow_scale(t)
+    team = team_at(t)
+    # each new seat links to the one before it: the team connecting
+    for k in (1, 2):
+        j = SEATS[k][2]
+        if t >= j:
+            pl = e_out_cubic(prog(t, j, j + 0.3))
+            x0, y0 = ws(*on_card(*seat_pos(k - 1), t), t)
+            x1, y1 = ws(*on_card(*seat_pos(k), t), t)
+            fade = 1 - prog(t, PLAN_IN - 0.15, PLAN_IN + 0.1)
+            draw_polyline(c, [(x0, y0), (lerp(x0, x1, pl), lerp(y0, y1, pl))], 7 * z, BLUE, a * fade)
+    for k in range(3):
+        sx, sy = seat_pos(k)
+        if k < len(team):
+            j = SEATS[k][2]
+            m0, m1 = seat_move(k)
+            q = prog(t, m0, m1, e_io_cubic)
+            if q >= 1:
+                continue
+            tx, ty = row_avatar(k)
+            X, Y = ws(*on_card(lerp(sx, tx, q), lerp(sy, ty, q), t), t)
+            pop = 1.0 if j is None else e_out_cubic(prog(t, j, j + 0.2))
+            avatar_at(c, X, Y, SEATS[k][0], lerp(72, 36, q) * z * (0.85 + 0.15 * pop), a,
+                      ring=prog(t, j, j + 0.6) if j and j <= t < j + 0.6 else 0.0)
+        elif t < PLAN_IN:
+            pulse = 0.5 + 0.5 * math.sin(6 * t) if 12.5 <= t < GRID_T else 1.0
+            avatar_at(c, *ws(*on_card(sx, sy, t), t), "", 72 * z, a * (0.5 + 0.5 * pulse), dashed=True)
+    # the team is full
+    if t >= SEATS[2][2]:
+        glint_w(c, t, *seat_pos(2), SEATS[2][2])
 
 
 PASSERS = ["BC", "PS", "JC", "SK", "LM"]
+PASS_Y = CARD_Y0 + CARD_H + 90
+LINK_Y = CARD_Y0 + CARD_H + 40
 
 
 def draw_passers(c, t):
@@ -653,159 +698,186 @@ def draw_passers(c, t):
     if not 11.2 <= t < 15.6:
         return
     a = prog(t, 11.2, 11.6) * (1 - prog(t, 15.0, 15.5))
-    y = CARD_C[1] + CARD_H / 2 + 110
     for k, ini in enumerate(PASSERS):
         x = -300 + 360 * (t - 11.2) + 430 * k
         x = (x + 400) % 2700 - 400
-        wavatar(c, t, x, y + 14 * math.sin(k * 1.7), ini, 32, a * 0.8, fill=(46, 50, 62))
+        wavatar(c, t, x, PASS_Y + 10 * math.sin(k * 1.7), ini, 28, a * 0.55, fill=(38, 41, 50))
     # the one line that reaches out to them, and snaps
     if 11.5 <= t < 12.0:
-        D = 420 * e_out_expo(prog(t, 11.5, 11.85, e_lin))
-        sx0, sy0 = ws(CARD_C[0] + 200, CARD_C[1] + CARD_H / 2, t)
-        sx1, sy1 = ws(CARD_C[0] + 200 + D, CARD_C[1] + CARD_H / 2 + 110 * min(1, D / 420), t)
-        draw_polyline(c, [(sx0, sy0), (sx1, sy1)], 4, BLUE, 0.9)
+        D = (SNAPS[1][2] - SNAPS[1][1]) * e_out_expo(prog(t, 11.5, 11.85, e_lin))
+        wbar(c, t, SNAPS[1][1] + D / 2, LINK_Y, D, 6, alpha=world_dim(t))
 
 
-# ---------------------------------------------------------------- the bridge, and the board
+# ---------------------------------------------------------------- the bridge, and discovery
 
 NAME_LIFT = 32.6
 NAME_LAND = 33.6
-BOARD_COLS = ["Approval", "Recruiting", "Building", "Publishing", "Live"]
-BOARD = [  # the company's ideas and projects (seed data), as compact cards: (column, row, title, line)
-    (0, 0, "Supplier Research Assistant", "Waiting for approval"),
-    (0, 1, "Supplier Risk Checker", "Waiting for approval"),
-    (1, 0, "Contract Clause Checker", ""),
-    (1, 1, "Client Brief Generator", "3 of 4 people"),
-    (1, 2, "Meeting Summary Bot", "1 of 3 people"),
-    (2, 0, "AI Invoice Assistant", "Jamie is testing supplier cases"),
-    (3, 0, "Knowledge Search Assistant", "Alex is publishing this"),
-    (4, 0, "Claude Onboarding Guide", "Live"),
-    (4, 1, "Expense Review Assistant", "Live"),
+GRID_T = 32.6            # the card leaves its own place for the grid of projects
+GROW = (35.4, 36.3)      # and grows back out of it
+SLOT_W, SLOT_H = 600, 240
+GRID_X = [300.0, 960.0, 1620.0]
+GRID_Y = [1290.0, 1600.0]
+GRID_SLOT = (GRID_X[1], GRID_Y[0])
+GRID = [  # the company's ideas and projects (seed data): (row, column, title, line)
+    (0, 0, "Client Brief Generator", "Recruiting  ·  3 of 4 people"),
+    (0, 1, REPLY_B, "Recruiting  ·  1 of 3 people"),
+    (0, 2, "Meeting Summary Bot", "Recruiting  ·  1 of 3 people"),
+    (1, 0, "AI Invoice Assistant", "Building"),
+    (1, 1, "Supplier Risk Checker", "Waiting for approval"),
+    (1, 2, "Claude Onboarding Guide", "Live"),
 ]
-COL_W, ROW_H = 400.0, 190.0
-BOARD_X0 = BOARD_C[0] - 2 * COL_W
-BOARD_Y0 = BOARD_C[1] - 330
-BOARD_SLOT = (BOARD_X0 + COL_W, BOARD_Y0 + 120, 360 / CARD_W)     # where the card sits on the board
+HILITE = 34.4
 
 
-def card_compact(title, line):
-    p = Pen(360, 150)
-    p.text(24, 60, title, 26, WHITE, SEMI)
-    if line:
-        p.text(24, 108, line, 22, DIM)
+def card_compact(title, line, hi=0.0):
+    p = Pen(SLOT_W, SLOT_H)
+    if hi > 0:
+        p.rrect(1, 1, SLOT_W - 2, SLOT_H - 2, 14, outline=BLUE, width=3, alpha=hi)
+    p.text(36, 96, title, 44, WHITE, SEMI)
+    p.text(36, 168, line, 34, DIM)
     return p.done()
 
 
-def draw_board(c, t):
-    if not 33.0 <= t < 36.6:
+def draw_grid(c, t):
+    if not GRID_T + 0.3 <= t < GROW[1]:
         return
-    a = prog(t, 33.0, 33.6) * (1 - prog(t, 35.4, 36.0))
-    for k, name in enumerate(BOARD_COLS):
-        x = BOARD_X0 + COL_W * k
-        wtext(c, t, name, SEMI, 30, WHITE if k == 1 else DIM, x, BOARD_Y0 - 30, a)
-    for col, row, title, line in BOARD:
+    a = prog(t, GRID_T + 0.3, GRID_T + 0.9)
+    hi = prog(t, HILITE, HILITE + 0.3)
+    g = prog(t, *GROW, e_io_quint)
+    for r, col, title, line in GRID:
+        x, y = GRID_X[col], GRID_Y[r]
         if title == REPLY_B:
-            continue
-        x = BOARD_X0 + COL_W * col
-        y = BOARD_Y0 + 120 + ROW_H * row
-        wcard(c, t, card_compact(title, line), x, y, a * 0.9)
+            s = lerp(1.0, CARD_W / SLOT_W, g)
+            img = card_compact(title if t >= NAME_LAND + 0.1 else "", line, hi)
+            wcard(c, t, img, lerp(x, CARD_C[0], g), lerp(y, CARD_C[1], g), a * (1 - prog(t, GROW[0], GROW[0] + 0.5)),
+                  s)
+        else:
+            wcard(c, t, card_compact(title, line), x, y, a * (1 - 0.45 * hi) * (1 - prog(t, GROW[0], GROW[0] + 0.4)))
 
 
 def draw_name_bridge(c, t):
-    """The project's name lifts out of Mia's answer and lands as the title of its card on the board."""
+    """The project's name lifts out of Mia's answer and lands as the title of its card among the others."""
     if not NAME_LIFT <= t < NAME_LAND + 0.45:
         return
     p = prog(t, NAME_LIFT, NAME_LAND, e_io_quint)
     x0, b0 = reply_name_pos()
-    bx, by, bs = BOARD_SLOT
-    x1 = bx - CARD_W / 2 * bs + 48 * bs
-    b1 = by - CARD_H / 2 * bs + 136 * bs
+    x1 = GRID_SLOT[0] - SLOT_W / 2 + 36
+    b1 = GRID_SLOT[1] - SLOT_H / 2 + 96
     x, base = lerp(x0, x1, p), lerp(b0, b1, p)
-    size = lerp(40 * QSCALE, 58 * bs, p)
+    size = lerp(40 * QSCALE, 44, p)
     z = cam(t)[2]
     sx, sy = ws(x, base, t)
     a = 1 - prog(t, NAME_LAND + 0.15, NAME_LAND + 0.45)
-    soft_word(c, REPLY_B, DSEMI if p > 0.5 else MED, 58, BLUE, sx, sy, a, 0.0, size / 58 * z)
+    soft_word(c, REPLY_B, MED if p < 0.5 else SEMI, 44, BLUE if p < 0.8 else WHITE, sx, sy, a, 0.0, size / 44 * z)
 
 
 # ---------------------------------------------------------------- joining
 
+def join_button():
+    return CARD_X0 + 955, CARD_Y0 + 423
+
+
 def draw_joiners(c, t):
-    """Ben, then Priya, press Join project and take a seat."""
+    """Ben, then Priya, arrive, press Join project and take a seat."""
     for k in (1, 2):
         ini, name, j = SEATS[k]
-        t0 = j - 0.75
-        if not t0 <= t < j + 0.1:
+        t0, tp = j - 1.0, j - PRESS
+        if not t0 <= t < j:
             continue
-        # they arrive from the right, go to the button, then to their seat
-        bxw = CARD_C[0] + CARD_W / 2 - 174
-        byw = CARD_C[1] - CARD_H / 2 + 70
-        start = (CARD_C[0] + CARD_W / 2 + 260, CARD_C[1] - 120 + 120 * (k - 1))
-        p1 = prog(t, t0, t0 + 0.4, e_out_cubic)
-        p2 = prog(t, t0 + 0.45, j, e_io_cubic)
-        x = lerp(lerp(start[0], bxw - 140, p1), seat_pos(k)[0], p2)
-        y = lerp(lerp(start[1], byw + 70, p1), seat_pos(k)[1], p2)
+        bx, by = join_button()
+        start = (CARD_C[0] + 1150, by + (-170 if k == 1 else 190))
+        stop = (CARD_X0 + 1270, by + 10)
+        p1 = prog(t, t0, tp - 0.05, e_out_cubic)
+        p2 = prog(t, tp + 0.08, j, e_io_cubic)
+        x = lerp(lerp(start[0], stop[0], p1), seat_pos(k)[0], p2)
+        y = lerp(lerp(start[1], stop[1], p1), seat_pos(k)[1], p2)
+        z = cam(t)[2]
         g = prog(t, t0, t0 + 0.2)
-        wavatar(c, t, x, y, ini, 34, g)
-        wtext(c, t, name, MED, 36, WHITE, x + 50, y + 13, g * (1 - prog(t, t0 + 0.45, t0 + 0.6)), "left")
-        # the press
-        press = prog(t, t0 + 0.38, t0 + 0.45) * (1 - prog(t, t0 + 0.45, t0 + 0.65))
-        if press > 0:
-            sx, sy = ws(bxw, byw, t)
-            z = cam(t)[2]
-            draw_bar(c, sx, sy, 252 * z, 60 * z, alpha=0.5 * press)
+        X, Y = ws(x, y, t)
+        avatar_at(c, X, Y, ini, lerp(64, 72, p2) * z, g, ring=prog(t, tp, tp + 0.4) if tp <= t < tp + 0.4 else 0.0)
+        ng = g * (1 - prog(t, tp + 0.05, tp + 0.2))
+        soft_word(c, name, MED, 44, WHITE, X - text_width(name, MED, 44) * z / 2, Y + 118 * z, ng, 0.0, z)
+        glint_w(c, t, bx, by, tp)
 
 
 # ---------------------------------------------------------------- Pulse, and Slack
 
-FLAG = 41.8
-SLACK_IN, SLACK_OPEN = 42.3, 43.2
-
-
 def draw_pulse(c, t):
-    """A heartbeat runs along the bottom of the quiet project and flags it."""
-    if not 41.0 <= t < SLACK_OPEN + 0.3:
+    """A heartbeat runs along the foot of the quiet project and flags it."""
+    if not 43.3 <= t < SLACK_FLY[1]:
         return
-    y = CARD_C[1] + CARD_H / 2 + 18
-    x0, x1 = CARD_C[0] - CARD_W / 2, CARD_C[0] + CARD_W / 2
-    head = lerp(x0, CARD_C[0], prog(t, 41.1, FLAG, e_io_cubic))
-    a = 1 - prog(t, FLAG + 0.2, FLAG + 0.5)
-    blip = [(-28, 0), (-16, 8), (-6, -64), (6, 36), (16, -10), (26, 0)]
-    pts = [ws(x0, y, t), ws(head - 28, y, t)] + [ws(head + du, y + dv, t) for du, dv in blip]
-    draw_polyline(c, pts, 3.6, (150, 175, 255), a)
-    if t >= FLAG:     # flagged: a ring round the card, and the word
-        f = prog(t, FLAG, FLAG + 0.5, e_out_cubic)
-        fade = 1 - prog(t, SLACK_OPEN, SLACK_OPEN + 0.3)
-        sx0, sy0 = ws(x0 - 14, CARD_C[1] - CARD_H / 2 - 14, t)
-        sx1, sy1 = ws(x1 + 14, CARD_C[1] + CARD_H / 2 + 14, t)
+    y = CARD_Y0 + CARD_H + 30
+    x0, x1 = CARD_X0, CARD_X0 + CARD_W
+    head = lerp(x0 + 40, x1 - 60, prog(t, 43.35, FLAG, e_io_cubic))
+    a = 1 - prog(t, FLAG + 0.25, FLAG + 0.6)
+    blip = [(-40, 0), (-24, 12), (-9, -92), (9, 52), (24, -14), (38, 0)]
+    pts = [ws(x0, y, t), ws(head - 40, y, t)] + [ws(head + du, y + dv, t) for du, dv in blip]
+    draw_polyline(c, pts, 5.0, (150, 175, 255), a)
+    if t >= FLAG:     # flagged: a ring round the card, and what Pulse found
+        f = prog(t, FLAG, FLAG + 0.4, e_out_cubic)
+        fade = 1 - prog(t, SLACK_FLY[0], SLACK_FLY[1])
+        sx0, sy0 = ws(x0 - 16, CARD_Y0 - 16, t)
+        sx1, sy1 = ws(x1 + 16, CARD_Y0 + CARD_H + 16, t)
         for (ax, ay), (bx_, by_) in (((sx0, sy0), (sx1, sy0)), ((sx1, sy0), (sx1, sy1)), ((sx1, sy1), (sx0, sy1)),
                                      ((sx0, sy1), (sx0, sy0))):
-            draw_polyline(c, [(ax, ay), (bx_, by_)], 3.0, BLUE, 0.8 * f * fade)
-        soft_word(c, "Pulse", SEMI, 40, BLUE, sx0, sy0 - 18, f * fade)
+            draw_polyline(c, [(ax, ay), (bx_, by_)], 4.0, BLUE, 0.9 * f * fade)
+        g = f * (1 - prog(t, SLACK_IN, SLACK_IN + 0.3))
+        wtext(c, t, "Pulse  ·  Build going quiet", MED, 52, BLUE, CARD_C[0], CARD_Y0 + CARD_H + 92, g)
+
+
+SLACK_W, SLACK_H = 1000, 420
+SLACK_XY = (960.0, 600.0)
 
 
 def card_slack(t):
-    p = Pen(760, 330)
-    p.rrect(0, 0, 759, 329, 18, fill=(30, 32, 40))
-    p.rrect(28, 30, 76, 78, 10, fill=(58, 87, 220))
-    p.text(52, 64, "S", 28, (255, 255, 255), DSEMI, anchor="ms")
-    p.text(96, 52, "Slack", 26, WHITE, SEMI)
-    p.text(96, 82, "#ai-projects  ·  Spine daily digest", 22, DIM)
-    p.text(28, 150, "Build going quiet", 28, DIM, MED)
-    p.text(28, 206, REPLY_B, 44, WHITE, DSEMI)
-    pressed = prog(t, SLACK_OPEN - 0.1, SLACK_OPEN)
-    _button(p, 28, 244, 188, 302, "Open", primary=pressed > 0.5, size=26)
+    p = Pen(SLACK_W, SLACK_H)
+    p.rrect(0, 0, SLACK_W - 1, SLACK_H - 1, 18, fill=(30, 32, 40))
+    p.rrect(36, 36, 100, 100, 12, fill=BLUE_DEEP)
+    p.text(68, 81, "S", 38, (255, 255, 255), DSEMI, anchor="ms")
+    p.text(124, 64, "Slack", 34, WHITE, SEMI)
+    p.text(124, 100, "#ai-projects  ·  Spine daily digest", 28, DIM)
+    p.text(36, 188, "Build going quiet", 38, DIM, MED)
+    p.text(36, 262, REPLY_B, 62, WHITE, DSEMI)
+    _button(p, 36, 304, 256, 382, "Open", primary=t >= SLACK_OPEN, size=36)
     return p.done()
 
 
+def open_button_screen():
+    return SLACK_XY[0] - SLACK_W / 2 + 146, SLACK_XY[1] - SLACK_H / 2 + 343
+
+
 def draw_slack(c, t):
-    """The same flag arrives in Slack, where the team works; someone opens it."""
-    if not SLACK_IN <= t < SLACK_OPEN + 0.5:
+    """The same flag arrives in the team's Slack; Mia opens it and it takes her back to her step."""
+    if not SLACK_IN <= t < SLACK_FLY[1]:
         return
     p_in = prog(t, SLACK_IN, SLACK_IN + 0.45, e_out_cubic)
-    p_out = prog(t, SLACK_OPEN + 0.1, SLACK_OPEN + 0.5, e_in_cubic)
-    x = lerp(W + 420, W - 450, p_in) + 900 * p_out
-    place(c, card_slack(t), x, 640, 1.0, 1 - p_out)
+    q = prog(t, *SLACK_FLY, e_in_cubic)
+    tx, ty = ws(CARD_X0 + 84, CARD_Y0 + ROWS[0] - 18, t)
+    x = lerp(lerp(W + SLACK_W / 2 + 60, SLACK_XY[0], p_in), tx, q)
+    y = lerp(SLACK_XY[1], ty, q)
+    place(c, card_slack(t), x, y, lerp(1.0, 0.05, q), 1 - prog(t, SLACK_FLY[1] - 0.12, SLACK_FLY[1]))
+    # Mia arrives and presses Open
+    if 45.6 <= t < SLACK_FLY[0] + 0.15:
+        bx, by = open_button_screen()
+        a1 = prog(t, 45.6, 46.15, e_out_cubic)
+        a2 = prog(t, SLACK_OPEN - 0.12, SLACK_OPEN, e_io_cubic)
+        X = lerp(lerp(W + 100, bx + 190, a1), bx + 120, a2)
+        Y = lerp(lerp(900, by + 40, a1), by + 26, a2)
+        g = prog(t, 45.6, 45.8) * (1 - prog(t, SLACK_FLY[0], SLACK_FLY[0] + 0.15))
+        avatar_at(c, X, Y, "MT", 64, g, ring=prog(t, SLACK_OPEN, SLACK_OPEN + 0.4) if t >= SLACK_OPEN else 0.0)
+        soft_word(c, "Mia Thompson", MED, 44, WHITE, X + 86, Y + 16, g * (1 - prog(t, SLACK_OPEN - 0.1, SLACK_OPEN)))
+        glint(c, t, bx, by, SLACK_OPEN, 0.8)
+
+
+def draw_stall(c, t):
+    """Stalled: the days without activity count up where the headline sits."""
+    if not QUIET[0] <= t < 43.4:
+        return
+    n = 1 + int(11 * prog(t, 42.25, 43.0))
+    s = f"No activity for {n} day{'s' if n > 1 else ''}"
+    g = prog(t, QUIET[0], QUIET[0] + 0.3, e_out_cubic) * (1 - prog(t, 43.1, 43.4))
+    w12 = text_width("No activity for 12 days", LIGHT, 76)
+    soft_word(c, s, LIGHT, 76, QUIET_C, W / 2 - w12 / 2, 190, g)
 
 
 # ---------------------------------------------------------------- 3. the company's activity, and the hours
@@ -813,8 +885,8 @@ def draw_slack(c, t):
 N_FIELD = 60
 N_UNITS = sum(h // 2 for h in HOURS)        # 47: one unit per two hours logged
 CCC_UNITS = 4                               # Contract Clause Checker's 8 hours, the top of October
-HOURS_IN = 47.95                            # the camera has arrived: the months stack up
-CHIP_LAND = 49.4                            # the project's hours land on October
+HOURS_IN = 50.95                            # the camera has arrived: the months stack up
+CHIP_LAND = 52.25                           # the project's hours land on October
 BASE_Y = 1400.0
 CHART = (3300.0, BASE_Y - 350)
 COL_X = [CHART[0] - 270 + 180 * k for k in range(4)]
@@ -927,11 +999,11 @@ def piece_state(i, t):
     slot = (COL_X[k], BASE_Y - 14 - 22 * j, 0.0, 120.0, 12.0)
     w = _loose(i, t0)
     cur = tuple(lerp(w[q], slot[q], p) for q in range(5))
-    return (*cur, lerp(base_a, 1.0, p) * (1 - prog(t, 51.0, 51.4)))
+    return (*cur, lerp(base_a, 1.0, p) * (1 - prog(t, 54.0, 54.4)))
 
 
 def draw_pieces(c, t):
-    if t >= 51.4:
+    if t >= 54.4:
         return
     for i in range(N_FIELD + 6):
         x, y, rz, L, T, a = piece_state(i, t)
@@ -944,7 +1016,7 @@ def draw_pieces(c, t):
         draw_bar(c, sx, 140 + 400 * d, 800 * d + 1, 4, 90.0, a * 0.9, color=(140, 165, 255))
 
 
-SNAPS = [(5.5, BX + 60, 1820, ROAD_Y), (12.0, CARD_C[0] + 220, CARD_C[0] + 700, CARD_C[1] + 410),
+SNAPS = [(5.5, BX + 60, 1820, ROAD_Y), (12.0, 1180, 1660, LINK_Y),
          (19.9, 2300, 2840, 1050)]
 
 
@@ -970,15 +1042,15 @@ def draw_link(c, t):
 
 
 def hours_shown(t):
-    """(month index, hours) currently shown: the month most recently filled; October without, then with,
-    the project's hours."""
-    k = max([m for m in range(4) if t >= month_done(m)], default=-1)
-    if k < 0:
-        return -1, 0
-    h = HOURS[k]
-    if k == 3 and t < CHIP_LAND + 0.3:
-        h = HOURS[3] - 2 * CCC_UNITS
-    return k, h
+    """(month index, hours) currently shown: the month most recently completed. October only counts once the
+    project's hours have landed, so the total shown is always a whole month (never October without them)."""
+    if t >= OCT_DONE:
+        return 3, HOURS[3]
+    k = max([m for m in range(3) if t >= month_done(m)], default=-1)
+    return (k, HOURS[k]) if k >= 0 else (-1, 0)
+
+
+OCT_DONE = CHIP_LAND + 0.25        # the 42 lands on its own beat
 
 
 def card_chart(t):
@@ -986,8 +1058,8 @@ def card_chart(t):
     p.text(44, 70, "Hours saved, logged by teams" if t < 30 else "Hours saved across all projects", 38, DIM, MED)
     k, h = hours_shown(t)
     if k >= 0:
-        g = prog(t, month_done(k), month_done(k) + 0.2, e_out_cubic)
-        big = 190 if (k == 3 and t >= CHIP_LAND + 0.3) else 170
+        g = prog(t, OCT_DONE if k == 3 else month_done(k), (OCT_DONE if k == 3 else month_done(k)) + 0.2, e_out_cubic)
+        big = 190 if k == 3 else 170
         col = BLUE
         p.text(40, 250, str(h), big, col, DSEMI, alpha=g)
         p.text(52 + text_width(str(h), DSEMI, big), 188, "hours saved", 50, WHITE, MED, alpha=g)
@@ -996,10 +1068,10 @@ def card_chart(t):
 
 
 def draw_chart(c, t):
-    if not 15.6 <= t < 51.4:
+    if not 15.6 <= t < 54.4:
         return
-    a = prog(t, 15.7, 16.2) * world_dim(t) * (1 - prog(t, 21.6, 22.2) * (1 - prog(t, 47.0, 47.5))) \
-        * (1 - prog(t, 51.0, 51.4))
+    a = prog(t, 15.7, 16.2) * world_dim(t) * (1 - prog(t, 21.6, 22.2) * (1 - prog(t, 50.0, 50.5))) \
+        * (1 - prog(t, 54.0, 54.4))
     wcard(c, t, card_chart(t), CHART[0], CHART[1], a)
     sx0, sy = ws(CHART[0] - 360, BASE_Y + 6, t)
     sx1, _ = ws(CHART[0] + 360, BASE_Y + 6, t)
@@ -1017,43 +1089,47 @@ def draw_chart(c, t):
         kk, _ = hours_shown(t)
         wtext(c, t, MONTHS[k], MED, 40, WHITE if kk == k else DIM, COL_X[k], BASE_Y + 70, a)
     # the project's own hours, landing on October in a lighter blue, with its name
-    if t >= 47.0:
+    if t >= 50.0:
         for u in range(CCC_UNITS):
             j = HOURS[3] // 2 - CCC_UNITS + u
             land = CHIP_LAND + 0.05 * u
             p = prog(t, land - 0.5, land, e_io_cubic)
-            src = sw(1480, 990, 48.2)     # where the chip leaves the project card's corner
+            src = (COL_X[3], BASE_Y - 14 - 22 * 20)     # where the chip arrives
             sxw = lerp(src[0], COL_X[3], p)
             syw = lerp(src[1], BASE_Y - 14 - 22 * j, p)
             if t >= CHIP_LAND - 0.5 + 0.05 * u:
-                wbar(c, t, sxw, syw, 120, 12, alpha=(1 - prog(t, 51.0, 51.4)), color=(150, 175, 255))
-        g = prog(t, CHIP_LAND + 0.2, CHIP_LAND + 0.5) * (1 - prog(t, 50.6, 51.0))
-        wtext(c, t, REPLY_B + "  +8 hours", MED, 44, (150, 175, 255), COL_X[3] + 70, BASE_Y - 14 - 22 * 21 - 30, g,
+                wbar(c, t, sxw, syw, 120, 12, alpha=(1 - prog(t, 54.0, 54.4)), color=(150, 175, 255))
+        g = prog(t, CHIP_LAND + 0.2, CHIP_LAND + 0.5) * (1 - prog(t, 53.6, 54.0))
+        wtext(c, t, REPLY_B + "  +8", MED, 40, (150, 175, 255), COL_X[3] - 80, BASE_Y - 14 - 22 * 21 - 24, g,
               "right")
 
 
 def draw_chip(c, t):
-    """'8 hours saved this month' lifts off the project and travels to the chart."""
-    if not LOGGED + 0.4 <= t < CHIP_LAND - 0.45:
+    """'+8 hours' lifts off the project's Live line and travels to October on the company's chart."""
+    t0, t1 = LOGGED + 0.4, CHIP_LAND - 0.45
+    if not t0 <= t < t1:
         return
-    p = prog(t, LOGGED + 0.4, CHIP_LAND - 0.45, e_io_cubic)
-    # from the card's footer to above October
-    a0 = ws(CARD_C[0] - CARD_W / 2 + 330, CARD_C[1] + CARD_H / 2 - 30, LOGGED + 0.4)
-    a1 = ws(COL_X[3], BASE_Y - 14 - 22 * 20, CHIP_LAND - 0.45)
-    x, y = lerp(a0[0], a1[0], p), lerp(a0[1], a1[1], p)
-    draw_bar(c, x, y, lerp(360, 120, p), lerp(40, 14, p), color=(150, 175, 255))
-    soft_word(c, "8 hours", MED, 30, WHITE, x - text_width("8 hours", MED, 30) / 2, y + 11,
-              1 - prog(t, LOGGED + 0.4 + 0.6 * (CHIP_LAND - LOGGED - 0.85), CHIP_LAND - 0.45))
+    p = prog(t, t0, t1, e_io_cubic)
+    a0 = ws(CARD_X0 + 560, CARD_Y0 + 598, t0)
+    a1 = ws(COL_X[3], BASE_Y - 14 - 22 * 20, t1)
+    lift = math.sin(math.pi * p) * 120
+    x, y = lerp(a0[0], a1[0], p), lerp(a0[1], a1[1], p) - lift
+    draw_bar(c, x, y, lerp(320, 86, p), lerp(68, 9, p), color=(150, 175, 255))
+    s = "+8 hours"
+    soft_word(c, s, SEMI, 40, (18, 22, 40), x - text_width(s, SEMI, 40) / 2, y + 14,
+              1 - prog(t, lerp(t0, t1, 0.55), lerp(t0, t1, 0.7)))
 
 
 # ---------------------------------------------------------------- the end: one line through all three
 
-RAIL = 51.2                       # the recap starts
+RAIL = 54.2                       # the recap starts
 RAIL_POS = [0.0, 1600.0, 3200.0]  # the three objects, laid out along one line (rail pixels)
-RAIL_STOPS = [(51.2, 0.0), (52.1, 0.0), (52.9, 1600.0), (53.6, 1600.0), (54.4, 3200.0)]
-PULL = (54.9, 55.6)               # pull back to see all three on the line
-LANDS = [56.15, 56.35, 56.55]     # each condenses into its bar in the mark
+RAIL_STOPS = [(54.2, 0.0), (55.1, 0.0), (55.9, 1600.0), (56.6, 1600.0), (57.4, 3200.0)]
+PULL = (57.9, 58.6)               # pull back to see all three on the line
+LANDS = [59.15, 59.35, 59.55]     # each condenses into its bar in the mark
 LABELS = ["Questions", "Ideas", "Impact"]
+RAIL_DY = 262                     # the line runs under the objects
+WORDMARK = 59.8
 
 
 def rail_cam(t):
@@ -1067,7 +1143,7 @@ def rail_cam(t):
 def rail_xy(k, t):
     """Screen centre and scale of rail object k: full size while the camera travels; small, side by side,
     once it pulls back."""
-    near = (960 + RAIL_POS[k] - rail_cam(t), 560.0, 1.0)
+    near = (960 + RAIL_POS[k] - rail_cam(t), 540.0, 1.0)
     far = (960 + (RAIL_POS[k] - 1600) * 0.36, 600.0, 0.36)
     p = prog(t, *PULL, e_io_quint)
     return tuple(lerp(near[q], far[q], p) for q in range(3))
@@ -1087,8 +1163,8 @@ def draw_end(c, t):
     if line_a > 0:
         x0, y0, s0 = rail_xy(0, t)
         x2, y2, s2 = rail_xy(2, t)
-        reach = lerp(x0, x2, prog(t, 51.9, 54.4, e_io_cubic))
-        draw_bar(c, (x0 + reach) / 2, y0 + 210 * s0, reach - x0, 6, alpha=line_a, color=(110, 140, 240))
+        reach = lerp(x0, x2, prog(t, RAIL + 0.7, RAIL_STOPS[-1][0], e_io_cubic))
+        draw_bar(c, (x0 + reach) / 2, y0 + RAIL_DY * s0, reach - x0, 6, alpha=line_a, color=(110, 140, 240))
     for k in range(3):
         x, y, s = rail_xy(k, t)
         cx, cy, L, T = logo_slot(k)
@@ -1099,23 +1175,23 @@ def draw_end(c, t):
             if k == 0:
                 place(c, card_question(t, claimed=True), x, y, 1.05 * s, g)
             elif k == 1:
-                place(c, card_project(LOGGED + 0.5), x, y, 0.8 * s, g)
+                place(c, card_project(LOGGED + 0.5), x, y, 0.7 * s, g)
             else:
                 w42 = text_width("42", DSEMI, 240)
                 soft_word(c, "42", DSEMI, 240, BLUE, x - w42 / 2 - 170 * s, y + 120 * s, g, 0.0, s)
                 soft_word(c, "hours saved", MED, 60, WHITE, x + (w42 / 2 - 140) * s, y + 40 * s, g, 0.0, s)
                 soft_word(c, "in October", REG, 60, DIM, x + (w42 / 2 - 140) * s, y + 112 * s, g, 0.0, s)
         if t >= land - 0.45:      # it condenses into its bar and takes its place in the mark
-            src = (x, y + 210 * s, [1100, 940, 700][k] * s, 18)
+            src = (x, y + RAIL_DY * s, [1100, 980, 700][k] * s, 18)
             bx = lerp(src[0], cx, q)
             by = lerp(src[1], cy, q)
             draw_bar(c, bx, by, max(lerp(src[2], L, q), 18), lerp(src[3], T, q))
         if t >= land:
             glint(c, t, cx, cy, land, 0.8)
-            la = prog(t, land - 0.1, land + 0.3) * (1 - prog(t, 58.0, 58.4))
+            la = prog(t, land - 0.1, land + 0.3) * (1 - prog(t, 61.0, 61.4))
             soft_word(c, LABELS[k], MED, 40, DIM, LOGO[k][0] - 40 - text_width(LABELS[k], MED, 40), cy + 14, la)
     for k in range(3):
-        ts = 56.8 + 0.12 * k
+        ts = WORDMARK + 0.12 * k
         u = prog(t, ts, ts + 0.5, e_io_cubic)
         if 0 < u < 1:
             x0, x1, yc = LOGO[k]
@@ -1124,8 +1200,8 @@ def draw_end(c, t):
 
 # ---------------------------------------------------------------- shake and punch (only on real hits)
 
-IMPACTS = [(5.5, 0.45), (12.0, 0.4), (19.9, 0.3), (22.5, 1.4), (DOCK, 0.3), (36.75, 0.2), (37.45, 0.2),
-           (FLAG, 0.25), (LANDS[-1], 0.9)]
+IMPACTS = [(5.5, 0.45), (12.0, 0.4), (19.9, 0.3), (22.5, 1.4), (DOCK, 0.3), (SEATS[1][2], 0.25),
+           (SEATS[2][2], 0.25), (FLAG, 0.25), (PLAN[0][3], 0.2), (LANDS[-1], 0.9)]
 
 
 def post(c, t):
@@ -1152,14 +1228,15 @@ def render_scene(t_film):
     n = int(round(t * FPS * 4))
     flash = 0.28 * prog(t, 22.47, 22.5, e_lin) * (1 - prog(t, 22.5, 22.9, e_out_cubic))
     c = background(t, n, flash)
-    end_fade = prog(t, 59.3, 60.1)
+    end_fade = prog(t, 62.3, 63.1)
 
     draw_chart(c, t)
     draw_pieces(c, t)
     draw_road(c, t)
     draw_link(c, t)
-    draw_board(c, t)
+    draw_grid(c, t)
     draw_card(c, t)
+    draw_seats(c, t)
     draw_passers(c, t)
     draw_pulse(c, t)
     draw_joiners(c, t)
@@ -1177,21 +1254,23 @@ def render_scene(t_film):
     line_words(c, t, "Spine is your", LIGHT, 92, WHITE, 720, 500, 23.5, 26.25, "left")
     line_words(c, t, "AI project manager.", DREG, 92, BLUE, 720, 616, 23.85, 26.25, "left")
     headline(c, t, "Every question finds someone who knows.", 27.5, 32.4, size=76)
-    headline(c, t, "Anyone can discover work worth joining.", 33.7, 35.9, size=76)
-    headline(c, t, "Teams form around good ideas.", 36.1, 38.2, size=76)
-    headline(c, t, "AI drafts the plan. The team owns it.", 38.4, 40.8, size=76)
-    headline(c, t, "Pulse spots work going quiet.", 41.0, 42.9, size=76)
-    headline(c, t, "People pick it back up.", 43.3, 45.9, size=76)
-    headline(c, t, "Impact everyone can see.", 46.1, 50.9, size=76)
-    line_words(c, t, "Illustrative data", REG, 24, DIM, W - 60, H - 48, 47.9, 50.9, "right", step=0.0, dur=0.4)
-    headline(c, t, "Knowledge becomes action.", 51.3, 53.5, size=76)
-    headline(c, t, "Action becomes impact.", 53.6, 55.8, size=76)
+    headline(c, t, "Anyone can discover work worth joining.", 33.7, 35.5, size=76)
+    headline(c, t, "Teams form around good ideas.", 36.3, 38.8, size=76)
+    headline(c, t, "AI drafts the plan. The team owns it.", 39.1, 41.8, size=76)
+    draw_stall(c, t)
+    headline(c, t, "Pulse spots work going quiet.", 43.45, 44.75, size=76)
+    headline(c, t, "The team gets a nudge.", 44.95, 46.5, size=76)
+    headline(c, t, "People pick it back up.", 46.65, 49.5, size=76)
+    headline(c, t, "Impact everyone can see.", 50.9, 53.9, size=76)
+    line_words(c, t, "Illustrative data", REG, 24, DIM, W - 60, H - 48, 50.9, 53.9, "right", step=0.0, dur=0.4)
+    headline(c, t, "Knowledge becomes action.", 54.3, 56.5, size=76)
+    headline(c, t, "Action becomes impact.", 56.6, 58.8, size=76)
 
     draw_end(c, t)
-    w0 = 56.8
-    g = prog(t, w0, w0 + 0.5, e_out_cubic)
+    g = prog(t, WORDMARK, WORDMARK + 0.5, e_out_cubic)
     soft_word(c, "Spine", DSEMI, 172, WHITE, 886, 527, g)   # the approved wordmark's size and position
-    line_words(c, t, "Give your company’s AI a spine.", LIGHT, 56, WHITE, W / 2, 712, 57.8, None, "center")
+    line_words(c, t, "Give your company’s AI a spine.", LIGHT, 56, WHITE, W / 2, 712, WORDMARK + 1.0, None,
+               "center")
     c = post(c, t)
     if end_fade > 0:
         c = c + (_bg_base() - c) * end_fade

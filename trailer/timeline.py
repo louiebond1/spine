@@ -1,10 +1,9 @@
-"""Spine launch film: "Holds it together" (journey cut, 60 s).
+"""Spine launch film: "Holds it together" (director's cut, 58 s).
 
-Dark, on a 120 BPM grid. Each everyday failure is underlined in Spine blue, and the underline
-snaps in two as its issue slams in; the halves fly to the edges and slam together into the Spine mark
-on "a spine.". Then the three problems become a journey along the top of frame (Questions, Builds,
-Hours saved): a marker travels along it through real Spine screens, one big headline each, and each
-stop lights up once Spine has solved it. At the end the line folds down into the logo's three bars.
+One continuous world seen through one camera. Three problems are shown, not told; "Your AI needs
+a spine." lines every loose piece up on a spine; the same three objects are then resolved, and each
+resolved connection parks in the top corner, where the Spine mark quietly assembles itself before it
+comes forward as the logo. See the notes above render_scene() for the whole choreography.
 """
 import math
 import os
@@ -19,17 +18,6 @@ from engine import (
     e_io_cubic, e_io_quint, e_out_cubic, e_out_quint, e_out_expo, e_in_cubic, e_lin,
 )
 
-TOTAL = 1800
-END_PLATE = TOTAL + 1      # no plate: every frame is rendered
-HANDOFF = END_PLATE
-
-FONT_DIR = os.environ.get("SPINE_FONT_DIR", "/usr/share/fonts/opentype/inter")
-LIGHT = "InterDisplay-Light.otf"
-DREG = "InterDisplay-Regular.otf"
-DSEMI = "InterDisplay-SemiBold.otf"
-MED = "Inter-Medium.otf"
-REG = "Inter-Regular.otf"
-SEMI = "Inter-SemiBold.otf"
 
 # Palette (dark). Spine blue is lifted for use on near-black.
 BG = np.array([16, 16, 19], np.float32)
@@ -45,17 +33,17 @@ GREEN = (74, 196, 120)
 
 STAGES = ["Idea", "Approval", "Recruiting", "Building", "Publishing", "Live"]
 
+FONT_DIR = os.environ.get("SPINE_FONT_DIR", "/usr/share/fonts/opentype/inter")
+LIGHT = "InterDisplay-Light.otf"
+DREG = "InterDisplay-Regular.otf"
+DSEMI = "InterDisplay-SemiBold.otf"
+MED = "Inter-Medium.otf"
+REG = "Inter-Regular.otf"
+SEMI = "Inter-SemiBold.otf"
+S = 2   # supersampling for card drawing
 BPM = 120
-BEAT = 60 / BPM          # 0.5 s; every cut, word and move sits on this grid
-# Shot starts (each shot gets its own gentle push-in).
-SHOTS = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 13.0, 17.0, 19.5, 22.0, 24.5, 27.0, 29.5, 32.0, 34.5, 37.0, 39.5, 42.5,
-         45.5, 48.5, 51.5, 60.0]
-KICK_FROM = 0.0          # the kick starts on the first frame
-HOURS = [6, 16, 30, 42]
-MONTHS = ["Jul", "Aug", "Sep", "Oct"]
+BEAT = 60 / BPM          # 0.5 s; every hit sits on this grid
 
-
-# ---------------------------------------------------------------- background
 
 @lru_cache(None)
 def _bg_base():
@@ -66,16 +54,9 @@ def _bg_base():
     return (BG + (GLOW - BG) * glow) * vig
 
 
-def kick_env(t):
-    # matches kick_on() in score.py
-    if 13.0 <= t < 14.0 or 53.0 <= t < 54.5 or t >= 57.5 or (12.0 <= t < 13.0 and (t - 12.0) >= 2 * BEAT):
-        return 0.0
-    return math.exp(-((t - KICK_FROM) % BEAT) / 0.11)
-
-
 def background(t, n, flash=0.0):
     c = _bg_base().copy()
-    pulse = 0.22 * kick_env(t)
+    pulse = 0.12 * kick_env(t)
     if pulse > 0:
         c += (_bg_base() - BG) * pulse
     rng = np.random.default_rng(n)
@@ -84,8 +65,6 @@ def background(t, n, flash=0.0):
         c += (np.array(BLUE_DEEP, np.float32) - c) * flash
     return c
 
-
-# ---------------------------------------------------------------- type
 
 @lru_cache(maxsize=2048)
 def _blurred(text, fname, size, r10):
@@ -126,11 +105,6 @@ def line_words(c, t, text, fname, size, color, x, base, t_in, t_out, align="left
         pre = text_width(" ".join(words[:i]) + (" " if i else ""), fname, size) * scale
         g = prog(t, t_in + step * i, t_in + step * i + dur, e_out_cubic)
         soft_word(c, w, fname, size, color, x0 + pre, base, g, out, scale)
-
-
-# ---------------------------------------------------------------- cards (real Spine details, dark-styled)
-
-S = 2   # supersampling for card drawing
 
 
 def _f(name, size):
@@ -199,131 +173,6 @@ def place(c, card_img, cx, cy, scale=1.0, alpha=1.0, shadow=True):
     blend(c, ix, iy, arr[..., 3] / 255.0 * alpha, arr[..., :3])
 
 
-def card_pain_question(t):
-    p = Pen(620, 150)
-    p.circle(48, 75, 22, fill=(38, 41, 50))
-    p.text(48, 81, "BC", 14, DIM, SEMI, anchor="ms")
-    p.text(88, 64, "Best way to anonymise client data?", 20, WHITE, MED)
-    p.text(88, 94, "Ben Carter  ·  Security  ·  2h 5m ago", 15, DIM)
-    p.rrect(480, 56, 592, 92, 9, outline=CARD_LINE)
-    p.text(536, 80, "Unclaimed", 14, DIM, MED, anchor="ms")
-    return p.done()
-
-
-def card_pain_build(t):
-    p = Pen(620, 150)
-    p.text(32, 60, "Contract Clause Checker", 20, WHITE, MED)
-    p.text(32, 88, "Mia Thompson  ·  Legal  ·  App", 15, DIM)
-    p.rrect(32, 108, 440, 116, 4, fill=(44, 47, 57))
-    p.rrect(32, 108, 32 + 408 * 3 / 7, 116, 4, fill=(84, 92, 116))
-    p.text(458, 117, "3 of 7 steps", 15, DIM)
-    p.text(588, 60, "Building", 14, DIM, MED, anchor="rs")
-    return p.done()
-
-
-def card_pain_impact(t):
-    """Nothing measured: an empty hours-saved chart."""
-    p = Pen(620, 190)
-    p.tracked(32, 44, "Hours saved", 12, DIM)
-    x0, x1, y0, y1 = 70, 588, 150, 70
-    for v in range(3):
-        y = y0 - (y0 - y1) * v / 2
-        p.line([(x0, y), (x1, y)], (40, 43, 52), 1)
-    for xd in range(int(x0), int(x1), 18):          # a flat dashed line at zero
-        p.line([(xd, y0), (min(xd + 9, x1), y0)], (70, 75, 92), 2)
-    for k in range(4):
-        p.text(x0 + 30 + (x1 - x0 - 60) * k / 3, 176, MONTHS[k], 13, DIM, MED, anchor="ms")
-    p.text((x0 + x1) / 2, 118, "No data yet", 17, DIM, MED, anchor="ms")
-    return p.done()
-
-
-def card_pulse(t, t0):
-    p = Pen(980, 410)
-    p.tracked(36, 52, "Pulse  ·  Worth your attention today", 12, DIM)
-    rows = [("Supplier Research Assistant", "Approval auto-approves in 6 hours unless someone reviews it", "Review", True),
-            ("Best way to anonymise client data?", "Ben Carter asked 2 hours ago and nobody has claimed it", "Claim", False),
-            ("Contract Clause Checker", "Mia Thompson's build has had no activity for 12 days", "Open", False)]
-    for k, (a, b, btn, primary) in enumerate(rows):
-        g = prog(t, t0 + 0.25 + 0.22 * k, t0 + 0.75 + 0.22 * k, e_out_cubic)
-        y = 112 + k * 98
-        if k:
-            p.line([(36, y - 40), (944, y - 40)], CARD_LINE, 1, alpha=g)
-        p.rrect(36, y - 26, 88, y + 26, 10, fill=(36, 39, 47), alpha=g)
-        p.circle(62, y, 9, outline=DIM, width=2, alpha=g)
-        p.text(108, y - 4, a, 19, WHITE, MED, alpha=g)
-        p.text(108, y + 24, b, 15, DIM, alpha=g)
-        if primary:
-            p.rrect(820, y - 22, 944, y + 22, 10, fill=BLUE_DEEP, alpha=g)
-            p.text(882, y + 6, btn + "  →", 16, (255, 255, 255), MED, anchor="ms", alpha=g)
-        else:
-            p.rrect(820, y - 22, 944, y + 22, 10, outline=BLUE, width=1, alpha=g)
-            p.text(882, y + 6, btn + "  →", 16, BLUE, MED, anchor="ms", alpha=g)
-    return p.done()
-
-
-PLAN_STEPS = [   # the last three are the seeded open steps; the six before them are invented to match the brief
-    ("Collect sample supplier invoices", "SK", "15 Sep"), ("Map the invoice approval steps", "JC", "18 Sep"),
-    ("Draft the extraction prompts", "MT", "22 Sep"), ("Build the first working version", "JC", "26 Sep"),
-    ("Connect to the finance inbox", "SK", "30 Sep"), ("Review results with the finance team", "MT", "3 Oct"),
-    ("Test against real supplier cases", "JC", "9 Oct"), ("Fix edge cases from testing", "MT", "14 Oct"),
-    ("Prepare for publishing", "JC", "16 Oct")]
-PLAN_ROW0, PLAN_DY = 166, 38          # first step row (card px) and row pitch
-PLAN_T0, PLAN_STEP_T = 0.95, 0.12     # the first step is written 0.95 s into the shot, then one every 0.12 s
-
-
-def card_project(t, t0):
-    """AI writes the build plan: nine steps, each with an owner and a date, from the project brief."""
-    p = Pen(980, 520)
-    p.tracked(36, 52, "Ideas & Projects  ·  Plan", 12, DIM)
-    p.text(36, 104, "AI Invoice Assistant", 30, WHITE, DSEMI)
-    p.text(36, 136, "Jamie Chen  ·  Finance  ·  App  ·  Target 19 November", 16, DIM)
-    p.text(944, 52, "Generated from project brief", 13, DIM, anchor="rs")
-    for k, (s_, who, d) in enumerate(PLAN_STEPS):
-        y = PLAN_ROW0 + PLAN_DY * k
-        gk = prog(t, t0 + PLAN_T0 + PLAN_STEP_T * k, t0 + PLAN_T0 + PLAN_STEP_T * k + 0.2, e_out_cubic)
-        if k:
-            p.line([(36, y - 6), (944, y - 6)], CARD_LINE, 1, alpha=gk)
-        p.rrect(36, y + 6, 54, y + 24, 4, outline=(80, 86, 104), width=1, alpha=gk)
-        n = int(len(s_) * prog(t, t0 + PLAN_T0 + PLAN_STEP_T * k, t0 + PLAN_T0 + PLAN_STEP_T * k + 0.25, e_lin))
-        p.text(72, y + 21, s_[:n], 16, WHITE, alpha=gk)
-        _avatar(p, 760, y + 15, who, r=14, size=11, alpha=gk)
-        p.text(800, y + 21, d, 15, DIM, alpha=gk)
-    return p.done()
-
-
-def card_value(t, t0):
-    p = Pen(980, 400)
-    p.tracked(36, 52, "Programme  ·  Value over time", 12, DIM)
-    p.rrect(760, 30, 944, 66, 10, outline=BLUE, width=1)
-    p.text(852, 54, "Hours saved", 14, BLUE, MED, anchor="ms")
-    x0, x1, y0, y1 = 90, 920, 320, 110
-    for v in (0, 20, 40, 60):
-        y = y0 - (y0 - y1) * v / 60
-        p.line([(x0, y), (x1, y)], (40, 43, 52), 1)
-        p.text(x0 - 16, y + 5, str(v), 13, DIM, anchor="rs")
-    pts = [(x0 + 30 + (x1 - x0 - 60) * k / 3, y0 - (y0 - y1) * HOURS[k] / 60) for k in range(4)]
-    g = prog(t, t0 + 0.4, t0 + 1.8, e_io_cubic)
-    if g > 0:
-        n = 60
-        seg = []
-        for i in range(n + 1):
-            u = i / n * 3 * g
-            k = min(int(u), 2)
-            f = u - k
-            seg.append((lerp(pts[k][0], pts[k + 1][0], f), lerp(pts[k][1], pts[k + 1][1], f)))
-        p.line(seg, BLUE, 3)
-    for k, (x, y) in enumerate(pts):
-        a = prog(t, t0 + 0.4 + 0.45 * k, t0 + 0.7 + 0.45 * k, e_out_cubic)
-        p.circle(x, y, 6, fill=BLUE, alpha=a)
-        p.text(x, 352, MONTHS[k], 14, DIM, MED, anchor="ms")
-        if k == 3:
-            p.text(x, y - 18, "42", 18, BLUE, SEMI, anchor="ms", alpha=a)
-    g2 = prog(t, t0 + 1.9, t0 + 2.4, e_out_cubic)
-    p.text(36, 386, "October: 42 hours  (Claude Onboarding Guide 14  ·  Expense Review Assistant 28)", 15, DIM, alpha=g2)
-    return p.done()
-
-
-
 def _avatar(p, x, y, initials, r=20, size=13, alpha=1.0):
     p.circle(x, y, r, fill=(38, 41, 50), alpha=alpha)
     p.text(x, y + size * 0.42, initials, size, DIM, SEMI, anchor="ms", alpha=alpha)
@@ -336,286 +185,6 @@ def _button(p, x0, y0, x1, y1, text, primary=False, alpha=1.0, size=16):
     else:
         p.rrect(x0, y0, x1, y1, 10, outline=BLUE, width=1, alpha=alpha)
         p.text((x0 + x1) / 2, (y0 + y1) / 2 + size * 0.36, text, size, BLUE, MED, anchor="ms", alpha=alpha)
-
-
-def _stages(p, t, t0, names, upto, y=190, x0=56, step=170, current=None):
-    """The small stepper: fills to stage index `upto` over a second."""
-    xs = [x0 + step * k for k in range(len(names))]
-    fill_to = lerp(0, upto, prog(t, t0 + 0.4, t0 + 1.4, e_io_cubic))
-    p.line([(xs[0], y), (xs[-1], y)], (52, 56, 68), 3)
-    p.line([(xs[0], y), (xs[0] + (xs[-1] - xs[0]) * fill_to / (len(names) - 1), y)], BLUE, 3)
-    for k, x in enumerate(xs):
-        if fill_to >= k - 1e-3:
-            p.circle(x, y, 11, fill=BLUE)
-        else:
-            p.circle(x, y, 10, fill=CARD, outline=(70, 75, 92), width=2)
-        cur = k == (upto if current is None else current)
-        p.text(x, y + 38, names[k], 14, WHITE if cur else DIM, SEMI if cur else MED, anchor="ms")
-
-
-def card_ask(t, t0):
-    """Help Desk: a question being asked (Sarah Kim's Excel question, from the thread mockup)."""
-    p = Pen(900, 330)
-    p.tracked(36, 52, "Help Desk  ·  Ask a question", 12, DIM)
-    title = "Can Claude analyse multiple Excel files?"
-    n = int(len(title) * prog(t, t0 + 0.3, t0 + 1.2, e_lin))
-    p.rrect(36, 76, 864, 126, 10, outline=CARD_LINE)
-    p.text(56, 109, title[:n], 22, WHITE, MED)
-    g = prog(t, t0 + 1.1, t0 + 1.5, e_out_cubic)
-    p.text(36, 166, "Sarah Kim  ·  Excel  ·  Just now", 16, DIM, alpha=g)
-    p.rrect(36, 190, 700, 290, 12, fill=(32, 36, 48), alpha=g)
-    p.text(56, 226, "Can Claude analyse multiple Excel files at once?", 16, WHITE, alpha=g)
-    p.text(56, 254, "I have several reports from different regions and want", 16, WHITE, alpha=g)
-    p.text(56, 278, "to compare them.", 16, WHITE, alpha=g)
-    p.rrect(740, 190, 864, 226, 10, outline=CARD_LINE, alpha=g)
-    p.text(802, 214, "Unclaimed", 14, DIM, MED, anchor="ms", alpha=g)
-    return p.done()
-
-
-def card_claim(t, t0):
-    p = Pen(860, 260)
-    p.tracked(36, 52, "Help Desk  ·  Unclaimed", 12, DIM)
-    p.text(36, 112, "Can Claude analyse multiple Excel files?", 27, WHITE, DSEMI)
-    p.text(36, 146, "Sarah Kim  ·  Excel  ·  2h ago", 16, DIM)
-    claimed = prog(t, t0 + 0.9, t0 + 1.2, e_out_cubic)
-    _button(p, 680, 84, 824, 128, "Claim  →", primary=True, alpha=1 - claimed)
-    p.rrect(36, 180, 230, 216, 10, outline=CARD_LINE, alpha=1 - claimed)
-    p.text(133, 204, "Unclaimed", 15, DIM, MED, anchor="ms", alpha=1 - claimed)
-    p.rrect(36, 180, 300, 216, 10, fill=(34, 44, 78), alpha=claimed)
-    p.text(168, 204, "Claimed by Alex Morgan", 15, BLUE, MED, anchor="ms", alpha=claimed)
-    _avatar(p, 790, 198, "AM", alpha=claimed)
-    return p.done()
-
-
-def card_thread(t, t0):
-    """The private chat (03-question-thread.png), shortened."""
-    p = Pen(940, 420)
-    p.tracked(36, 52, "Help Desk  ·  Private chat", 12, DIM)
-    p.text(36, 100, "Can Claude analyse multiple Excel files?", 24, WHITE, DSEMI)
-    p.text(36, 132, "Sarah Kim  ·  Excel  ·  Claimed by Alex Morgan", 15, DIM)
-    g1 = prog(t, t0 + 0.3, t0 + 0.7, e_out_cubic)
-    _avatar(p, 56, 186, "AM", alpha=g1)
-    p.text(92, 178, "Alex Morgan", 15, WHITE, SEMI, alpha=g1)
-    p.rrect(92, 190, 640, 232, 12, fill=(34, 44, 78), alpha=g1)
-    p.text(110, 218, "Yes, you can. Start with one file first.", 16, WHITE, alpha=g1)
-    g2 = prog(t, t0 + 0.9, t0 + 1.3, e_out_cubic)
-    _avatar(p, 56, 278, "SK", alpha=g2)
-    p.text(92, 270, "Sarah Kim", 15, WHITE, SEMI, alpha=g2)
-    p.rrect(92, 282, 760, 324, 12, fill=(32, 36, 48), alpha=g2)
-    p.text(110, 310, "I’ve attached a sample file. Could you also show how to compare several?", 16, WHITE,
-           alpha=g2)
-    p.rrect(92, 334, 380, 376, 10, fill=(38, 41, 50), alpha=g2)
-    p.rrect(106, 344, 126, 366, 4, fill=(84, 92, 116), alpha=g2)
-    p.text(138, 360, "Sales_Data_Sample.xlsx", 15, WHITE, MED, alpha=g2)
-    p.text(366, 360, "240 KB", 13, DIM, anchor="rs", alpha=g2)
-    g3 = prog(t, t0 + 1.5, t0 + 1.9, e_out_cubic)
-    _button(p, 744, 340, 904, 384, "Mark resolved", alpha=g3, size=15)
-    return p.done()
-
-
-def card_leaderboard(t, t0):
-    p = Pen(760, 400)
-    p.tracked(36, 52, "Leaderboard  ·  This month", 12, DIM)
-    p.text(724, 52, "Questions resolved", 13, DIM, MED, anchor="rs")
-    rows = [("Jamie Chen", "JC", 18), ("Mia Thompson", "MT", 14), ("Sarah Kim", "SK", 11), ("Louie Morris", "LM", 8),
-            ("Alex Morgan", "AM", 6)]
-    for k, (name, ini, pts) in enumerate(rows):
-        g = prog(t, t0 + 0.2 + 0.12 * k, t0 + 0.6 + 0.12 * k, e_out_cubic)
-        y = 104 + k * 62
-        if k == 4:
-            p.rrect(24, y - 30, 736, y + 30, 10, fill=(30, 38, 64), alpha=g)
-        elif k:
-            p.line([(36, y - 31), (724, y - 31)], CARD_LINE, 1, alpha=g)
-        p.text(48, y + 6, str(k + 1), 17, DIM, MED, anchor="ms", alpha=g)
-        _avatar(p, 104, y, ini, alpha=g)
-        p.text(140, y + 6, name, 18, WHITE, MED, alpha=g)
-        if k == 4:
-            p.rrect(262, y - 14, 306, y + 14, 6, fill=(40, 54, 100), alpha=g)
-            p.text(284, y + 5, "You", 13, BLUE, SEMI, anchor="ms", alpha=g)
-        p.text(690, y + 6, str(pts), 18, WHITE, MED, anchor="ms", alpha=g)
-    return p.done()
-
-
-def card_propose(t, t0):
-    """Propose an idea (04-propose-idea.png), shortened."""
-    p = Pen(960, 430)
-    p.tracked(36, 52, "Ideas & Projects  ·  Propose an idea", 12, DIM)
-    p.text(36, 92, "Name your idea", 14, DIM, MED)
-    p.rrect(36, 104, 924, 148, 10, outline=CARD_LINE)
-    name = "Supplier Risk Checker"
-    n = int(len(name) * prog(t, t0 + 0.2, t0 + 0.8, e_lin))
-    p.text(54, 133, name[:n], 18, WHITE)
-    g = prog(t, t0 + 0.8, t0 + 1.2, e_out_cubic)
-    p.text(36, 182, "What problem does it solve?", 14, DIM, MED, alpha=g)
-    p.rrect(36, 194, 924, 238, 10, outline=CARD_LINE, alpha=g)
-    p.text(54, 223, "We don’t have a simple way to spot risk signals on our existing suppliers.", 16, WHITE, alpha=g)
-    g2 = prog(t, t0 + 1.1, t0 + 1.5, e_out_cubic)
-    p.text(36, 272, "Who benefits?", 14, DIM, MED, alpha=g2)
-    p.rrect(36, 284, 460, 326, 10, outline=CARD_LINE, alpha=g2)
-    p.text(54, 311, "Procurement team", 16, WHITE, alpha=g2)
-    p.text(500, 272, "How it gets built", 14, DIM, MED, alpha=g2)
-    p.rrect(500, 284, 708, 400, 10, fill=(30, 38, 64), outline=BLUE, width=1, alpha=g2)
-    p.circle(524, 308, 7, outline=BLUE, width=2, alpha=g2)
-    p.circle(524, 308, 3.5, fill=BLUE, alpha=g2)
-    p.text(540, 314, "App", 16, WHITE, SEMI, alpha=g2)
-    p.text(518, 346, "Leadership approves", 13, DIM, alpha=g2)
-    p.text(518, 366, "before recruiting.", 13, DIM, alpha=g2)
-    p.rrect(716, 284, 924, 400, 10, outline=CARD_LINE, alpha=g2)
-    p.circle(740, 308, 7, outline=DIM, width=2, alpha=g2)
-    p.text(756, 314, "Cowork-native", 16, WHITE, SEMI, alpha=g2)
-    p.text(734, 346, "Leadership approves", 13, DIM, alpha=g2)
-    p.text(734, 366, "after the build.", 13, DIM, alpha=g2)
-    return p.done()
-
-
-def card_review(t, t0):
-    """AI review (05-ai-review.png): advisory scores that only the idea's owner sees."""
-    p = Pen(960, 440)
-    p.tracked(36, 52, "AI review  ·  Supplier Risk Checker", 12, DIM)
-    rows = [(8, "Feasibility", "Doable with the tools available and a clear build approach."),
-            (7, "Business value", "Solves a real need and could improve supplier due diligence."),
-            (7, "Resourcing confidence", "Realistic for the team size and timeframe."),
-            (4, "Originality", "Overlaps heavily with Supplier Research Assistant.")]
-    for k, (score, name, why) in enumerate(rows):
-        g = prog(t, t0 + 0.3 + 0.2 * k, t0 + 0.7 + 0.2 * k, e_out_cubic)
-        y = 100 + k * 74
-        if k:
-            p.line([(36, y - 26), (924, y - 26)], CARD_LINE, 1, alpha=g)
-        p.text(40, y + 22, str(score), 36, WHITE, DSEMI, alpha=g)
-        p.text(70, y + 22, "/10", 15, DIM, alpha=g)
-        p.text(160, y + 6, name, 18, WHITE, SEMI, alpha=g)
-        p.text(160, y + 32, why, 15, DIM, alpha=g)
-    g = prog(t, t0 + 1.3, t0 + 1.7, e_out_cubic)
-    p.text(36, 412, "These scores are advisory. They don’t decide whether your idea is approved.", 14, DIM,
-           alpha=g)
-    return p.done()
-
-
-def card_approval(t, t0):
-    """Admin approval (06-admin-approval.png), shortened."""
-    p = Pen(980, 360)
-    p.tracked(36, 52, "Awaiting your approval", 12, DIM)
-    p.text(36, 100, "Supplier Research Assistant", 28, WHITE, DSEMI)
-    p.text(36, 134, "Louie Morris  ·  Procurement  ·  App", 16, DIM)
-    rows = [("Problem", "Sourcing supplier information is slow and manual."), ("Who benefits", "Procurement team"),
-            ("Team size", "3 people"), ("Target date", "19 November 2026")]
-    for k, (a, b) in enumerate(rows):
-        y = 186 + k * 42
-        p.line([(36, y - 26), (620, y - 26)], CARD_LINE, 1)
-        p.text(36, y, a, 15, DIM)
-        p.text(180, y, b, 15, WHITE)
-    p.rrect(660, 30, 944, 330, 12, outline=CARD_LINE)
-    p.text(684, 76, "Auto-approves in 6h", 21, WHITE, DSEMI)
-    p.text(684, 116, "Submitted by Louie Morris", 14, DIM)
-    p.text(684, 140, "Auto-approves today at 16:00", 14, DIM)
-    pressed = prog(t, t0 + 1.4, t0 + 1.6, e_out_cubic)
-    p.rrect(684, 190, 920, 238, 10, fill=BLUE_DEEP)
-    p.text(802, 220, "Approve", 17, (255, 255, 255), MED, anchor="ms")
-    if pressed > 0:
-        p.rrect(684, 190, 920, 238, 10, outline=(255, 255, 255), width=2, alpha=pressed * (1 - prog(t, t0 + 1.8, t0 + 2.2)))
-    _button(p, 684, 252, 920, 300, "Return with note", size=16)
-    return p.done()
-
-
-JOINS = [0.9, 1.25, 1.6]     # seconds into the shot: each Join press adds one person
-
-
-def card_recruit(t, t0):
-    p = Pen(980, 330)
-    p.tracked(36, 52, "Ideas & Projects  ·  Team", 12, DIM)
-    p.text(36, 104, "Client Brief Generator", 30, WHITE, DSEMI)
-    p.text(36, 138, "Alex Morgan  ·  Sales  ·  Cowork-native", 16, DIM)
-    full = t0 + JOINS[-1] + 0.2
-    names = ["Idea", "Recruiting", "Building", "Approval", "Publishing", "Live"]
-    xs = [56 + 170 * k for k in range(6)]
-    fill_to = 1 + prog(t, full, full + 0.35, e_io_cubic)
-    p.line([(xs[0], 190), (xs[-1], 190)], (52, 56, 68), 3)
-    p.line([(xs[0], 190), (xs[0] + 170 * fill_to, 190)], BLUE, 3)
-    for k, x in enumerate(xs):
-        if fill_to >= k - 1e-3:
-            p.circle(x, 190, 11, fill=BLUE)
-        else:
-            p.circle(x, 190, 10, fill=CARD, outline=(70, 75, 92), width=2)
-        cur = k == (2 if t >= full + 0.2 else 1)
-        p.text(x, 228, names[k], 14, WHITE if cur else DIM, SEMI if cur else MED, anchor="ms")
-    n = 1 + sum(t >= t0 + j for j in JOINS)
-    for k, ini in enumerate(["AM", "LM", "PS", "BC"]):
-        x = 60 + k * 54
-        if k == 0 or t >= t0 + JOINS[k - 1]:
-            pop = 1.0 if k == 0 else 0.7 + 0.3 * e_out_cubic(prog(t, t0 + JOINS[k - 1], t0 + JOINS[k - 1] + 0.15, e_lin))
-            p.circle(x, 284, 22 * pop, fill=(38, 41, 50) if k == 0 else (40, 54, 100))
-            p.text(x, 289, ini, 13, DIM if k == 0 else WHITE, SEMI, anchor="ms")
-        else:
-            p.circle(x, 284, 21, outline=(80, 86, 104), width=2)
-    left = 4 - n
-    line = (f"{n} of 4 people  \u00b7  Next: Recruit {left} more {'person' if left == 1 else 'people'} to begin"
-            if left else "4 of 4 people  \u00b7  Team full")
-    p.text(290, 290, line, 17, WHITE, MED)
-    gone = prog(t, full, full + 0.25)
-    for j in JOINS:     # the button dips as each press lands
-        press = prog(t, t0 + j - 0.02, t0 + j + 0.04) * (1 - prog(t, t0 + j + 0.04, t0 + j + 0.2))
-        if press > 0:
-            p.rrect(790, 30, 944, 74, 10, fill=(40, 54, 100), alpha=press * (1 - gone))
-    _button(p, 790, 30, 944, 74, "Join project", alpha=1 - gone, size=15)
-    return p.done()
-
-
-LIVE_LAND, LIVE_STEP = 1.0, 0.2     # the first stage piece lands 1.0 s into the shot, then one every 0.2 s
-
-
-def card_live(t, t0):
-    p = Pen(980, 320)
-    p.tracked(36, 52, "Ideas & Projects", 12, DIM)
-    p.text(36, 104, "Claude Onboarding Guide", 30, WHITE, DSEMI)
-    p.text(36, 138, "Priya Shah  ·  People  ·  Cowork-native", 16, DIM)
-    # six pieces land one by one as the six stages (see ACTORS)
-    names = ["Idea", "Recruiting", "Building", "Approval", "Publishing", "Live"]
-    xs = [56 + 170 * k for k in range(6)]
-    lands = [t0 + LIVE_LAND + LIVE_STEP * k for k in range(6)]
-    done = sum(t >= x for x in lands)
-    head = clamp((t - lands[0]) / LIVE_STEP / 5) * 5
-    p.line([(xs[0], 190), (xs[-1], 190)], (52, 56, 68), 3)
-    if t >= lands[0]:
-        p.line([(xs[0], 190), (xs[0] + 170 * head, 190)], BLUE, 3)
-    for k, x in enumerate(xs):
-        if k < done:
-            p.circle(x, 190, 11, fill=BLUE)
-        else:
-            p.circle(x, 190, 10, fill=CARD, outline=(70, 75, 92), width=2)
-        p.text(x, 228, names[k], 14, WHITE if k == 5 else DIM, SEMI if k == 5 else MED, anchor="ms")
-    g = prog(t, lands[-1] + 0.15, lands[-1] + 0.5, e_out_cubic)
-    p.circle(44, 278, 7, fill=GREEN, alpha=g)
-    p.text(60, 284, "Live  ·  14 hours saved this month", 18, WHITE, MED, alpha=g)
-    p.text(944, 284, "Published by Alex Morgan", 15, DIM, anchor="rs", alpha=g)
-    return p.done()
-
-
-def card_home(t, t0):
-    """Home (01-home.png): what needs you, in order."""
-    p = Pen(980, 400)
-    p.tracked(36, 52, "Home  ·  Wednesday, 7 October", 12, DIM)
-    p.text(36, 104, "3 things need you", 32, WHITE, DSEMI)
-    rows = [("Supplier Research Assistant", "Auto-approves in 6h unless you review it", "Review", True),
-            ("Can Claude analyse multiple Excel files?", "Sarah Kim is waiting on your reply", "Reply", False),
-            ("Knowledge Search Assistant", "Ready for you to publish", "Open", False)]
-    for k, (a, b, btn, primary) in enumerate(rows):
-        g = prog(t, t0 + 0.3 + 0.2 * k, t0 + 0.7 + 0.2 * k, e_out_cubic)
-        y = 172 + k * 82
-        if k:
-            p.line([(36, y - 40), (944, y - 40)], CARD_LINE, 1, alpha=g)
-        p.rrect(36, y - 26, 88, y + 26, 10, fill=(36, 39, 47), alpha=g)
-        p.circle(62, y, 9, outline=DIM, width=2, alpha=g)
-        p.text(108, y - 4, a, 19, WHITE, MED, alpha=g)
-        p.text(108, y + 22, b, 15, DIM, alpha=g)
-        _button(p, 820, y - 22, 944, y + 22, btn + "  →", primary=primary, alpha=g)
-    return p.done()
-
-
-# ---------------------------------------------------------------- impacts (shake, punch, colour split)
-
-# (time, strength): every snap, the slam at 13.0, each fusion, and each logo bar landing.
-IMPACTS = [(4.5, 1.0), (6.5, 1.0), (8.5, 1.0), (13.0, 2.0), (27.0, 0.35), (36.3, 0.25), (44.5, 0.3), (45.5, 0.35), (51.5, 0.35),
-           (54.0, 0.8), (54.25, 0.8), (54.5, 1.3)]
 
 
 def impact_state(t):
@@ -631,147 +200,9 @@ def impact_state(t):
     return sx, sy, punch, split
 
 
-def snap_flash(t):
-    f = 0.0
-    for ti, a in IMPACTS:
-        u = t - ti
-        if 0 <= u < 0.4 and ti != 13.0:
-            f += 0.16 * min(a, 1.0) * math.exp(-u / 0.06)
-    return f
-
-
-def post(c, t):
-    """Shot push-in, impact punch and shake in one transform, then a brief colour split on hits."""
-    z = 1.0
-    if t < ROUTE_IN:           # no push-in during the journey, so the line along the top holds still
-        k = max(i for i, a in enumerate(SHOTS[:-1]) if a <= t)
-        z = 1 + 0.03 * (t - SHOTS[k]) / (SHOTS[k + 1] - SHOTS[k])
-    sx, sy, punch, split = impact_state(t)
-    z *= 1 + punch
-    z = max(z, 1 + 2 * max(abs(sx) / W, abs(sy) / H) + 0.002) if (sx or sy) else z
-    if z > 1.0005:
-        im = Image.fromarray(np.clip(c, 0, 255).astype(np.uint8))
-        w, h = W / z, H / z
-        x0, y0 = (W - w) / 2 - sx, (H - h) / 2 - sy
-        im = im.transform((W, H), Image.EXTENT, (x0, y0, x0 + w, y0 + h), Image.BICUBIC)
-        c = np.asarray(im, np.float32).copy()
-    d = int(round(split))
-    if d >= 1:
-        c[:, d:, 0] = c[:, :-d, 0].copy()
-        c[:, :-d, 2] = c[:, d:, 2].copy()
-    return c
-
-
-# ---------------------------------------------------------------- the six pieces
-
-# Three underlines, one under each problem, snap in two on the issue word. The six halves fly
-# to the edges of frame and slam together into the logo mark on "a spine.". After that they are gone.
-PAINS = [(4.0, "01  Questions", "Questions.", "Unanswered.", card_pain_question),
-         (6.0, "02  Ideas", "Builds.", "Gone quiet.", card_pain_build),
-         (8.0, "03  Impact", "Hours saved?", "Nobody knows.", card_pain_impact)]
-PAIN_SIZE = 104
-UL_Y, UL_T = 448, 14
-ANG = [12, -14, 10, -12, 15, -10]                    # tilt of each half after its snap: the inner ends drop (degrees)
-DEBRIS = [(250, 300), (1670, 250), (300, 800), (1620, 840), (170, 560), (1750, 560)]
-RING = [(560, 250), (1360, 250), (470, 790), (1450, 790), (300, 520), (1620, 520)]
-
-# The approved logo geometry (from the end card): bars (x0, x1, centre y).
-LOGO = [(736.0, 831.0, 397.5), (708.0, 835.0, 469.5), (700.0, 779.0, 541.5)]
-LOGO_C = (767.5, 469.5)
-MARK_AT, MARK_S = (W / 2, 400), 1.7                   # the mark on "a spine." (13 - 16 s)
-
-
-def half_slot(i, scale, cx, cy):
-    """Centre, length and thickness of half i of the logo bar i // 2, for the mark at (cx, cy)."""
-    x0, x1, yc = LOGO[i // 2]
-    mid = (x0 + x1) / 2
-    hx = (x0 + mid) / 2 if i % 2 == 0 else (mid + x1) / 2
-    return cx + (hx - LOGO_C[0]) * scale, cy + (yc - LOGO_C[1]) * scale, (x1 - x0) / 2 * scale, 40 * scale
-
-
-def bar_len(k):
-    return text_width(PAINS[k][2], LIGHT, PAIN_SIZE) + 40
-
-
-def snapped(i, t):
-    """Position of half i from its snap until it leaves the problem scene."""
-    k, s = i // 2, (-1 if i % 2 == 0 else 1)
-    L = bar_len(k)
-    u = max(0.0, t - PAINS[k][0] - 0.5)
-    sep = 1 - math.exp(-u / 0.09) * math.cos(2 * math.pi * 3.2 * u)      # a damped spring: kick, overshoot, settle
-    x = W / 2 + s * (L / 4 + 60 * sep)
-    y = UL_Y + 12 * sep
-    return x, y, L / 2, UL_T, 0.75 * ANG[i] * sep
-
-
-def drifting(i, t):
-    x, y = DEBRIS[i]
-    x += 10 * math.sin(0.7 * t + i)
-    y += 8 * math.sin(0.9 * t + 2 * i)
-    rz = ANG[i] * 1.6 + 3 * math.sin(0.5 * t + i) + 2.5 * kick_env(t) * (-1) ** i
-    return x, y, 120.0, 12.0, rz
-
-
-def piece(i, t):
-    """(x, y, L, T, rz, alpha, inner_flat) for half i, or None when it isn't on screen."""
-    k = i // 2
-    t0 = PAINS[k][0]
-    if t < t0 or t >= 16.6:
-        return None
-    if t < t0 + 0.5:                                   # the underline wipes in under the first line
-        L = bar_len(k)
-        D = L * e_out_expo(prog(t, t0 + 0.05, t0 + 0.4, e_lin))
-        if i % 2 == 0:
-            ln = min(D, L / 2)
-            return W / 2 - L / 2 + ln / 2, UL_Y, ln, UL_T, 0.0, 1.0, D >= L / 2
-        ln = max(0.0, D - L / 2)
-        return W / 2 + ln / 2, UL_Y, ln, UL_T, 0.0, 1.0, True
-    if t < t0 + 1.75:
-        x, y, L, T, rz = snapped(i, t)
-        return x, y, L, T, rz, 1.0, True
-    a = snapped(i, t0 + 1.75)
-    if t < 11.75:                                      # out to the edges, where they hang
-        p = prog(t, t0 + 1.75, t0 + 2.3, e_io_cubic)
-        b = drifting(i, t)
-        x, y, L, T, rz = (lerp(a[j], b[j], p) for j in range(5))
-        return x, y, L, T, rz, lerp(1.0, 0.75, p), True
-    if t < 12.85:                                      # pulled in around "Your AI needs a spine.", trembling
-        p = prog(t, 11.75, 12.4, e_io_cubic)
-        b = drifting(i, t)
-        tense = prog(t, 12.0, 12.85, e_in_cubic)
-        x = lerp(b[0], RING[i][0], p) + 5 * tense * math.sin(53 * t + i)
-        y = lerp(b[1], RING[i][1], p) + 4 * tense * math.cos(47 * t + 2 * i)
-        rz = lerp(b[4], ANG[i] * 0.6, p) + 7 * tense * math.sin(41 * t + i)
-        return x, y, lerp(b[2], 150, p), lerp(b[3], 16, p), rz, lerp(0.75, 1.0, p), True
-    mx = MARK_AT[0] - 1700 * prog(t, 16.2, 16.55, e_in_cubic)
-    sc = MARK_S * (1 + 0.06 * prog(t, 13.0, 16.2, e_lin))
-    sx_, sy_, sL, sT = half_slot(i, sc, mx, MARK_AT[1])
-    if t < 13.0:                                       # the slam: accelerating into the slot
-        p = prog(t, 12.85, 13.0, e_in_cubic)
-        x, y = lerp(RING[i][0], sx_, p), lerp(RING[i][1], sy_, p)
-        return x, y, lerp(150, sL, p), lerp(16, sT, p), lerp(ANG[i] * 0.6, 0, p), 1.0, True
-    return sx_, sy_, sL, sT, 0.0, 1.0, True
-
-
 def draw_bar(c, x, y, L, T, rz=0.0, alpha=1.0, rl=1.0, rr=1.0, color=None):
     draw_segment(c, SCREEN_CAM, default_seg(x=x, y=y, L=L, T=T, rz=rz, rl=rl, rr=rr,
                                             alpha=alpha, flat=True, color=color))
-
-
-def sparks(c, t, x0, y0, t0, seed, n=12, spread=1.0):
-    u = t - t0
-    if not 0 <= u < 0.55:
-        return
-    rng = np.random.default_rng(seed)
-    for _ in range(n):
-        a = rng.uniform(-math.pi, math.pi)
-        v = rng.uniform(380, 950) * spread
-        life = rng.uniform(0.3, 0.55)
-        if u > life:
-            continue
-        x = x0 + math.cos(a) * v * u
-        y = y0 + math.sin(a) * v * u + 900 * u * u
-        draw_dot(c, x, y, rng.uniform(1.6, 3.2), (200, 214, 255), 1 - u / life)
 
 
 def glint(c, t, x, y, t0, size=1.0):
@@ -779,250 +210,6 @@ def glint(c, t, x, y, t0, size=1.0):
     if 0 <= u < 0.4:
         draw_dot(c, x, y, 46 * size, (150, 175, 255), 0.5 * math.exp(-u / 0.08), blur=18 * size)
         draw_dot(c, x, y, 7 * size, (255, 255, 255), math.exp(-u / 0.06))
-
-
-def draw_pieces(c, t):
-    if t >= 13.0:
-        # the mark: one bar per pair, with a glint where the halves met
-        mx = MARK_AT[0] - 1700 * prog(t, 16.2, 16.55, e_in_cubic)
-        sc = MARK_S * (1 + 0.06 * prog(t, 13.0, 16.2, e_lin))
-        if t < 16.6:
-            for k, (x0, x1, yc) in enumerate(LOGO):
-                cx = mx + ((x0 + x1) / 2 - LOGO_C[0]) * sc
-                cy = MARK_AT[1] + (yc - LOGO_C[1]) * sc
-                draw_bar(c, cx, cy, (x1 - x0) * sc, 40 * sc)
-                glint(c, t, cx, cy, 13.0, 1.6)
-            u = t - 13.0
-            if u < 0.6:   # shockwave
-                draw_dot(c, MARK_AT[0], MARK_AT[1], 120 + 1500 * e_out_cubic(u / 0.6), (120, 150, 255),
-                         0.5 * (1 - u / 0.6), ring=6)
-        return
-    for i in range(6):
-        s = piece(i, t)
-        if s is None:
-            continue
-        x, y, L, T, rz, a, flat = s
-        left = i % 2 == 0
-        draw_bar(c, x, y, L, T, rz, a, rl=1.0 if left else (0.0 if flat else 1.0),
-                 rr=(0.0 if flat else 1.0) if left else 1.0)
-    for k, (t0, *_r) in enumerate(PAINS):
-        sparks(c, t, W / 2, UL_Y, t0 + 0.5, 40 + k)
-        glint(c, t, W / 2, UL_Y, t0 + 0.5)
-
-
-# ---------------------------------------------------------------- type that slams in on a hit
-
-def slam_line(c, t, text, fname, size, color, cx, base, t_hit, t_out):
-    if t < t_hit - 0.05:
-        return
-    s = 1 + 0.38 * (1 - e_out_expo(prog(t, t_hit - 0.05, t_hit + 0.22, e_lin)))
-    g = prog(t, t_hit - 0.05, t_hit + 0.02, e_lin)
-    out = prog(t, t_out, t_out + 0.22, e_io_cubic) if t_out is not None else 0.0
-    total = text_width(text, fname, size) * s
-    soft_word(c, text, fname, size, color, cx - total / 2, base + 30 * (s - 1), g, out, s)
-
-
-# ---------------------------------------------------------------- scenes
-
-def pain(c, t, t0, kicker, l1, l2, card_fn):
-    """One everyday failure: a label, the subject with its underline, the issue slamming in, a card."""
-    t1 = t0 + 1.78
-    if not t0 - 0.1 <= t < t1 + 0.6:
-        return
-    line_words(c, t, l1, LIGHT, PAIN_SIZE, WHITE, W / 2, 410, t0, t1, "center")
-    slam_line(c, t, l2, DREG, PAIN_SIZE, BLUE, W / 2, 604, t0 + 0.5, t1)
-    g = prog(t, t0 + 0.5, t0 + 0.8, e_out_cubic) * (1 - prog(t, t1, t1 + 0.22))
-    place(c, card_fn(t), W / 2, 795 + 18 * (1 - g), 1.05, g)
-
-
-# (start, end, card, headline). One big line per scene; the screen shows the rest.
-SHOTS_HOW = [
-    # Questions
-    (17.0, 19.5, card_ask, "Ask anything about AI."),
-    (19.5, 22.0, card_claim, "Someone who knows picks it up."),
-    (22.0, 24.5, card_thread, "Sorted, one to one."),
-    (24.5, 27.0, card_leaderboard, "Helpers get the credit."),
-    # Builds
-    (27.0, 29.5, card_propose, "Anyone can pitch an idea."),
-    (29.5, 32.0, card_review, "AI reviews it, privately."),
-    (32.0, 34.5, card_approval, "Approvals can’t stall."),
-    (34.5, 37.0, card_recruit, "A team forms around it."),
-    (37.0, 39.5, card_project, "AI writes the build plan."),
-    (39.5, 42.5, card_pulse, "Nothing goes quiet unnoticed."),
-    (42.5, 45.5, card_live, "From idea to Live."),
-    # Hours saved
-    (45.5, 48.5, card_home, "Everyone knows what to do first."),
-    (48.5, 51.5, card_value, "Every hour saved, counted."),
-]
-LOGO_T = 54.0     # the first logo bar locks here
-
-
-# ---------------------------------------------------------------- the journey along the top
-#
-# The three problems from the opening stay at the top as stops on one line. A marker travels along
-# it; each stop lights up once Spine has solved that problem. The marker is also the piece that drops
-# into each screen (ACTORS). At the end the line comes down and its three blue sections become the
-# logo's three bars.
-
-ROUTE_Y = 112
-ROUTE_X0 = 240
-STOPS = [(720, "Questions", 27.0), (1200, "Builds", 45.5), (1680, "Hours saved", 51.5)]   # (x, label, solved at)
-ROUTE_IN = 16.6
-ROUTE_DOWN = (51.7, 52.5)       # the line glides to the centre of frame
-CHAPTERS = [(17.0, 27.0, ROUTE_X0, 720), (27.0, 45.5, 720, 1200), (45.5, 51.5, 1200, 1680)]
-
-
-def route_y(t):
-    return lerp(ROUTE_Y, H / 2, prog(t, *ROUTE_DOWN, e_io_cubic))
-
-
-def marker_x(t):
-    if t < CHAPTERS[0][0]:
-        return ROUTE_X0
-    for a, b, x0, x1 in CHAPTERS:
-        if a <= t < b:
-            return lerp(x0, x1, prog(t, a, b, e_lin) * 0.85 + 0.15 * prog(t, b - 0.6, b, e_io_cubic))
-    return CHAPTERS[-1][3]
-
-
-def draw_route(c, t):
-    if t < ROUTE_IN or t >= LOGO_T - 0.7 + 0.5 + 0.1:
-        return
-    y = route_y(t)
-    grow = e_out_expo(prog(t, ROUTE_IN, ROUTE_IN + 0.6, e_lin))
-    x_end = lerp(ROUTE_X0, STOPS[-1][0], grow)
-    mx = marker_x(t)
-    fold = t >= LOGO_T - 0.7            # from here the three sections become the logo's bars (see logo())
-    if not fold:
-        draw_bar(c, (ROUTE_X0 + x_end) / 2, y, x_end - ROUTE_X0, 4, color=(52, 57, 72))
-        if mx > ROUTE_X0 + 1:
-            draw_bar(c, (ROUTE_X0 + mx) / 2, y, mx - ROUTE_X0, 6)
-    fade = 1 - prog(t, 51.8, 52.2)
-    for k, (sx, name, solved) in enumerate(STOPS):
-        a = prog(t, ROUTE_IN + 0.2 + 0.12 * k, ROUTE_IN + 0.6 + 0.12 * k) * fade
-        if a <= 0:
-            continue
-        lit = t >= solved
-        current = not lit and (k == 0 or t >= STOPS[k - 1][2])
-        if lit:
-            draw_dot(c, sx, y, 11, BLUE, a)
-            glint(c, t, sx, y, solved, 1.0)
-        else:
-            draw_dot(c, sx, y, 10, (16, 16, 19), a)
-            draw_dot(c, sx, y, 10, WHITE if current else DIM, a, ring=2.5)
-        col = BLUE if lit else WHITE if current else DIM
-        line_words(c, t, name, MED, 32, col, sx, y - 34, ROUTE_IN + 0.25 + 0.12 * k, 51.8, "center", step=0.0)
-    if 17.0 <= t < 51.6:
-        draw_dot(c, mx, y, 24, (90, 120, 255), 0.35 * fade, blur=12)
-        draw_dot(c, mx, y, 8, (220, 228, 255), fade)
-
-
-
-
-# ---------------------------------------------------------------- the piece does the work
-#
-# In every explainer shot a piece peels off the headline's underline, dives into the screen and
-# becomes the thing the line describes (the claim, the reply, the approval, the plan, the chart).
-# Keys are (time after shot start, target, alpha). Targets: "peel" (the underline's end),
-# ("c", u0, v0, u1, v1) a rectangle in card pixels, ("d", u, v, size) a dot-sized piece in card
-# pixels, or ("s", x, y, L, T) screen pixels. The card's own timing is shifted by CARD_OFF so its
-# content builds the moment the piece lands.
-
-CARD_DIM = {card_ask: (900, 330), card_claim: (860, 260), card_thread: (940, 420), card_leaderboard: (760, 400),
-            card_propose: (960, 430), card_review: (960, 440), card_approval: (980, 360),
-            card_recruit: (980, 330), card_project: (980, 520), card_live: (980, 320), card_pulse: (980, 410),
-            card_home: (980, 400), card_value: (980, 400)}
-CARD_OFF = {card_ask: 1.0, card_claim: 0.55, card_thread: 0.95, card_leaderboard: 0.0, card_propose: 1.05,
-            card_review: 0.9, card_approval: -0.1, card_recruit: 0.0, card_project: 0.0, card_live: 0.0,
-            card_pulse: 1.2, card_home: 1.2, card_value: 1.0}
-
-
-def _land(r, rect, hold=0.25):
-    """Arrive on rect at r, then dissolve into it."""
-    return [(r, rect, 1.0), (r + hold, rect, 0.0)]
-
-
-def _scan(rs, rects):
-    keys = [(r, rc, 1.0) for r, rc in zip(rs, rects)]
-    return keys + [(rs[-1] + 0.25, rects[-1], 0.0)]
-
-
-_HOME_ROWS = [("c", 30, 172 + k * 82 - 36, 950, 172 + k * 82 + 36) for k in range(3)]
-_REVIEW_ROWS = [("c", 30, 100 + k * 74 - 26, 930, 100 + k * 74 + 44) for k in range(4)]
-_PLAN_ROWS = [("c", 30, PLAN_ROW0 + PLAN_DY * k - 4, 950, PLAN_ROW0 + PLAN_DY * k + 32) for k in range(9)]
-_VALUE_PTS = [("d", 90 + 30 + (920 - 90 - 60) * k / 3, 320 - 210 * HOURS[k] / 60, 18) for k in range(4)]
-
-ACTORS = {
-    card_ask: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 36, 76, 864, 126))],
-    card_claim: [[(1.1, "peel", 1.0)] + _land(1.45, ("c", 36, 180, 300, 216))],
-    card_thread: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 92, 190, 640, 232))],
-    # the piece splits into five bars, each as long as that person's points
-    card_leaderboard: [[(0.75, "peel", 1.0), (1.05 + 0.07 * k, ("c", 130, 104 + 62 * k - 22,
-                                                               130 + 540 * pts / 18, 104 + 62 * k + 22), 1.0),
-                        (1.8, ("c", 130, 104 + 62 * k - 22, 130 + 540 * pts / 18, 104 + 62 * k + 22), 1.0),
-                        (2.0, ("c", 130, 104 + 62 * k - 22, 130 + 540 * pts / 18, 104 + 62 * k + 22), 0.0)]
-                       for k, pts in enumerate((18, 14, 11, 8, 6))],
-    card_propose: [[(0.9, "peel", 1.0)] + _land(1.2, ("c", 36, 104, 924, 148))],
-    card_review: [[(0.9, "peel", 1.0)] + _scan([1.2, 1.4, 1.6, 1.8], _REVIEW_ROWS)],
-    card_approval: [[(0.9, "peel", 1.0)] + _land(1.25, ("c", 684, 190, 920, 238))],
-    # three pieces drop from the marker onto Join project, one per new team member
-    card_recruit: [[(j - 0.3, "peel", 1.0)] + _land(j, ("c", 790, 30, 944, 74), 0.15) for j in JOINS],
-    # the piece writes the plan, row by row
-    card_project: [[(0.7, "peel", 1.0)] + _scan([PLAN_T0 + PLAN_STEP_T * k for k in range(9)], _PLAN_ROWS)],
-    # six pieces shoot out of the underline one after another and become the six stages
-    card_live: [[(LIVE_LAND - 0.3 + LIVE_STEP * k, "peel", 1.0),
-                 (LIVE_LAND + LIVE_STEP * k, ("c", 45 + 170 * k, 179, 67 + 170 * k, 201), 1.0),
-                 (LIVE_LAND + LIVE_STEP * k + 0.12, ("c", 45 + 170 * k, 179, 67 + 170 * k, 201), 0.0)]
-                for k in range(6)],
-    # the piece drops to the foot of the card and becomes a flat line that beats (draw_heartbeat)
-    card_pulse: [[(0.9, "peel", 1.0), (1.15, ("c", 36, 376, 60, 380), 1.0), (1.3, ("c", 36, 376, 60, 380), 0.0)]],
-    card_value: [[(1.1, "peel", 1.0)] + [(1.4 + 0.4667 * k, p, 1.0) for k, p in enumerate(_VALUE_PTS)]
-                 + [(3.0, _VALUE_PTS[-1], 0.0)]],
-    # Home: the piece splits into the logo's three bars, which become the three things that need you
-    card_home: [[(0.9, "peel", 1.0), (1.25, ("c", 40 + (LOGO[k][0] - 700) * 1.2, 196 + 46 * k - 12,
-                                              40 + (LOGO[k][1] - 700) * 1.2, 196 + 46 * k + 12), 1.0)] + _land(1.5 + 0.2 * k, _HOME_ROWS[k])
-                for k in range(3)],
-}
-
-
-def _rect_of(target, shot_x, cy, dims, scale, peel):
-    """(x, y, L, T) on screen for a key target."""
-    if target == "peel":
-        return peel
-    cw, ch = dims
-    to_x = lambda u: shot_x + (u - cw / 2) * scale
-    to_y = lambda v: cy + (v - ch / 2) * scale
-    if target[0] == "c":
-        _, u0, v0, u1, v1 = target
-        return ((to_x(u0) + to_x(u1)) / 2, (to_y(v0) + to_y(v1)) / 2, (u1 - u0) * scale, (v1 - v0) * scale)
-    if target[0] == "d":
-        _, u, v, s_ = target
-        return to_x(u), to_y(v), s_ * scale, s_ * scale
-    return target[1:]
-
-
-def draw_actor(c, t, a, keys, shot_x, cy, dims, scale, peel):
-    if not keys or t < a + keys[0][0] or t > a + keys[-1][0]:
-        return
-    for (r0, g0, a0), (r1, g1, a1) in zip(keys, keys[1:]):
-        if a + r0 <= t <= a + r1:
-            p = prog(t, a + r0, a + r1, e_io_cubic)
-            A = _rect_of(g0, shot_x, cy, dims, scale, peel)
-            B = _rect_of(g1, shot_x, cy, dims, scale, peel)
-            x, y, L, T = (lerp(A[j], B[j], p) for j in range(4))
-            alpha = lerp(a0, a1, p) * lerp(1.0, 0.38, clamp((T - 12) / 18))   # thick = a see-through highlight
-            r = min(1.0, 10 / max(T / 2, 1e-3))      # rounded like the UI's 10 px corners once it is large
-            draw_bar(c, x, y, max(L, T), T, alpha=alpha, rl=r, rr=r)
-            break
-    for r, g, al in keys[1:]:
-        if al > 0:
-            X = _rect_of(g, shot_x, cy, dims, scale, peel)
-            glint(c, t, X[0], X[1], a + r, 0.7)
-
-
-# ---------------------------------------------------------------- Pulse: a heartbeat across the card
-
-BEATS = [0.25, 0.47, 0.69]          # where along the line each beat sits (matches the rows' reveal times)
 
 
 def draw_polyline(c, pts, width, color, alpha=1.0):
@@ -1039,106 +226,642 @@ def draw_polyline(c, pts, width, color, alpha=1.0):
     blend(c, x0, y0, m * alpha, color)
 
 
-def draw_heartbeat(c, t, a, shot_x, cy, dims, scale):
-    t0, dur = a + 1.2, 1.0
-    if t < t0:
-        return
-    alpha = 1 - prog(t, a + 2.5, a + 2.8)
-    cw, ch = dims
-    X = lambda u: shot_x + (u - cw / 2) * scale
-    Y = lambda v: cy + (v - ch / 2) * scale
-    u0, u1, v = 36, 944, 378
-    head = u0 + (u1 - u0) * clamp((t - t0) / dur)
-    blip = [(-24, 0), (-16, 4), (-8, -34), (0, 22), (8, -6), (16, 0)]
-    pts = [(u0, v)]
-    for f in BEATS:
-        bx = u0 + (u1 - u0) * f
-        for du, dv in blip:
-            if bx + du <= head:
-                pts.append((bx + du, v + dv))
-    pts.append((head, v))
-    draw_polyline(c, [(X(u), Y(vv)) for u, vv in pts], 3.0, (120, 150, 255), alpha)
-    if t < t0 + dur:
-        draw_dot(c, X(head), Y(v), 5, (210, 222, 255), alpha)
-        draw_dot(c, X(head), Y(v), 22, (90, 120, 255), 0.4 * alpha, blur=10)
-    for f in BEATS:
-        glint(c, t, X(u0 + (u1 - u0) * f), Y(v - 34), t0 + dur * f, 0.6)
+# ================================================================ the film
+#
+# One continuous world, seen through one camera. Three problems are shown, not told:
+#   Questions go unanswered   a question is sent, the line ahead of it snaps, it is left stranded
+#                             while everything else keeps moving past.
+#   Ideas lose momentum       an idea travels the six stages, the track ahead snaps at Building,
+#                             and it stalls in silence.
+#   Impact goes unseen        pulled back: the company's activity drifts about as small segments,
+#                             and none of it reaches an empty hours-saved chart.
+# "Your AI needs a spine.": a spine draws down the frame and every loose piece snaps into line on it.
+# Then the same three objects are resolved, and each resolved connection parks in the top corner,
+# where, unnoticed, the Spine mark assembles itself. At the end it comes forward and becomes the logo.
 
+TOTAL = 1740                 # 58 s
+END_PLATE = TOTAL + 1
+HANDOFF = END_PLATE
+BPM = 120
+BEAT = 60 / BPM
+HOURS = [6, 16, 30, 42]
+MONTHS = ["Jul", "Aug", "Sep", "Oct"]
+
+# The approved logo geometry (end card): bars (x0, x1, centre y), and its centre.
+LOGO = [(736.0, 831.0, 397.5), (708.0, 835.0, 469.5), (700.0, 779.0, 541.5)]
+LOGO_C = (767.5, 469.5)
+HUD_C, HUD_S = (112.0, 112.0), 0.42      # where the mark quietly assembles, top left
+
+
+def kick_env(t):
+    # matches kick_on() in score.py
+    if not kick_on(t):
+        return 0.0
+    return math.exp(-(t % BEAT) / 0.11)
+
+
+def kick_on(t):
+    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (25.5 <= t < 48.5) or (50.5 <= t < 56.0)
+
+
+# ---------------------------------------------------------------- camera
+
+CAM = [  # (time, (centre x, centre y, zoom)) in world pixels; held between equal keys
+    (0.0, (960, 560, 0.60)), (3.7, (960, 560, 0.64)), (4.4, (960, 540, 1.0)),
+    (9.4, (960, 540, 1.0)), (10.3, (960, 1400, 1.0)),
+    (15.3, (960, 1400, 1.0)), (17.2, (1300, 900, 0.45)),
+    (25.0, (1300, 900, 0.45)), (25.9, (1060, 560, 1.0)),
+    (31.4, (1060, 560, 1.0)), (32.3, (960, 1400, 1.0)),
+    (41.7, (960, 1400, 1.0)), (42.8, (2700, 1120, 0.8)),
+    (58.0, (2700, 1120, 0.8)),
+]
+
+
+def cam(t):
+    for (ta, a), (tb, b) in zip(CAM, CAM[1:]):
+        if ta <= t <= tb:
+            p = prog(t, ta, tb, e_io_quint)
+            return tuple(lerp(a[k], b[k], p) for k in range(3))
+    return CAM[-1][1]
+
+
+def ws(x, y, t):
+    """World to screen."""
+    cx, cy, z = cam(t)
+    return (x - cx) * z + W / 2, (y - cy) * z + H / 2
+
+
+def sw(x, y, t):
+    """Screen to world."""
+    cx, cy, z = cam(t)
+    return (x - W / 2) / z + cx, (y - H / 2) / z + cy
+
+
+def wbar(c, t, x, y, L, T, rz=0.0, alpha=1.0, rl=1.0, rr=1.0, color=None):
+    sx, sy = ws(x, y, t)
+    z = cam(t)[2]
+    if -400 < sx < W + 400 and -200 < sy < H + 200:
+        draw_bar(c, sx, sy, max(L * z, T * z), max(T * z, 1.2), rz, alpha, rl, rr, color)
+
+
+def wtext(c, t, text, fname, size, color, x, base, g, align="center"):
+    """Type placed in the world (scales with the camera)."""
+    z = cam(t)[2]
+    sx, sy = ws(x, base, t)
+    w = text_width(text, fname, size) * z
+    x0 = sx - (w / 2 if align == "center" else 0 if align == "left" else w)
+    soft_word(c, text, fname, size, color, x0, sy, g, 0.0, z)
+
+
+def wcard(c, t, img, x, y, alpha=1.0, scale=1.0):
+    sx, sy = ws(x, y, t)
+    place(c, img, sx, sy, cam(t)[2] * scale, alpha)
+
+
+def headline(c, t, text, t_in, t_out, y=190, size=80, color=WHITE, fname=None):
+    line_words(c, t, text, fname or LIGHT, size, color, W / 2, y, t_in, t_out, "center")
+
+
+# ---------------------------------------------------------------- 1. the question
+
+BX0, BX = 700.0, 1060.0          # the question's start and where it is stranded (world x)
+BY, ROAD_Y, LANE_Y = 450.0, 640.0, 770.0
+
+
+def bubble_x(t):
+    return lerp(BX0, BX, prog(t, 4.6, 5.65, e_out_cubic))
+
+
+def bubble_state(t):
+    if t >= 27.2:
+        return "claimed"
+    if t >= 8.5:
+        return "Asked 3 days ago"
+    if t >= 7.25:
+        return "Asked 1 day ago"
+    return "Asked 2 hours ago"
+
+
+def card_question(t):
+    p = Pen(1100, 236)
+    p.circle(64, 66, 28, fill=(38, 41, 50))
+    p.text(64, 75, "SK", 20, DIM, SEMI, anchor="ms")
+    p.text(110, 76, "Sarah Kim  ·  Excel", 28, DIM)
+    p.text(40, 154, "Can Claude analyse multiple Excel files?", 48, WHITE, DSEMI)
+    st = bubble_state(t)
+    if st == "claimed":
+        p.text(40, 210, "Claimed by Alex Morgan", 28, BLUE, MED)
+    else:
+        p.text(40, 210, st, 28, DIM)
+    return p.done()
+
+
+def card_reply(t):
+    p = Pen(1000, 124)
+    p.rrect(0, 0, 999, 123, 14, fill=(34, 44, 78))
+    p.circle(58, 62, 28, fill=(38, 41, 50))
+    p.text(58, 71, "AM", 20, DIM, SEMI, anchor="ms")
+    p.text(108, 76, "Yes, you can. Start with one file first.", 40, WHITE)
+    return p.done()
+
+
+def draw_question(c, t):
+    if not 4.0 <= t < 31.6:
+        return
+    a = prog(t, 4.05, 4.35) * (1 - prog(t, 31.0, 31.5))
+    dimw = world_dim(t)
+    bx = bubble_x(t)
+    wcard(c, t, card_question(t), bx, BY, a * dimw)
+    # the question's own segment rides beneath it; from 27.2 it is joined by the answer's
+    if t < 27.2:
+        wbar(c, t, bx - 110, ROAD_Y, 220, 18, alpha=a * dimw, rr=0.0 if t > 26.6 else 1.0)
+    elif t < 31.0:
+        wbar(c, t, BX, ROAD_Y, 440, 18, alpha=dimw)
+        glint_w(c, t, BX, ROAD_Y, 27.2)
+
+
+def draw_road(c, t):
+    """The line the question travels on, the route that snaps, and the lane where life goes on."""
+    if not 4.0 <= t < 31.6:
+        return
+    a = prog(t, 4.0, 4.4) * (1 - prog(t, 31.0, 31.5)) * world_dim(t)
+    wbar(c, t, -600 + (BX - 160 + 600) / 2, ROAD_Y, BX - 160 + 600, 4, alpha=a, color=(52, 57, 72))
+    # the route ahead, drawn as the question is sent; it snaps at 5.5
+    if 4.6 <= t < 5.5:
+        D = (1820 - (BX + 60)) * e_out_expo(prog(t, 4.6, 5.0, e_lin))
+        wbar(c, t, BX + 60 + D / 2, ROAD_Y, D, 6, alpha=a)
+    # the lane below, where everything else keeps moving
+    if t < 10.5:
+        la = a * (1 - prog(t, 9.6, 10.2))
+        wbar(c, t, 600, LANE_Y, 2600, 3, alpha=la * 0.6, color=(44, 48, 60))
+        for k in range(7):
+            x = (-700 + 380 * (t - 4.0) + 390 * k) % 2700 - 700
+            wbar(c, t, x, LANE_Y, 90, 8, alpha=la * 0.55)
+
+
+# ---------------------------------------------------------------- 2. the idea
+
+TRACK_Y = 1400.0
+STOP_X = [300 + 264 * k for k in range(6)]
+SNAP2_X = 1212.0
+
+
+def idea_x(t):
+    x = lerp(STOP_X[0], STOP_X[3], prog(t, 10.2, 12.0, e_out_cubic))
+    return lerp(x, STOP_X[4], prog(t, 40.6, 41.4, e_io_cubic))
+
+
+def idea_alive(t):
+    """1 = moving, lower = stalled and dimmed."""
+    return 1 - 0.55 * prog(t, 12.1, 12.8) * (1 - prog(t, 33.2, 33.6))
+
+
+def draw_track(c, t):
+    if not 9.6 <= t < 42.2:
+        return
+    a = prog(t, 9.7, 10.2) * (1 - prog(t, 41.9, 42.2)) * world_dim(t)
+    ix = idea_x(t)
+    healed = prog(t, 40.3, 40.6, e_out_cubic)        # the route ahead redraws when it moves again
+    end = SNAP2_X - 120 if t >= 12.0 else STOP_X[-1]
+    end = lerp(end, STOP_X[-1], healed)
+    wbar(c, t, (STOP_X[0] + end) / 2, TRACK_Y, end - STOP_X[0], 4, alpha=a, color=(52, 57, 72))
+    if 10.2 <= t < 12.0:      # the planned route, lit ahead of the idea; it snaps at 12.0
+        D = (STOP_X[-1] - ix) * e_out_expo(prog(t, 10.2, 10.6, e_lin))
+        wbar(c, t, ix + D / 2, TRACK_Y, D, 6, alpha=a * 0.9)
+    wbar(c, t, (STOP_X[0] + ix) / 2, TRACK_Y, ix - STOP_X[0], 6, alpha=a)
+    cur = 4 if t >= 41.0 else 3 if t >= 11.4 else 2 if t >= 11.0 else 1 if t >= 10.6 else 0
+    for k, x in enumerate(STOP_X):
+        sx, sy = ws(x, TRACK_Y, t)
+        z = cam(t)[2]
+        passed = ix >= x - 1
+        if passed:
+            draw_dot(c, sx, sy, 12 * z, BLUE, a)
+        else:
+            draw_dot(c, sx, sy, 12 * z, BG.tolist(), a)
+            draw_dot(c, sx, sy, 12 * z, DIM, a, ring=2.6 * z)
+        wtext(c, t, STAGES[k], MED, 34, WHITE if k == cur else DIM, x, TRACK_Y + 70, a)
+
+
+def draw_idea(c, t):
+    if not 9.9 <= t < 42.4:
+        return
+    a = prog(t, 9.9, 10.3) * world_dim(t)
+    ix = idea_x(t)
+    alive = idea_alive(t)
+    joined = t >= 35.7
+    park = prog(t, 41.6, 41.61)
+    if park:
+        return
+    if not joined:
+        wbar(c, t, ix, TRACK_Y, 200, 18, alpha=a * alive, rl=0.0 if t > 35.2 else 1.0)
+    else:
+        wbar(c, t, ix - 100, TRACK_Y, 400, 18, alpha=a)
+        glint_w(c, t, ix - 100, TRACK_Y, 35.7)
+    wtext(c, t, "Contract Clause Checker", DSEMI, 44, WHITE, ix - (100 if joined else 0), TRACK_Y - 64,
+          a * (0.45 + 0.55 * alive if not joined else 1.0))
+    g = prog(t, 12.6, 13.1) * (1 - prog(t, 35.4, 35.8))
+    wtext(c, t, "No activity for 12 days", REG, 34, DIM, STOP_X[3], TRACK_Y + 150, a * g)
+
+
+TEAM = ["MT", "JC", "SK"]
+
+
+def draw_team(c, t):
+    """The people Spine nudges: they arrive on the second segment and lock onto the idea."""
+    if not 34.9 <= t < 41.7:
+        return
+    p = prog(t, 35.0, 35.7, e_in_cubic)
+    x = lerp(-400, idea_x(t) - 200, p)
+    if t < 35.7:
+        wbar(c, t, x, TRACK_Y, 200, 18, rr=0.0)
+    for k, ini in enumerate(TEAM):
+        ax = x - 60 + 60 * k
+        sx, sy = ws(ax, TRACK_Y - 140, t)
+        z = cam(t)[2]
+        g = prog(t, 35.0, 35.3) * (1 - prog(t, 41.3, 41.6))
+        draw_dot(c, sx, sy, 24 * z, (40, 54, 100), g)
+        soft_word(c, ini, SEMI, 17, WHITE, sx - text_width(ini, SEMI, 17) * z / 2, sy + 6 * z, g, 0.0, z)
+        ping = prog(t, 35.8 + 0.1 * k, 36.4 + 0.1 * k, e_out_cubic)
+        if 0 < ping < 1:
+            draw_dot(c, sx, sy, (24 + 26 * ping) * z, BLUE, 0.5 * (1 - ping) * g, ring=2 * z)
+
+
+PLAN = [("Test with real contracts", "MT", "9 Oct"), ("Fix missed clause types", "JC", "13 Oct"),
+        ("Write the user guide", "SK", "15 Oct"), ("Prepare for publishing", "MT", "16 Oct")]
+PLAN_T, PLAN_TICK = 37.7, 39.4
+
+
+def draw_plan(c, t):
+    if not 37.6 <= t < 42.0:
+        return
+    fade = 1 - prog(t, 41.5, 41.9)
+    for k, (step, who, d) in enumerate(PLAN):
+        y = 1585 + 62 * k
+        g = prog(t, PLAN_T + 0.12 * k, PLAN_T + 0.12 * k + 0.35, e_out_cubic) * fade
+        if g <= 0:
+            continue
+        done = prog(t, PLAN_TICK + 0.3 * k, PLAN_TICK + 0.3 * k + 0.12)
+        sx, sy = ws(470, y, t)
+        z = cam(t)[2]
+        draw_dot(c, sx, sy - 12 * z, 14 * z, BLUE, g * done)
+        draw_dot(c, sx, sy - 12 * z, 14 * z, DIM, g * (1 - done), ring=2.2 * z)
+        wtext(c, t, step, REG, 38, WHITE if done < 1 else DIM, 510, y, g, "left")
+        sx2, sy2 = ws(1240, y - 12, t)
+        draw_dot(c, sx2, sy2, 22 * z, (38, 41, 50), g)
+        soft_word(c, who, SEMI, 16, DIM, sx2 - text_width(who, SEMI, 16) * z / 2, sy2 + 6 * z, g, 0.0, z)
+        wtext(c, t, d, REG, 34, DIM, 1290, y, g, "left")
+
+
+def draw_heartbeat(c, t):
+    """Pulse: a line runs across above the stalled idea and beats when it reaches it."""
+    if not 32.5 <= t < 41.8:
+        return
+    alpha = (1 - prog(t, 41.4, 41.8)) * prog(t, 32.5, 32.7)
+    y = TRACK_Y - 220
+    x0, x1 = 160, 1760
+    head = lerp(x0, x1, prog(t, 32.6, 33.9, e_lin))
+    bx = STOP_X[3]
+    blip = [(-30, 0), (-18, 6), (-8, -60), (4, 34), (14, -10), (24, 0)]
+    pts = [(x0, y)]
+    for du, dv in blip:
+        if bx + du <= head:
+            pts.append((bx + du, y + dv))
+    pts.append((head, y))
+    z = cam(t)[2]
+    draw_polyline(c, [ws(px, py, t) for px, py in pts], 3.0 * z, (120, 150, 255), alpha)
+    if t < 33.9:
+        sx, sy = ws(head, y, t)
+        draw_dot(c, sx, sy, 5 * z, (220, 228, 255), alpha)
+    hit = 32.6 + 1.3 * (bx - x0) / (x1 - x0)
+    g = prog(t, hit, hit + 0.3) * alpha
+    wtext(c, t, "Pulse", SEMI, 36, BLUE, bx + 60, y - 30, g, "left")
+
+
+# ---------------------------------------------------------------- 3. the company's activity
+
+N_FIELD = 60
+N_UNITS = sum(h // 2 for h in HOURS)        # 47: one unit per two hours saved
+
+
+@lru_cache(None)
+def _field():
+    rng = np.random.default_rng(11)
+    out = []
+    for i in range(N_FIELD):
+        out.append(dict(hx=rng.uniform(-650, 3300), hy=rng.uniform(-250, 2350), ax=rng.uniform(40, 120),
+                        ay=rng.uniform(30, 90), w1=rng.uniform(0.18, 0.45), w2=rng.uniform(0.15, 0.4),
+                        p1=rng.uniform(0, 6.3), p2=rng.uniform(0, 6.3), rz=rng.uniform(-60, 60),
+                        L=rng.uniform(50, 130)))
+    return out
+
+
+def wander(i, t):
+    f = _field()[i]
+    x = f["hx"] + f["ax"] * math.sin(f["w1"] * t + f["p1"])
+    y = f["hy"] + f["ay"] * math.sin(f["w2"] * t + f["p2"])
+    return x, y, f["rz"] + 30 * math.sin(0.27 * t + f["p2"]), f["L"]
+
+
+@lru_cache(None)
+def _spine_rows():
+    """At the turn every loose piece takes a row on the spine, in the order it hangs in frame."""
+    t = 22.2
+    order = sorted(range(N_FIELD + 6), key=lambda i: _loose(i, t)[1])
+    return {i: r for r, i in enumerate(order)}
+
+
+CHART = (2700.0, 1120.0)
+COL_X = [CHART[0] - 270 + 180 * k for k in range(4)]
+BASE_Y = CHART[1] + 260
+
+
+@lru_cache(None)
+def _units():
+    """Which column slot each of the first 47 pieces fills."""
+    slots = []
+    for k, h in enumerate(HOURS):
+        for j in range(h // 2):
+            slots.append((k, j))
+    return slots
+
+
+def _loose(i, t):
+    """Where loose piece i is before the turn: the wandering activity, or one of the six snapped halves."""
+    if i < N_FIELD:
+        x, y, rz, L = wander(i, t)
+        return x, y, rz, L, 12.0
+    return debris(i - N_FIELD, t)
+
+
+def spine_target(i, t):
+    r = _spine_rows()[i]
+    n = N_FIELD + 6
+    sy = 150 + 780 * r / (n - 1)
+    sx = lerp(960, 560, prog(t, 23.4, 24.0, e_io_cubic))
+    Ls = 60 + 70 * math.sin(math.pi * (r + 0.5) / n) + 18 * ((i * 37) % 7) / 7
+    x, y = sw(sx, sy, t)
+    z = cam(t)[2]
+    return x, y, 0.0, Ls / z, 9 / z
+
+
+def piece_state(i, t):
+    """(x, y, rz, L, T, alpha) in world space."""
+    z = cam(t)[2]
+    base_a = lerp(0.55, 0.16, clamp((z - 0.45) / 0.5))
+    if t < 22.2:
+        x, y, rz, L, T = _loose(i, t)
+        a = base_a if i < N_FIELD else debris_alpha(i - N_FIELD, t)
+        return x, y, rz, L, T, a * world_dim(t, field=True)
+    frozen = _loose(i, 22.2)
+    if t < 22.5:
+        return (*frozen, base_a)
+    tgt = spine_target(i, t)
+    if t < 25.0:
+        p = e_out_expo(prog(t, 22.5, 22.85, e_lin))
+        return (*(lerp(frozen[k], tgt[k], p) for k in range(5)), lerp(base_a, 0.95, p))
+    # back out into the world (the snapped halves are not needed again)
+    p = prog(t, 25.0, 25.8, e_io_cubic)
+    if i >= N_FIELD:
+        return (*tgt, 0.95 * (1 - p))
+    w = _loose(i, t)
+    st = (*(lerp(tgt[k], w[k], p) for k in range(5)), lerp(0.95, base_a, p))
+    if t < 42.9 or i >= N_UNITS:
+        if i >= N_UNITS and t >= 42.9:
+            return (*st[:5], st[5] * (1 - prog(t, 42.9, 43.5)))
+        return st
+    # the activity streams into the chart, one unit per two hours saved
+    k, j = _units()[i]
+    t0 = 42.9 + 0.03 * i
+    p = prog(t, t0, t0 + 0.65, e_io_cubic)
+    slot = (COL_X[k], BASE_Y - 14 - 22 * j, 0.0, 120.0, 12.0)
+    w = _loose(i, min(t, t0))
+    cur = tuple(lerp(w[q], slot[q], p) for q in range(5))
+    a = lerp(base_a, 1.0, p)
+    if t < 47.4:
+        return (*cur, a)
+    # and the chart closes into one bar
+    q1 = prog(t, 47.4, 47.7, e_in_cubic)         # every column drops to the base line
+    q2 = prog(t, 47.65, 47.95, e_io_cubic)       # and they slide together into one bar
+    tx = CHART[0] - 220 + 440 * (i + 0.5) / N_UNITS
+    y = lerp(cur[1], BASE_Y + 20, q1)
+    x = lerp(cur[0], tx, q2)
+    L = lerp(lerp(cur[3], 120, q1), 440 / N_UNITS + 2, q2)
+    return (x, y, 0.0, L, lerp(12.0, 18.0, q2), 1.0)
+
+
+def draw_pieces(c, t):
+    if t >= 48.0:
+        return
+    for i in range(N_FIELD + 6):
+        x, y, rz, L, T, a = piece_state(i, t)
+        if a > 0.01:
+            wbar(c, t, x, y, L, T, rz, a)
+    if 22.45 <= t < 25.2:      # the spine itself
+        sx = lerp(960, 560, prog(t, 23.4, 24.0, e_io_cubic))
+        d = e_out_expo(prog(t, 22.45, 22.7, e_lin))
+        a = 1 - prog(t, 24.8, 25.2)
+        draw_bar(c, sx, 140 + 400 * d, 800 * d + 1, 4, 90.0, a * 0.9, color=(140, 165, 255))
+
+
+# the three snapped routes: (time, left end, right end, y), each breaks into two halves
+SNAPS = [(5.5, BX + 60, 1820, ROAD_Y), (12.0, SNAP2_X - 120, STOP_X[-1] + 60, TRACK_Y), (18.3, 1900, 2320, 1150)]
+
+
+def debris(j, t):
+    ts, xa, xb, y = SNAPS[j // 2]
+    s = -1 if j % 2 == 0 else 1
+    L = (xb - xa) / 2
+    cx = xa + L / 2 if s < 0 else xb - L / 2
+    u = max(0.0, t - ts)
+    sp = 1 - math.exp(-u / 0.09) * math.cos(2 * math.pi * 3.0 * u)
+    x = cx + s * 40 * sp + s * 6 * u
+    yy = y + 28 * sp + 5 * u
+    rz = -s * 9 * sp
+    return x, yy, rz, L, 6.0
+
+
+def debris_alpha(j, t):
+    ts = SNAPS[j // 2][0]
+    return 0.0 if t < ts else lerp(1.0, 0.55, prog(t, ts + 0.6, ts + 1.6))
+
+
+def draw_link(c, t):
+    """Impact: a line reaches from the activity towards the chart and snaps before it arrives."""
+    if 17.6 <= t < 18.3:
+        D = (2320 - 1900) * e_out_expo(prog(t, 17.6, 18.0, e_lin))
+        wbar(c, t, 1900 + D / 2, 1150, D, 6, alpha=world_dim(t))
+
+
+def card_chart(t):
+    p = Pen(860, 660)
+    g = prog(t, 45.0, 45.4)
+    p.text(40, 84, "Hours saved", 40, WHITE, DSEMI, alpha=1 - g)
+    p.text(40, 96, "42", 72, BLUE, DSEMI, alpha=g)
+    p.text(40 + text_width("42", DSEMI, 72) + 18, 92, "hours saved in October", 40, WHITE, alpha=g)
+    return p.done()
+
+
+def draw_chart(c, t):
+    if not 15.6 <= t < 48.2:
+        return
+    a = prog(t, 15.8, 16.3) * (1 - prog(t, 47.4, 47.8)) * world_dim(t)
+    wcard(c, t, card_chart(t), CHART[0], CHART[1], a)
+    sx0, sy = ws(CHART[0] - 360, BASE_Y + 6, t)
+    sx1, _ = ws(CHART[0] + 360, BASE_Y + 6, t)
+    z = cam(t)[2]
+    if t < 42.9:           # nothing has arrived: a flat dashed line at zero
+        x = sx0
+        while x < sx1:
+            draw_bar(c, x + 7 * z, sy, 12 * z, 3 * z, alpha=a * 0.8, color=(70, 75, 92))
+            x += 24 * z
+    for k in range(4):
+        wtext(c, t, MONTHS[k], MED, 36, DIM, COL_X[k], BASE_Y + 64, a)
+
+
+# ---------------------------------------------------------------- dimming, glints
+
+def world_dim(t, field=False):
+    """The world steps back while 'Your AI needs a spine.' is on screen."""
+    d = prog(t, 21.0, 21.4) * (1 - prog(t, 25.0, 25.8))
+    return 1 - (0.5 if field else 0.75) * d
+
+
+def glint_w(c, t, x, y, t0):
+    sx, sy = ws(x, y, t)
+    glint(c, t, sx, sy, t0, 0.8 * cam(t)[2])
+
+
+# ---------------------------------------------------------------- the mark, assembling in the corner
+
+def hud_slot(k, s=HUD_S, c=HUD_C):
+    x0, x1, yc = LOGO[k]
+    return c[0] + ((x0 + x1) / 2 - LOGO_C[0]) * s, c[1] + (yc - LOGO_C[1]) * s, (x1 - x0) * s, 40 * s
+
+
+# each resolved connection leaves the scene and parks: (start, world centre, world length)
+PARKS = [(31.0, (BX, ROAD_Y), 440.0), (41.6, (STOP_X[4] - 100, TRACK_Y), 400.0), (48.0, (CHART[0], BASE_Y + 20), 440.0)]
+GROW = (49.0, 50.2)      # the mark comes forward and becomes the logo
+LABELS = ["Questions", "Ideas", "Impact"]
+
+
+def draw_mark(c, t):
+    for k, (t0, (wx, wy), wl) in enumerate(PARKS):
+        if t < t0:
+            continue
+        p = prog(t, t0, t0 + 0.8, e_io_cubic)
+        sx, sy = ws(wx, wy, min(t, t0))
+        z = cam(min(t, t0))[2]
+        hx, hy, hl, ht = hud_slot(k)
+        # the grow: the little mark comes forward to the logo's true size and place
+        g = prog(t, *GROW, e_io_quint)
+        fx, fy, fl, ft = hud_slot(k, 1.0, LOGO_C)
+        hx, hy, hl, ht = lerp(hx, fx, g), lerp(hy, fy, g), lerp(hl, fl, g), lerp(ht, ft, g)
+        x, y = lerp(sx, hx, p), lerp(sy, hy, p)
+        L, T = lerp(wl * z, hl, p), lerp(18 * z, ht, p)
+        draw_bar(c, x, y, L, T)
+        glint(c, t, hx, hy, t0 + 0.8, 0.5)
+        # on the way in, each bar says what it was
+        la = prog(t, GROW[0] + 0.4 + 0.12 * k, GROW[0] + 0.8 + 0.12 * k) * (1 - prog(t, 51.2, 51.6))
+        if la > 0:
+            soft_word(c, LABELS[k], MED, 40, DIM, x - L / 2 - 36 - text_width(LABELS[k], MED, 40), y + 14, la)
+    # light passes once along the finished mark
+    for k in range(3):
+        ts = 50.45 + 0.12 * k
+        u = prog(t, ts, ts + 0.5, e_io_cubic)
+        if 0 < u < 1:
+            x0, x1, yc = LOGO[k]
+            draw_dot(c, lerp(x0, x1, u), yc, 34, (190, 205, 255), 0.35 * math.sin(math.pi * u), blur=16)
+
+
+# ---------------------------------------------------------------- shake and punch (only on real hits)
+
+IMPACTS = [(5.5, 0.45), (12.0, 0.45), (18.3, 0.3), (22.5, 1.4), (27.2, 0.3), (35.7, 0.3), (50.2, 0.9)]
+
+
+def post(c, t):
+    sx, sy, punch, split = impact_state(t)
+    z = 1 + punch
+    z = max(z, 1 + 2 * max(abs(sx) / W, abs(sy) / H) + 0.002) if (sx or sy) else z
+    if z > 1.0005:
+        im = Image.fromarray(np.clip(c, 0, 255).astype(np.uint8))
+        w, h = W / z, H / z
+        x0, y0 = (W - w) / 2 - sx, (H - h) / 2 - sy
+        im = im.transform((W, H), Image.EXTENT, (x0, y0, x0 + w, y0 + h), Image.BICUBIC)
+        c = np.asarray(im, np.float32).copy()
+    d = int(round(split * 0.6))
+    if d >= 1:
+        c[:, d:, 0] = c[:, :-d, 0].copy()
+        c[:, :-d, 2] = c[:, d:, 2].copy()
+    return c
+
+
+# ---------------------------------------------------------------- the film
 
 def render_scene(t):
     n = int(round(t * FPS * 4))
-    flash = prog(t, 12.97, 13.0, e_lin) * (1 - prog(t, 13.0, 13.45, e_out_cubic)) + snap_flash(t)
-    c = background(t, n, min(flash, 1.0))
+    flash = 0.28 * prog(t, 22.47, 22.5, e_lin) * (1 - prog(t, 22.5, 22.9, e_out_cubic))
+    c = background(t, n, flash)
+    end_fade = prog(t, 57.2, 58.0)
 
-    # 1. Opening
-    line_words(c, t, "Your company has AI.", LIGHT, 96, WHITE, W / 2, 560, 0.25, 1.78, "center")
-    line_words(c, t, "So why do your AI ideas", LIGHT, 96, WHITE, W / 2, 500, 2.0, 3.78, "center")
-    line_words(c, t, "quietly die?", DREG, 96, BLUE, W / 2, 610, 2.75, 3.78, "center")
-
-    # 2. Three everyday failures: each underline snaps as its issue lands, the halves fly aside
-    for t0, kicker, l1, l2, fn in PAINS:
-        pain(c, t, t0, kicker, l1, l2, fn)
-    line_words(c, t, "Every team.", LIGHT, 96, WHITE, W / 2, 570, 10.0, 10.9, "center")
-    line_words(c, t, "Every week.", LIGHT, 96, WHITE, W / 2, 570, 11.0, 11.9, "center")
-
-    # 3. The turn: the six pieces slam together into the mark on the downbeat at 13.0
-    line_words(c, t, "Your AI needs", LIGHT, 104, WHITE, W / 2, 500, 12.0, 12.9, "center")
-    line_words(c, t, "a spine.", DREG, 104, BLUE, W / 2, 620, 12.5, 12.9, "center")
+    # the world (the chart sits under the pieces that fill it)
+    draw_chart(c, t)
     draw_pieces(c, t)
-    line_words(c, t, "Spine is your AI project manager.", LIGHT, 80, WHITE, W / 2, 760, 14.0, 16.05, "center")
+    draw_road(c, t)
+    draw_link(c, t)
+    draw_track(c, t)
+    draw_idea(c, t)
+    draw_team(c, t)
+    draw_plan(c, t)
+    draw_heartbeat(c, t)
+    draw_question(c, t)
+    if 27.6 <= t < 31.5:     # the answer
+        g = prog(t, 27.6, 28.0, e_out_cubic) * (1 - prog(t, 31.0, 31.5))
+        wcard(c, t, card_reply(t), BX - 50, 805 + 30 * (1 - g), g)
+    if 26.1 <= t < 27.3:     # the route to someone who knows, and the answer arriving on it
+        D = 1000 * e_out_expo(prog(t, 26.1, 26.5, e_lin))
+        wbar(c, t, BX + 1220 - D / 2, ROAD_Y, D, 6, alpha=1 - prog(t, 27.15, 27.3))
+        p = prog(t, 26.5, 27.2, e_in_cubic)
+        ax = lerp(BX + 1300, BX + 110, p)
+        wbar(c, t, ax, ROAD_Y, 220, 18, rl=0.0)
+        sx, sy = ws(ax - 60, ROAD_Y + 80, t)
+        draw_dot(c, sx, sy, 30, (38, 41, 50))
+        soft_word(c, "AM", SEMI, 20, DIM, sx - text_width("AM", SEMI, 20) / 2, sy + 7, 1.0)
+        soft_word(c, "Alex Morgan", MED, 34, WHITE, sx + 46, sy + 12, prog(t, 26.5, 26.8))
 
-    # 4. The journey: real Spine screens, big, one headline each
-    draw_route(c, t)
-    CS = 1.42
-    cx0, cy0 = W / 2, 660
-    for k, (a, b, fn, title) in enumerate(SHOTS_HOW):
-        if a - 0.3 <= t < b + 0.3:
-            gin = prog(t, a - 0.2, a + 0.25, e_out_cubic)
-            gout = prog(t, b - 0.2, b + 0.05, e_in_cubic)
-            x = cx0 + 260 * (1 - gin) - 260 * gout
-            place(c, fn(t, a + CARD_OFF[fn]), x, cy0, CS, gin * (1 - gout))
-            line_words(c, t, title, LIGHT, 76, WHITE, W / 2, 262, a + 0.1, b - 0.22, "center")
-            peel = (marker_x(t), ROUTE_Y, 28, 10)
-            for keys in ACTORS[fn]:
-                draw_actor(c, t, a, keys, x, cy0, CARD_DIM[fn], CS, peel)
-            if fn is card_pulse:
-                draw_heartbeat(c, t, a, x, cy0, CARD_DIM[fn], CS)
+    # the words
+    line_words(c, t, "Your company has AI.", LIGHT, 96, WHITE, W / 2, 560, 0.25, 1.78, "center")
+    line_words(c, t, "So why do your AI ideas", LIGHT, 96, WHITE, W / 2, 500, 2.0, 3.6, "center")
+    line_words(c, t, "quietly die?", DREG, 96, BLUE, W / 2, 610, 2.75, 3.6, "center")
+    headline(c, t, "Questions go unanswered.", 6.0, 9.2)
+    headline(c, t, "Ideas lose momentum.", 12.6, 15.1)
+    headline(c, t, "Impact goes unseen.", 18.6, 20.8)
+    line_words(c, t, "Your AI needs", LIGHT, 104, WHITE, W / 2, 500, 21.0, 22.4, "center")
+    line_words(c, t, "a spine.", DREG, 104, BLUE, W / 2, 620, 21.5, 22.4, "center")
+    line_words(c, t, "Spine is your", LIGHT, 84, WHITE, 760, 500, 24.0, 24.9, "left")
+    line_words(c, t, "AI project manager.", LIGHT, 84, WHITE, 760, 610, 24.25, 24.9, "left")
+    headline(c, t, "Every question finds someone who knows.", 26.1, 30.9, size=76)
+    headline(c, t, "Spine notices when work goes quiet.", 32.5, 34.8, size=76)
+    headline(c, t, "And nudges the right people.", 35.0, 37.4, size=76)
+    headline(c, t, "Every step has an owner.", 37.6, 41.4, size=76)
+    headline(c, t, "Impact everyone can see.", 43.0, 47.2, size=76)
 
-    # 5. The logo
-    logo(c, t)
-    return post(c, t)
-
-
-# ---------------------------------------------------------------- logo and end card
-
-def logo(c, t):
-    if t < LOGO_T - 0.7:
-        return
-    # the journey's three blue sections fold down into the logo's three bars, landing on the beat
-    y = route_y(t)
-    secs = [(ROUTE_X0, STOPS[0][0]), (STOPS[0][0], STOPS[1][0]), (STOPS[1][0], STOPS[2][0])]
-    for k, (x0, x1, yc) in enumerate(LOGO):
-        land = LOGO_T + BEAT / 2 * k
-        L = x1 - x0
-        if t >= land:
-            draw_bar(c, (x0 + x1) / 2, yc, L, 40)
-            glint(c, t, (x0 + x1) / 2, yc, land, 1.2)
-            sparks(c, t, (x0 + x1) / 2, yc, land, 70 + k, n=10, spread=0.8)
-            continue
-        p = prog(t, land - 0.7, land, e_in_cubic)
-        s0, s1 = secs[k]
-        draw_bar(c, lerp((s0 + s1) / 2, (x0 + x1) / 2, p), lerp(y, yc, p), lerp(s1 - s0 - 8, L, p), lerp(6, 40, p))
-    w0 = LOGO_T + 0.5
+    # the mark, and the end
+    draw_mark(c, t)
+    w0 = 50.6
     g = prog(t, w0, w0 + 0.5, e_out_cubic)
     soft_word(c, "Spine", DSEMI, 172, WHITE, 886, 527, g)   # the approved wordmark's size and position
-    line_words(c, t, "Give your company’s AI a spine.", LIGHT, 46, WHITE, W / 2, 698, w0 + 1.0, None, "center")
-    bw = lerp(0, 364, prog(t, w0 + 2.0, w0 + 2.3))
-    bh = lerp(10, 80, prog(t, w0 + 2.25, w0 + 2.5, e_out_quint))
+    line_words(c, t, "Give your company’s AI a spine.", LIGHT, 52, WHITE, W / 2, 704, 51.6, None, "center")
+    bw = lerp(0, 364, prog(t, 53.0, 53.3))
+    bh = lerp(10, 80, prog(t, 53.25, 53.5, e_out_quint))
     if bw > 1:
-        draw_segment(c, SCREEN_CAM, default_seg(x=959.5, y=841.5, L=max(bw, bh), T=bh, flat=True, color=BLUE_DEEP))
-        rv = prog(t, w0 + 2.5, w0 + 2.9, e_out_quint)
-        soft_word(c, "Book a demo  →", MED, 32, (255, 255, 255), 959.5 - text_width("Book a demo  →", MED, 32) / 2,
-                  852, rv)
+        draw_segment(c, SCREEN_CAM, default_seg(x=959.5, y=851.5, L=max(bw, bh), T=bh, flat=True, color=BLUE_DEEP))
+        rv = prog(t, 53.5, 53.9, e_out_quint)
+        soft_word(c, "Book a demo  →", MED, 32, (255, 255, 255),
+                  959.5 - text_width("Book a demo  →", MED, 32) / 2, 862, rv)
+    c = post(c, t)
+    if end_fade > 0:
+        c = c + (_bg_base() - c) * end_fade
+    return c
 
 
 def end_card(t, plate=None):

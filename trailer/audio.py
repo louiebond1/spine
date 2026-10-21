@@ -124,20 +124,25 @@ KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": jo
 
 # (time s, kind, peak dBFS, pan -1..1). Times match the hits in timeline.py (IMPACTS).
 CUES = [
-    (4.15, "swell", -20, 0.0), (4.5, "crack0", -13, -0.1),       # Questions. / Unanswered.
-    (6.15, "swell", -20, 0.0), (6.5, "crack1", -13, 0.1),        # Builds. / Gone quiet.
-    (8.15, "swell", -20, 0.0), (8.5, "crack2", -13, 0.0),        # Hours saved? / Nobody knows.
-    (12.65, "swell", -16, 0.0), (13.0, "slam", -10, 0.0),        # the six pieces slam into the mark
-    (27.0, "clack", -15, -0.5), (45.5, "clack", -15, 0.0), (51.5, "clack", -15, 0.5),   # each stop on the journey lights
-] + [(44.5 - 1.0 + 0.2 * k, "tick", -22, -0.5 + 0.2 * k) for k in range(6)] + [     # six pieces become six stages
-] + [(39.5 + 1.2 + f, "beep", -22, 0.0) for f in (0.25, 0.47, 0.69)] + [           # Pulse heartbeats
-] + [(34.5 + j, "tap", -20, 0.3) for j in (0.9, 1.25, 1.6)] + [                   # Join project, three times
-] + [(37.0 + 0.95 + 0.12 * k, "tick_hi", -31, -0.3 + 0.07 * k) for k in range(9)] + [  # the plan writes itself
-] + [(a, "tick", -27, 0.25) for a in (17.0, 19.5, 22.0, 24.5, 29.5, 32.0, 34.5, 37.0, 39.5, 42.5, 48.5)] + [
-    (54.0, "slam", -14, -0.3), (54.25, "slam", -14, 0.3), (54.5, "slam", -11, 0.0),   # logo bars lock
-    (56.5, "tick", -24, 0.0),       # Book a demo button draws
+    (4.6, "tick_hi", -26, 0.3),                                   # the question is sent
+    (5.15, "swell", -22, 0.2), (5.5, "crack0", -14, 0.3),         # the route ahead snaps
+    (11.65, "swell", -22, 0.0), (12.0, "crack1", -14, 0.1),       # the track snaps at Building
+    (17.95, "swell", -24, 0.4), (18.3, "crack2", -16, 0.5),       # the line to the chart snaps
+    (22.15, "swell", -16, 0.0), (22.5, "slam", -10, 0.0),         # everything lines up on the spine
+    (26.1, "tick_hi", -27, 0.4), (27.2, "clack", -15, 0.1),       # someone who knows arrives and docks
+    (27.6, "tap", -24, -0.1),                                     # the answer
+    (33.36, "beep", -20, 0.1),                                    # Pulse catches the stall
+    (35.7, "clack", -15, -0.1),                                   # the team docks
+] + [(39.4 + 0.3 * k, "tap", -24, -0.2) for k in range(4)] + [    # each step ticked
+] + [(42.9 + 0.03 * i + 0.65, "tickf%.0f" % (1400 * 2 ** (i / 30)), -33, -0.4 + 0.017 * i)
+     for i in range(47)] + [                                     # the hours stack up, unit by unit
+    (45.0, "land", -18, 0.3),                                     # 42 hours saved in October
+    (47.4, "swell", -22, 0.0), (47.95, "clack", -16, 0.0),        # the chart closes into one bar
+    (31.8, "tap", -26, -0.6), (42.4, "tap", -26, -0.6), (48.8, "tap", -26, -0.6),   # each bar parks in the corner
+    (50.2, "slam", -9, 0.0),                                      # the mark becomes the logo
+    (53.0, "tick", -24, 0.0),                                     # Book a demo button draws
 ]
-PITCHED = (43.45, 44.6)             # the six stage ticks rise a whole tone each
+PITCHED = (0.0, 0.0)                # no pitched tick sequence in this cut
 
 
 def read_wav(path):
@@ -182,6 +187,8 @@ def build(score_path, dst, vo_path=None):
         if kind == "tick" and PITCHED[0] <= t < PITCHED[1]:
             s = tick(2200.0 * (2 ** (stage / 12 * 2)))   # whole-tone steps upward
             stage += 1
+        elif kind.startswith("tickf"):
+            s = tick(float(kind[5:]), 0.06)
         else:
             s = KINDS[kind]()
         s = s / np.max(np.abs(s)) * 10 ** (db / 20)

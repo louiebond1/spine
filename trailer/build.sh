@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Spine_Give_AI_a_Spine_Polished.mp4 ("Holds it together", six pieces cut) from this folder.
+# Build Spine_Give_AI_a_Spine_Polished.mp4 ("Holds it together", director's cut) from this folder.
 # Optional: pass the approved cut (Spine_Give_AI_a_Spine.mp4) to re-extract the reused
 # fold frames (879-968) and the end-card plate (969). Otherwise the bundled ones are used.
 # The voiceover is read from assets/vo/voiceover.wav when present (see vo.py).

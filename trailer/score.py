@@ -6,8 +6,8 @@ The bass, arpeggio and pads pump against the kick (sidechain) for drive.
   12 - 13 s   riser into the flash
   13.0        the flash: a hit, then one bar without kick
   14.0        the node lands: full major groove (Bm G D A), arpeggio on top
-  28, 46      a lift into Ideas & Projects and into Pulse (riser, crash, an extra arpeggio voice from 28 to 46)
-  55 - 56.5   the groove drops out; three tones as the logo's bars land, a chord on the wordmark
+  27, 45.5    a lift as each stop on the journey lights (riser, crash, an extra arpeggio voice from 27 to 45.5)
+  53 - 54.5   the groove drops out; three tones as the logo's bars land, a chord on the wordmark
   31 - 36     a light groove under the end card, then the tail
 Kick gaps match kick_env() in timeline.py, which makes the background breathe on every kick.
 """
@@ -17,7 +17,7 @@ import wave
 import numpy as np
 
 SR = 48000
-DUR = 61.0
+DUR = 60.0
 N = int(SR * DUR)
 BEAT = 0.5
 rng = np.random.default_rng(21)
@@ -119,7 +119,7 @@ def riser(dur):
 
 
 def kick_on(t):
-    return not (13.0 <= t < 14.0 or 55.0 <= t < 56.5 or t >= 59.0)
+    return not (13.0 <= t < 14.0 or 53.0 <= t < 54.5 or t >= 57.5)
 
 
 def build():
@@ -131,7 +131,7 @@ def build():
         t = b * BEAT
         bar, beat = divmod(b, 4)
         section = "minor" if t < 12.0 else "riser" if t < 13.0 else "flash" if t < 14.0 else \
-                  "major" if t < 55.0 else "drop" if t < 56.5 else "outro" if t < 59.0 else "tail"
+                  "major" if t < 53.0 else "drop" if t < 54.5 else "outro" if t < 57.5 else "tail"
         prog_ = minor if t < 13.0 else major
         root, chord = prog_[bar % 4]
         # drums
@@ -153,7 +153,7 @@ def build():
             notes = chord + [chord[0] + 12]
             for k in range(2):
                 add(mus, t + k * BEAT / 2, pluck(notes[(beat * 2 + k) % 4] + 12), 0.08, 0.4 * (1 if k else -1))
-                if 28.0 <= t < 46.0:
+                if 27.0 <= t < 45.5:
                     add(mus, t + k * BEAT / 2 + BEAT / 4, pluck(notes[(beat * 2 + k + 1) % 4] + 24, 0.25, 6000), 0.035,
                         0.4 * (-1 if k else 1))
         # pads per bar
@@ -177,18 +177,18 @@ def build():
     add(buf, 14.0, kick(1.0), 0.6)
     add(buf, 14.0, bell(74, 2.0), 0.06)
     # the drop and the logo
-    add(buf, 54.5, riser(0.5), 0.14)
-    add(buf, 55.0, pad([50, 54, 57], 1.6, 1800, 0.2, 1.0), 0.12)
+    add(buf, 52.5, riser(0.5), 0.14)
+    add(buf, 53.0, pad([50, 54, 57], 1.6, 1800, 0.2, 1.0), 0.12)
     for k, m in enumerate((62, 66, 69)):
-        add(buf, 56.0 + 0.25 * k, pluck(m, 0.6, 6000), 0.18, -0.4 + 0.4 * k)
-    add(buf, 56.5, kick(1.0), 0.6)
+        add(buf, 54.0 + 0.25 * k, pluck(m, 0.6, 6000), 0.18, -0.4 + 0.4 * k)
+    add(buf, 54.5, kick(1.0), 0.6)
     n = int(2.5 * SR)
-    add(buf, 56.5, np.sin(2 * np.pi * hz(26) * np.arange(n) / SR) * np.exp(-np.arange(n) / SR / 0.9), 0.5)
-    add(buf, 56.5, pad([50, 54, 57, 62, 66], 5.0, 3000, 0.05, 2.0), 0.16)
-    add(buf, 56.5, bell(74), 0.10, 0.2)
-    add(buf, 59.0, bell(81, 2.0), 0.05, 0.1)
+    add(buf, 54.5, np.sin(2 * np.pi * hz(26) * np.arange(n) / SR) * np.exp(-np.arange(n) / SR / 0.9), 0.5)
+    add(buf, 54.5, pad([50, 54, 57, 62, 66], 5.0, 3000, 0.05, 2.0), 0.16)
+    add(buf, 54.5, bell(74), 0.10, 0.2)
+    add(buf, 57.0, bell(81, 2.0), 0.05, 0.1)
     # lifts into Ideas & Projects and into Pulse
-    for tl_ in (28.0, 46.0):
+    for tl_ in (27.0, 45.5):
         add(buf, tl_ - 1.0, riser(1.0), 0.12)
         m = int(1.6 * SR)
         add(buf, tl_, hp(rng.standard_normal(m), 5000) * np.exp(-np.arange(m) / SR / 0.45), 0.10)

@@ -15,7 +15,7 @@ import wave
 import numpy as np
 
 SR = 48000
-DUR = 57.5
+DUR = 57.6
 N = int(SR * DUR)
 BEAT = 0.5
 rng = np.random.default_rng(21)
@@ -118,13 +118,13 @@ def riser(dur):
 
 def kick_on(t):
     # matches kick_on() in timeline.py
-    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (27.5 <= t < 48.5) or (51.5 <= t < 56.0)
+    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (27.5 <= t < 47.5) or (51.4 <= t < 55.8)
 
 
 def section(t):
     for end, name in ((4.0, "intro"), (12.0, "problem"), (15.5, "stall"), (21.0, "chaos"), (22.5, "hold"),
-                      (27.5, "turn"), (33.6, "solveA"), (43.0, "solveB"), (48.5, "solveC"), (51.4, "drop"),
-                      (56.0, "outro")):
+                      (27.5, "turn"), (33.6, "solveA"), (42.7, "solveB"), (47.5, "solveC"), (51.4, "drop"),
+                      (55.8, "outro")):
         if t < end:
             return name
     return "tail"
@@ -186,23 +186,25 @@ def build():
     add(buf, 22.5, pad([50, 54, 57, 62], 3.0, 2400, 0.25, 1.0), 0.14)
     add(buf, 23.0, bell(74, 2.5), 0.05, 0.2)
     # the 42 lands on a beat of its own
-    add(buf, 46.2, kick(1.0), 0.5)
-    add(buf, 46.2, pad([47, 50, 54, 59], 1.2, 2600, 0.01, 0.8), 0.12)
-    add(buf, 46.2, bell(78, 1.6), 0.05, 0.3)
+    add(buf, 45.54, kick(1.0), 0.5)
+    add(buf, 45.54, pad([47, 50, 54, 59], 1.2, 2600, 0.01, 0.8), 0.12)
+    add(buf, 45.54, bell(78, 1.6), 0.05, 0.3)
     # the pull back to the connected world: the drums fall away under a held chord and a riser,
     # one note for each bar as it lands in the mark, then the logo locks on a resolved chord
-    add(buf, 48.5, pad([50, 54, 57], 2.9, 1800, 0.3, 1.0), 0.15)
+    add(buf, 47.5, pad([50, 54, 57], 3.9, 1800, 0.3, 1.0), 0.22)
+    for k in range(8):                               # a soft pulse carries the chain into the logo
+        add(buf, 47.5 + 0.5 * k, kick(0.7), 0.16 + 0.03 * k)
     add(buf, 50.4, riser(1.0), 0.2)
-    for k, m in enumerate((62, 66)):
-        add(buf, 51.0 + 0.2 * k, pluck(m, 0.6, 6000), 0.16, -0.4 + 0.4 * k)
+    for k, (tk, m) in enumerate(((48.8, 62), (50.1, 66))):     # one note as each bar takes its place
+        add(buf, tk, pluck(m, 0.7, 6000), 0.18, -0.4 + 0.4 * k)
     add(buf, 51.4, kick(1.0), 0.65)
     n = int(2.5 * SR)
     add(buf, 51.4, np.sin(2 * np.pi * hz(26) * np.arange(n) / SR) * np.exp(-np.arange(n) / SR / 0.9), 0.5)
     add(buf, 51.4, pad([50, 54, 57, 62, 66], 5.0, 3000, 0.05, 2.0), 0.16)
     add(buf, 51.4, bell(74), 0.10, 0.2)
     for k, m in enumerate((62, 66, 69)):             # the light passing along the three bars
-        add(buf, 51.75 + 0.12 * k, pluck(m + 12, 0.6, 6000), 0.06, -0.4 + 0.4 * k)
-    add(buf, 52.6, bell(81, 2.0), 0.05, 0.1)
+        add(buf, 51.65 + 0.12 * k, pluck(m + 12, 0.6, 6000), 0.06, -0.4 + 0.4 * k)
+    add(buf, 52.8, bell(81, 2.0), 0.05, 0.1)
     # sidechain pump: the music ducks on every kick and swells back, then a little drive
     tt = np.arange(N) / SR
     on = np.array([kick_on(x) for x in np.floor(tt / BEAT) * BEAT])
@@ -211,7 +213,7 @@ def build():
     buf += np.tanh(mus * 2.2) / 2.2
     # the solutions build: each resolved problem a little fuller than the last
     keys = [(0.0, 1.0), (5.48, 1.0), (5.56, 0.0), (5.95, 0.0), (6.2, 1.0),       # the snap: everything stops for a beat
-            (27.5, 0.82), (33.6, 0.9), (43.0, 1.0), (48.4, 1.08), (48.6, 1.0), (DUR, 1.0)]
+            (27.5, 0.82), (33.6, 0.9), (42.7, 1.0), (47.3, 1.08), (47.5, 1.0), (DUR, 1.0)]
     kt = np.array([k[0] for k in keys])
     kv = np.array([k[1] for k in keys])
     buf *= np.interp(tt, kt, kv)[:, None]

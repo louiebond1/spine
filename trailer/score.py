@@ -1,7 +1,7 @@
 """Original score for the Spine film, synthesised deterministically (no samples). 120 BPM, story time.
 
   python3 score.py out/score.wav
-  0 - 12      a minor groove under the problems; 5.5 it cuts out for a beat as the route snaps
+  0 - 12      a minor groove under the problems
   12 - 15.5   the idea waits for people; 15.5 - 21 scattered, under the empty chart
   21 - 22.5   a held breath and a riser; 22.5 the slam as everything lines up on the spine
   22.5 - 27.5 the turn: a major chord held under "Spine is your AI project manager."
@@ -217,7 +217,7 @@ def build():
     mus *= pump[:, None]
     buf += np.tanh(mus * 2.2) / 2.2
     # the solutions build: each resolved problem a little fuller than the last
-    keys = [(0.0, 1.0), (5.48, 1.0), (5.56, 0.0), (5.95, 0.0), (6.2, 1.0),       # the snap: everything stops for a beat
+    keys = [(0.0, 1.0),
             (27.5, 0.82), (40.0, 0.88), (46.5, 0.95), (52.0, 1.0), (58.3, 1.08), (58.5, 1.0), (DUR, 1.0)]
     kt = np.array([k[0] for k in keys])
     kv = np.array([k[1] for k in keys])

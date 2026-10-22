@@ -25,8 +25,8 @@ The visual identity is a dark background with electric blue. The look is one con
 
 | Film time | Beat | On screen |
 | --- | --- | --- |
-| 0 to 6 | Questions go unanswered | Ben Carter's "Has anyone automated contract reviews before?" travels; the route ahead snaps and it is stranded; "Asked 2 hours ago" ages to "3 days ago" |
-| 6 to 11.9 | Ideas lose momentum | Large card "Contract Clause Checker", Recruiting, Mia plus 2 empty seats, "1 of 3 people", Join project, "Next: Recruit 2 more people to begin". People walk past; a line reaching to them snaps |
+| 0 to 6 | Questions go unanswered | A message box opens; Ben Carter types "Has anyone automated contract reviews before?" with a blinking cursor and presses Send. It posts and waits: "Asked 2 hours ago", 3 hours, 4 hours, 1 day, 2 days, each sliding in over the last, all in white |
+| 6 to 11.9 | Ideas lose momentum | "Contract Clause Checker" and the six stages. Idea, Approval and Recruiting light; Building tries and fails. The track after Recruiting trembles, cracks, breaks in two and falls off screen with Building, Publishing and Live (shake and crack sound). "Stopped halfway" |
 | 11.9 to 17.6 | Impact goes unseen | Empty "Hours saved" chart, "No data yet"; a line reaching it snaps |
 | 17.6 to 23.9 | The turn | "Your AI needs a spine." Every loose piece slams into line on a spine. "Spine is your AI project manager." |
 | 23.9 to 29.2 | Help Desk | "Every question finds someone who knows." The question is shown to Jamie Chen, Sarah Kim and Mia Thompson; Mia claims it and replies "Yes, I'm starting one: Contract Clause Checker" |
@@ -34,7 +34,7 @@ The visual identity is a dark background with electric blue. The look is one con
 | 32.9 to 33.9 | Propose | On the card, at stage Idea: Problem and Who benefits fill in; Mia presses "Continue to AI review" |
 | 33.9 to 35.1 | AI review | On the same card: Feasibility, Business value, Resourcing confidence, Originality light up as the review reads them; "Advisory. Only Mia sees the scores."; Mia presses "Submit for approval"; "AI reviews the idea." No scores are shown |
 | 35.1 to 36.5 | Approval | The card's stage dot moves to Approval; "Next: Waiting for leadership approval"; Alex Morgan (an admin) arrives and presses Approve; a check and "Approved by Alex Morgan"; "Leadership approves it." The AI never approves |
-| 36.5 to 40.1 | Join | The dot moves to Recruiting; Ben, then Priya, each press the card's own "Join project" button and drop into an empty seat; each seat links to the last; 3 of 3; the dot moves to Building; "Teams form around good ideas." |
+| 36.5 to 40.1 | Join | The dot moves to Recruiting. "Anyone can join a project." Ben arrives with his own pointer, which clicks the card's "Join project" button (a ripple), and he drops into an empty seat with his name under it; then Priya. Each seat links to the last; 3 of 3; "Teams form around good ideas."; the dot moves to Building. Joining is direct: no request or approval step |
 | 40.1 to 43.1 | Plan | Building. Each person moves from their seat to their own plan step; "AI drafts the plan. The team owns it."; "Generated from project brief" |
 | 43.1 to 51.1 | Pulse, in five states | **Stalled**: "No activity for N days" counts to 12. **Detected**: heartbeat, then "Pulse · Build going quiet". **Notified**: Slack digest card, "The team gets a nudge." **Action**: Mia presses Open. **Progress**: steps tick, "Moving again", Publishing, Live |
 | 51.1 to 55.3 | Impact | "Live · 8 hours saved this month"; "+8 hours" travels to the company chart; months stack 6, 16, 30, then 42 in October; "Impact everyone can see."; "Illustrative data" |

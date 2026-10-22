@@ -430,15 +430,21 @@ SHOWN, CHOSEN, DOCK, REPLY_T = 27.6, 28.25, 28.9, 29.3
 def bubble_state(t):
     if t >= DOCK:
         return "claimed"
-    if t >= 7.6:
+    if t >= AGES[4]:
         return "Asked 2 days ago"
-    if t >= 6.5:
+    if t >= AGES[3]:
         return "Asked 1 day ago"
-    if t >= 5.5:
+    if t >= AGES[2]:
         return "Asked 4 hours ago"
-    if t >= 4.6:
+    if t >= AGES[1]:
         return "Asked 3 hours ago"
     return "Asked 2 hours ago"
+
+
+AGES = [4.9, 5.6, 6.3, 7.0, 7.8]       # the question is posted, then ages a step at a time
+TYPE = (3.75, 4.55)                    # Ben types it
+SEND = 4.65                            # and sends it
+COLLAPSE = 13.7                        # the stages after Recruiting break and fall
 
 
 def card_question(t, claimed=None):
@@ -756,6 +762,9 @@ def draw_seats(c, t):
             pop = 1.0 if j is None else e_out_cubic(prog(t, j, j + 0.2))
             avatar_at(c, X, Y, SEATS[k][0], lerp(72, 36, q) * z * (0.85 + 0.15 * pop), a,
                       ring=prog(t, j, j + 0.6) if j and j <= t < j + 0.6 else 0.0)
+            first = FIRST[SEATS[k][0]]
+            na = a * pop * (1 - prog(t, m0, m0 + 0.15))
+            soft_word(c, first, MED, 34, WHITE, X - text_width(first, MED, 34) * z / 2, Y + 118 * z, na, 0.0, z)
         elif t < PLAN_IN:
             avatar_at(c, *ws(sx, sy, t), "", 72 * z, a, dashed=True)
     # the team is full
@@ -862,8 +871,30 @@ def join_button():
     return CARD_X0 + 955, CARD_Y0 + 423
 
 
+@lru_cache(None)
+def _pointer_mask(size):
+    """A mouse pointer, tip at (0, 0), as an alpha mask (fill, outline)."""
+    k = 4
+    pts = [(0, 0), (0, 23), (6, 18), (10, 27), (14, 25), (10, 17), (17, 17)]
+    w, h = int(20 * size) + 6, int(30 * size) + 6
+    def mask(grow):
+        im = Image.new("L", (w * k, h * k), 0)
+        ImageDraw.Draw(im).polygon([((x * size + 3) * k, (y * size + 3) * k) for x, y in pts], fill=255,
+                                   outline=255, width=int(grow * k))
+        return np.asarray(im.resize((w, h), Image.BOX), np.float32) / 255.0
+    return mask(4), mask(0)
+
+
+def draw_pointer(c, x, y, size, alpha):
+    if alpha <= 0.01:
+        return
+    edge, fill = _pointer_mask(round(size, 1))
+    blend(c, int(x - 3), int(y - 3), edge * alpha, (16, 16, 19))
+    blend(c, int(x - 3), int(y - 3), fill * alpha, (255, 255, 255))
+
+
 def draw_joiners(c, t):
-    """Ben, then Priya, arrive, press Join project and take a seat."""
+    """Ben, then Priya: each one arrives, clicks Join project themselves, and takes a seat. Nobody approves it."""
     for k in (1, 2):
         ini, name, j = SEATS[k]
         t0, tp = j - 0.8, j - PRESS
@@ -882,6 +913,15 @@ def draw_joiners(c, t):
         avatar_at(c, X, Y, ini, lerp(64, 72, p2) * z, g, ring=prog(t, tp, tp + 0.4) if tp <= t < tp + 0.4 else 0.0)
         ng = g * (1 - prog(t, tp + 0.05, tp + 0.2))
         soft_word(c, name, MED, 44, WHITE, X - text_width(name, MED, 44) * z / 2, Y + 118 * z, ng, 0.0, z)
+        # their own pointer goes to the button and clicks it
+        sbx, sby = ws(bx, by, t)
+        reach = prog(t, tp - 0.32, tp - 0.04, e_io_cubic)
+        px, py = lerp(X - 40 * z, sbx + 20 * z, reach), lerp(Y - 50 * z, sby + 6 * z, reach)
+        click = 1 - 0.18 * math.sin(math.pi * prog(t, tp - 0.04, tp + 0.1))
+        draw_pointer(c, px, py, 2.4 * z * click, g * (1 - prog(t, tp + 0.12, tp + 0.25)))
+        if tp <= t < tp + 0.45:      # the click ripples out of the button
+            u = prog(t, tp, tp + 0.45, e_out_cubic)
+            draw_dot(c, sbx, sby, (40 + 140 * u) * z, BLUE, 0.7 * (1 - u), ring=3)
         glint_w(c, t, bx, by, tp)
 
 
@@ -1276,7 +1316,7 @@ def draw_end(c, t):
 
 # ---------------------------------------------------------------- shake and punch (only on real hits)
 
-IMPACTS = [(5.5, 0.18), (12.0, 0.12), (19.9, 0.16), (22.5, 1.1), (DOCK, 0.3), (SEATS[1][2], 0.25),
+IMPACTS = [(COLLAPSE, 0.35), (19.9, 0.16), (22.5, 1.1), (DOCK, 0.3), (SEATS[1][2], 0.25),
            (SEATS[2][2], 0.25), (FLAG, 0.25), (PLAN[0][3], 0.2), (LANDS[-1], 0.9)]
 
 
@@ -1305,6 +1345,43 @@ def _say(c, text, fname, size, color, y, g):
     soft_word(c, text, fname, size, color, W / 2 - text_width(text, fname, size) / 2, y, g)
 
 
+def _fall(t, t0, seed):
+    """Where a falling piece is (dx, dy, spin in degrees, alpha) u seconds after it lets go."""
+    u = max(0.0, t - t0)
+    rng = np.random.default_rng(seed)
+    vx, vy, spin = rng.uniform(-90, 90), rng.uniform(-260, -120), rng.uniform(-220, 220)
+    return vx * u, vy * u + 0.5 * 3000 * u * u, spin * u, 1 - prog(u, 0.45, 0.9)
+
+
+def draw_collapse(c, t, xs, a):
+    """Building never lights. The track after it cracks, breaks in two and falls away."""
+    if not 10.0 <= t < COLLAPSE + 1.4:
+        return
+    # the crack: a flash runs along the unreached track
+    flash = prog(t, COLLAPSE - 0.08, COLLAPSE) * (1 - prog(t, COLLAPSE, COLLAPSE + 0.25))
+    if flash > 0:
+        draw_bar(c, (xs[2] + xs[5]) / 2, 620, xs[5] - xs[2], 6, alpha=a * flash, color=(190, 205, 255))
+        glint(c, t, xs[3], 620, COLLAPSE, 1.3)
+    if t < COLLAPSE:
+        return
+    k = 0
+    for i in (2, 3, 4):              # each unreached connector snaps in the middle; the halves tumble
+        for h in (0, 1):
+            dx, dy, rz, fa = _fall(t, COLLAPSE + 0.05 * k, 40 + k)
+            x = xs[i] + 35 + 70 * h
+            draw_bar(c, x + dx, 620 + dy, 70, 8, rz=rz, alpha=a * 0.85 * fa, color=(150, 156, 172))
+            k += 1
+    for i in (3, 4, 5):              # the stages that were never reached fall with them
+        dx, dy, rz, fa = _fall(t, COLLAPSE + 0.08 + 0.07 * (i - 3), 60 + i)
+        draw_dot(c, xs[i] + dx, 620 + dy, 22, (150, 156, 172), a * fa, ring=4)
+        name = STAGES[i]
+        soft_word(c, name, MED, 28, DIM, xs[i] + dx * 1.2 - text_width(name, MED, 28) / 2, 690 + dy * 1.1, a * fa)
+    for j in range(8):               # and a few bright splinters from where it broke
+        dx, dy, rz, fa = _fall(t, COLLAPSE, 90 + j)
+        x = xs[3] + (j - 3.5) * 22
+        draw_bar(c, x + dx * 2.6, 620 + dy * 0.8, 22, 5, rz=rz * 2, alpha=a * fa, color=(190, 205, 255))
+
+
 def draw_prelude(c, t):
     """The three problems, in the same still language as the ending. One object. No roads,
     no passing people, no field of bars. Hands off before the question becomes the idea."""
@@ -1328,17 +1405,47 @@ def draw_prelude(c, t):
                 lab = names[i]
                 soft_word(c, lab, MED, 32, DIM, x - text_width(lab, MED, 32) / 2, y - 42, a * (1 - p / 0.72))
 
-    # 1. the question ages in steps, so the wait is visible.
+    # 1. Ben types his question and sends it; then it waits, a step at a time.
     if t < 10.1:
-        a = prog(t, 3.25, 3.55, e_out_cubic) * (1 - prog(t, 9.45, 10.05))
-        _say(c, "Has anyone automated", DSEMI, 64, WHITE, 430, a * prog(t, 3.3, 3.6))
-        _say(c, "contract reviews before?", DSEMI, 64, WHITE, 520, a * prog(t, 3.5, 3.85))
-        _say(c, "Ben Carter", MED, 36, DIM, 610, a * prog(t, 3.7, 4.0))
-        age = bubble_state(t)
-        fresh = 0.0
-        for m in (4.6, 5.5, 6.5, 7.6):
-            fresh = max(fresh, 1 - prog(t, m, m + 0.2))
-        _say(c, age, LIGHT, 72, WHITE if fresh > 0.2 else DIM, 760, a * prog(t, 3.7, 4.05))
+        a = 1 - prog(t, 9.45, 10.05)
+        box = e_out_cubic(prog(t, 3.4, 3.75))
+        bw, bh = lerp(260, 1240, box), lerp(110, 360, box)
+        sent = prog(t, SEND, SEND + 0.3, e_out_cubic)
+        cy = 515 - 30 * sent
+        img = Pen(int(bw), int(bh))
+        typing = prog(t, 3.5, 3.7) * (1 - sent)
+        img.rrect(1, 1, int(bw) - 2, int(bh) - 2, 14, outline=BLUE, width=2, alpha=typing)
+        place(c, img.done(), 960, cy, 1.0, a)
+        x0, top = 960 - bw / 2, cy - bh / 2
+        g = prog(t, 3.65, 3.85) * a
+        avatar_at(c, x0 + 64, top + 62, "BC", 28, g, fill=(38, 41, 50))
+        soft_word(c, "Ben Carter", MED, 34, DIM, x0 + 108, top + 74, g)
+        lines = ("Has anyone automated", "contract reviews before?")
+        n = int(round((len(lines[0]) + 1 + len(lines[1])) * prog(t, *TYPE)))
+        shown = (lines[0][:n], lines[1][:max(0, n - len(lines[0]) - 1)])
+        for k, part in enumerate(shown):
+            if part:
+                soft_word(c, part, DSEMI, 64, WHITE, x0 + 40, top + 180 + 88 * k, a)
+        if t < SEND:     # the cursor, blinking until he sends
+            k = 1 if n > len(lines[0]) else 0
+            cx = x0 + 40 + text_width(shown[k], DSEMI, 64) + 8
+            blink = 1.0 if TYPE[0] <= t < TYPE[1] else (1.0 if (t * 2.6) % 1 < 0.6 else 0.0)
+            draw_bar(c, cx, top + 158 + 88 * k, 62, 4, rz=90.0, alpha=a * box * blink, color=(150, 175, 255))
+            ga = prog(t, TYPE[0] + 0.2, TYPE[0] + 0.4)
+            img = Pen(200, 80)
+            _button(img, 0, 0, 199, 79, "Send", primary=t >= TYPE[1], size=38)
+            place(c, img.done(), x0 + bw - 140, top + bh - 70, 1.0, a * ga, shadow=False)
+        glint(c, t, x0 + bw - 140, top + bh - 70, SEND, 1.0)
+        # the wait: each age slides in over the last, and stays white
+        for i, m in enumerate(AGES):
+            nxt = AGES[i + 1] if i + 1 < len(AGES) else 99.0
+            if t < m or t >= nxt + 0.1:
+                continue
+            age = bubble_state(m)
+            gi = prog(t, m + 0.08, m + 0.32, e_out_cubic)
+            out = prog(t, nxt, nxt + 0.1)
+            soft_word(c, age, LIGHT, 72, WHITE, W / 2 - text_width(age, LIGHT, 72) / 2, 800 + 26 * (1 - gi),
+                      gi * a, out)
 
     # 2. the stages run Idea to Live, then stop at Building. Not one long Building bar.
     if 9.55 <= t < 15.7:
@@ -1348,23 +1455,26 @@ def draw_prelude(c, t):
         lights = (10.25, 11.15, 12.05)
         for i, name in enumerate(STAGES):
             x = xs[i]
-            if i < 5:
+            if i < 5 and (i < 2 or t < COLLAPSE):
                 grow = prog(t, 10.05 + i * 0.7, 10.55 + i * 0.7, e_out_cubic)
                 reached = i < 3
-                draw_bar(c, x + 70 * grow, 620, 140 * grow, 4, alpha=a * (0.9 if reached else 0.3),
-                         color=BLUE if i < 2 else (70, 75, 92))
+                shake = 0.0 if i < 2 else 3 * prog(t, COLLAPSE - 0.45, COLLAPSE) * math.sin(70 * t + i)
+                draw_bar(c, x + 70 * grow, 620 + shake, 140 * grow, 6, alpha=a * (0.9 if i < 2 else 0.55),
+                         color=BLUE if i < 2 else (110, 116, 136))
             if i < 3:
                 p = prog(t, lights[i], lights[i] + 0.26, e_out_cubic)
                 if p > 0:
                     draw_dot(c, x, 620, 20 * (0.7 + 0.3 * p), BLUE, a * p)
-            else:
+            elif t < COLLAPSE:
                 draw_dot(c, x, 620, 20, (16, 16, 19), a * prog(t, 10.3, 10.7), ring=3)
-            soft_word(c, name, MED, 28, WHITE if i < 3 else DIM, x - text_width(name, MED, 28) / 2, 690,
-                      a * prog(t, 10.15 + i * 0.15, 10.45 + i * 0.15))
+            if i < 3 or t < COLLAPSE:
+                soft_word(c, name, MED, 28, WHITE if i < 3 else DIM, x - text_width(name, MED, 28) / 2, 690,
+                          a * prog(t, 10.15 + i * 0.15, 10.45 + i * 0.15))
+        draw_collapse(c, t, xs, a)
         miss = math.sin(math.pi * clamp(prog(t, 13.05, 13.6)))
         if miss > 0.02:
             draw_dot(c, xs[3], 620, 20, BLUE, a * miss * 0.9)
-        _say(c, "Stopped halfway", LIGHT, 68, WHITE, 860, a * prog(t, 13.4, 13.75, e_out_cubic))
+        _say(c, "Stopped halfway", LIGHT, 68, WHITE, 860, a * prog(t, COLLAPSE + 0.55, COLLAPSE + 0.9, e_out_cubic))
 
     # 3. the months arrive one by one, and none of them gets a number.
     if 15.45 <= t < 21.15:
@@ -1413,7 +1523,7 @@ def render_scene(t_film):
     draw_approver(c, t)
     draw_prelude(c, t)
 
-    line_words(c, t, "Questions go unanswered.", LIGHT, 84, WHITE, W / 2, 168, 3.42, 9.2, "center",
+    line_words(c, t, "Questions go unanswered.", LIGHT, 84, WHITE, W / 2, 168, AGES[0] + 0.15, 9.2, "center",
                step=0.045, dur=0.16)
     headline(c, t, "Ideas lose momentum.", 10.3, 15.15, y=168, size=72)
     headline(c, t, "Impact goes unseen.", 16.2, 20.7, y=168, size=80)
@@ -1425,7 +1535,8 @@ def render_scene(t_film):
     line_words(c, tn, "Anyone can propose an idea.", LIGHT, 64, WHITE, W / 2, 150, 33.8, unwarp(34.3), "center")
     line_words(c, t, "AI reviews the idea.", LIGHT, 64, WHITE, W / 2, 150, 34.5, 35.2, "center", **quick)
     line_words(c, t, "Leadership approves it.", LIGHT, 64, WHITE, W / 2, 150, 35.4, 36.25, "center", **quick)
-    headline(c, t, "Teams form around good ideas.", 36.5, 38.8, y=150, size=64)
+    line_words(c, t, "Anyone can join a project.", LIGHT, 64, WHITE, W / 2, 150, 36.5, 37.75, "center")
+    line_words(c, t, "Teams form around good ideas.", LIGHT, 64, WHITE, W / 2, 150, 37.85, 38.8, "center", step=0.06)
     headline(c, t, "AI drafts the plan. The team owns it.", 39.1, 41.8, y=160, size=68)
     draw_stall(c, t)
     headline(c, t, "Pulse spots work going quiet.", 43.45, 44.75, y=118, size=60)

@@ -126,7 +126,7 @@ def kick_on(t):
 
 
 def section(t):
-    for end, name in ((4.0, "intro"), (12.0, "problem"), (15.5, "stall"), (21.0, "chaos"), (22.5, "hold"),
+    for end, name in ((4.0, "intro"), (12.0, "problem"), (15.5, "stall"), (21.0, "chaos"), (23.0, "hold"),
                       (27.5, "turn"), (40.0, "solveA"), (46.5, "solveB"), (52.0, "quiet"), (58.7, "solveC"),
                       (64.05, "drop"), (66.7, "outro")):
         if t < end:

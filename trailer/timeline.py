@@ -1316,7 +1316,7 @@ def draw_end(c, t):
 
 # ---------------------------------------------------------------- shake and punch (only on real hits)
 
-IMPACTS = [(COLLAPSE, 0.35), (19.9, 0.16), (22.5, 0.3), (DOCK, 0.3), (SEATS[1][2], 0.25),
+IMPACTS = [(COLLAPSE, 0.35), (19.9, 0.16), (22.5, 0.2), (23.0, 0.9), (DOCK, 0.3), (SEATS[1][2], 0.25),
            (SEATS[2][2], 0.25), (FLAG, 0.25), (PLAN[0][3], 0.2), (LANDS[-1], 0.9)]
 
 
@@ -1491,9 +1491,10 @@ TURN_GREY = (150, 156, 172)
 TURN_BLUE = (82, 122, 255)           # electric blue while the lines sweep; they settle to the mark's own blue
 MARK_BLUE = (58, 87, 220)            # engine SEG_FLAT: the colour every bar of the mark is drawn in
 REPAIRED = 22.5                      # the three fronts reach the end of their rows together, on the slam
-SWEEP_V = 720.0                      # px/s: the fronts' speed across the rows (about 0.9 s from first to last)
-FOLD = 0.7                           # s: the lines decelerate into the mark after REPAIRED
-TAIL = (22.45, 23.2)                 # the far ends whip in from off screen as the lines fold into the mark
+SWEEP = (21.35, 1.6)                 # the fronts enter at this time and accelerate (u ** 1.6) to REPAIRED
+FOLD = 0.5                           # s: the lines decelerate into the mark after REPAIRED, landing on the beat
+TAIL = (22.45, 23.0)                 # the far ends whip in from off screen as the lines fold into the mark
+LOCK = REPAIRED + FOLD               # 23.0: the mark locks, with the hit and the music's turn to major
 
 
 def _turn_x():
@@ -1524,7 +1525,8 @@ def _mix(a, b, p):
 def turn_head(k, t):
     """The leading end of line k: one shared front across the rows, then it eases into its bar's right end."""
     if t <= REPAIRED:
-        return TURN_X1 - SWEEP_V * (REPAIRED - t)
+        u = clamp((t - SWEEP[0]) / (REPAIRED - SWEEP[0]))
+        return lerp(-80.0, TURN_X1, u ** SWEEP[1])
     u = clamp((t - REPAIRED) / FOLD)
     return lerp(TURN_X1, turn_slot(k)[1], 1 - (1 - u) ** 2)      # same speed as the sweep at the hand-off
 
@@ -1550,6 +1552,9 @@ def draw_turn(c, t, a):
     settle = e_io_cubic(prog(t, REPAIRED + 0.1, REPAIRED + FOLD))
     q = e_io_cubic(prog(t, REPAIRED + 0.05, REPAIRED + FOLD))
     T = lerp(TURN_T, 40.0 * TURN_MS, settle)
+    u = t - LOCK
+    spring = 0.07 * math.exp(-u / 0.09) * math.cos(2 * math.pi * 5.5 * u) if u >= 0 else 0.0   # it lands and settles
+    T *= 1 + spring
     col = _mix(TURN_BLUE, MARK_BLUE, settle)
     xm = (TURN_X0 + TURN_X1) / 2
     for k, (label, y) in enumerate(TURN_ROWS):
@@ -1587,8 +1592,8 @@ def draw_turn(c, t, a):
 
         # the line: from off screen left (or its whipping tail) to its front, along its path
         if h > -T:
-            if t >= REPAIRED + FOLD and t >= TAIL[1]:
-                draw_bar(c, (sl + sr) / 2, sy, sr - sl, T, alpha=a, color=col)     # exactly the mark
+            if t >= LOCK:
+                draw_bar(c, (sl + sr) / 2, sy, (sr - sl) * (1 + spring * 0.6), T, alpha=a, color=col)   # the mark
             else:
                 tail = lerp(-T - 40, sl, e_io_cubic(prog(t, *TAIL)))
                 tail = min(tail, h - 1)
@@ -1609,7 +1614,7 @@ def render_scene(t_film):
     tn = t_film + SHIFT              # the film clock
     t = warp(tn)                     # logic time, which nearly everything below is written in
     n = int(round(tn * FPS * 4))
-    flash = 0.08 * prog(t, 22.47, 22.5, e_lin) * (1 - prog(t, 22.5, 22.9, e_out_cubic))
+    flash = 0.1 * prog(t, 22.97, 23.0, e_lin) * (1 - prog(t, 23.0, 23.4, e_out_cubic))
     c = background(tn, n, flash)
     end_fade = prog(t, 62.3, 63.1)
 

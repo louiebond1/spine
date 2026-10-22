@@ -120,7 +120,7 @@ def beep(freq=1320.0, dur=0.16):
 
 KINDS = {"tick": tick, "tick_hi": lambda: tick(3400.0), "land": land, "join": join, "tap": tap,
          "swell": swell, "crack0": lambda: crack(0), "crack1": lambda: crack(1), "crack2": lambda: crack(2),
-         "clack": clack, "slam": lambda: clack(True), "beep": beep}
+         "clack": clack, "slam": lambda: clack(True), "beep": beep, "rise": lambda: swell(1.1, 9)}
 
 # (time s, kind, peak dBFS, pan -1..1). Times match the hits in timeline.py (IMPACTS).
 CUES = [(3.75 + 0.04 * k, "tickf" + ("2600" if k % 2 else "3000"), -38, 0.1) for k in range(20)] + [   # Ben types
@@ -130,7 +130,9 @@ CUES = [(3.75 + 0.04 * k, "tickf" + ("2600" if k % 2 else "3000"), -38, 0.1) for
     (12.95, "tick", -28, 0.2),                                    # Building
     (13.35, "swell", -22, 0.3), (13.7, "crack1", -14, 0.3),       # it gets no further; the rest breaks and falls
     (19.55, "swell", -24, 0.4), (19.9, "crack2", -16, 0.5),       # the line to the chart snaps
-    (22.15, "swell", -16, 0.0), (22.5, "slam", -10, 0.0),         # everything lines up on the spine
+    (21.4, "rise", -20, 0.0),                                     # the three lines sweep in, gathering speed
+    (22.5, "clack", -14, 0.0),                                    # all three are repaired at once
+    (22.65, "swell", -16, 0.0), (23.0, "slam", -8, 0.0),          # they fold into the mark: it locks
 ] + [(27.6 + 0.1 * k, "tick", -30, 0.3 + 0.2 * k) for k in range(3)] + [   # the question reaches the Champions
     (28.25, "tick_hi", -25, 0.5),                                 # Mia takes it
     (28.9, "clack", -15, 0.1), (29.3, "tap", -24, -0.1),          # she claims it; her answer

@@ -26,7 +26,7 @@ The visual identity is a dark background with electric blue. The look is one con
 | Film time | Beat | On screen |
 | --- | --- | --- |
 | 0 to 6 | Questions go unanswered | A message box opens; Ben Carter types "Has anyone automated contract reviews before?" with a blinking cursor and presses Send. It posts and waits: "Asked 2 hours ago", 3 hours, 4 hours, 1 day, 2 days, each sliding in over the last, all in white |
-| 6 to 11.9 | Ideas lose momentum | "Contract Clause Checker" and the six stages. Idea, Approval and Recruiting light; Building tries and fails. The track after Recruiting trembles, cracks, breaks in two and falls off screen with Building, Publishing and Live (shake and crack sound). "Stopped halfway" |
+| 6 to 11.9 | Ideas lose momentum | "Contract Clause Checker" and the six stages, centred. Idea, Approval, Recruiting and Building light; it tries for Publishing and fails. The track after Building trembles, cracks, breaks in two and falls off screen with Publishing and Live (shake and crack sound). "Stopped halfway" |
 | 11.9 to 17.6 | Impact goes unseen | Empty "Hours saved" chart, "No data yet"; a line reaching it snaps |
 | 17.6 to 23.9 | The turn | "Your AI needs a spine." Every loose piece slams into line on a spine. "Spine is your AI project manager." |
 | 23.9 to 29.2 | Help Desk | "Every question finds someone who knows." The question is shown to Jamie Chen, Sarah Kim and Mia Thompson; Mia claims it and replies "Yes, I'm starting one: Contract Clause Checker" |

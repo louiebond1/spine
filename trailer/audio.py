@@ -127,7 +127,8 @@ CUES = [(3.75 + 0.04 * k, "tickf" + ("2600" if k % 2 else "3000"), -38, 0.1) for
     (4.65, "tap", -22, 0.2), (4.65, "swell", -30, 0.0),           # and sends it
 ] + [(t_, "tick", -28, 0.0) for t_ in (4.9, 5.6, 6.3, 7.0, 7.8)] + [   # it waits: 2 hours ... 2 days
     (10.25, "tick", -28, -0.3), (11.15, "tick", -28, -0.1), (12.05, "tick", -28, 0.1),   # Idea, Approval, Recruiting
-    (13.35, "swell", -22, 0.3), (13.7, "crack1", -14, 0.3),       # Building never lights; the track breaks and falls
+    (12.95, "tick", -28, 0.2),                                    # Building
+    (13.35, "swell", -22, 0.3), (13.7, "crack1", -14, 0.3),       # it gets no further; the rest breaks and falls
     (19.55, "swell", -24, 0.4), (19.9, "crack2", -16, 0.5),       # the line to the chart snaps
     (22.15, "swell", -16, 0.0), (22.5, "slam", -10, 0.0),         # everything lines up on the spine
 ] + [(27.6 + 0.1 * k, "tick", -30, 0.3 + 0.2 * k) for k in range(3)] + [   # the question reaches the Champions

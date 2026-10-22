@@ -1354,31 +1354,31 @@ def _fall(t, t0, seed):
 
 
 def draw_collapse(c, t, xs, a):
-    """Building never lights. The track after it cracks, breaks in two and falls away."""
+    """It reaches Building and gets no further. The track after it cracks, breaks in two and falls away."""
     if not 10.0 <= t < COLLAPSE + 1.4:
         return
     # the crack: a flash runs along the unreached track
     flash = prog(t, COLLAPSE - 0.08, COLLAPSE) * (1 - prog(t, COLLAPSE, COLLAPSE + 0.25))
     if flash > 0:
-        draw_bar(c, (xs[2] + xs[5]) / 2, 620, xs[5] - xs[2], 6, alpha=a * flash, color=(190, 205, 255))
-        glint(c, t, xs[3], 620, COLLAPSE, 1.3)
+        draw_bar(c, (xs[3] + xs[5]) / 2, 620, xs[5] - xs[3], 6, alpha=a * flash, color=(190, 205, 255))
+        glint(c, t, xs[4], 620, COLLAPSE, 1.3)
     if t < COLLAPSE:
         return
     k = 0
-    for i in (2, 3, 4):              # each unreached connector snaps in the middle; the halves tumble
+    for i in (3, 4):                 # each unreached connector snaps in the middle; the halves tumble
         for h in (0, 1):
             dx, dy, rz, fa = _fall(t, COLLAPSE + 0.05 * k, 40 + k)
             x = xs[i] + 35 + 70 * h
             draw_bar(c, x + dx, 620 + dy, 70, 8, rz=rz, alpha=a * 0.85 * fa, color=(150, 156, 172))
             k += 1
-    for i in (3, 4, 5):              # the stages that were never reached fall with them
-        dx, dy, rz, fa = _fall(t, COLLAPSE + 0.08 + 0.07 * (i - 3), 60 + i)
+    for i in (4, 5):                 # the stages that were never reached fall with them
+        dx, dy, rz, fa = _fall(t, COLLAPSE + 0.08 + 0.07 * (i - 4), 60 + i)
         draw_dot(c, xs[i] + dx, 620 + dy, 22, (150, 156, 172), a * fa, ring=4)
         name = STAGES[i]
         soft_word(c, name, MED, 28, DIM, xs[i] + dx * 1.2 - text_width(name, MED, 28) / 2, 690 + dy * 1.1, a * fa)
     for j in range(8):               # and a few bright splinters from where it broke
         dx, dy, rz, fa = _fall(t, COLLAPSE, 90 + j)
-        x = xs[3] + (j - 3.5) * 22
+        x = xs[4] + (j - 3.5) * 22
         draw_bar(c, x + dx * 2.6, 620 + dy * 0.8, 22, 5, rz=rz * 2, alpha=a * fa, color=(190, 205, 255))
 
 
@@ -1447,33 +1447,32 @@ def draw_prelude(c, t):
             soft_word(c, age, LIGHT, 72, WHITE, W / 2 - text_width(age, LIGHT, 72) / 2, 800 + 26 * (1 - gi),
                       gi * a, out)
 
-    # 2. the stages run Idea to Live, then stop at Building. Not one long Building bar.
+    # 2. the stages run Idea to Building, and it gets no further. The rest breaks and falls.
     if 9.55 <= t < 15.7:
         a = prog(t, 9.55, 10.0, e_out_cubic) * (1 - prog(t, 15.15, 15.65))
         _say(c, "Contract Clause Checker", DSEMI, 56, WHITE, 390, a * prog(t, 9.6, 9.95))
-        xs = [200 + i * 280 for i in range(6)]
-        lights = (10.25, 11.15, 12.05)
+        xs = [W / 2 + (i - 2.5) * 280 for i in range(6)]       # centred on the frame
+        lights = (10.25, 11.15, 12.05, 12.95)                   # Idea, Approval, Recruiting, Building
         for i, name in enumerate(STAGES):
             x = xs[i]
-            if i < 5 and (i < 2 or t < COLLAPSE):
+            if i < 5 and (i < 3 or t < COLLAPSE):
                 grow = prog(t, 10.05 + i * 0.7, 10.55 + i * 0.7, e_out_cubic)
-                reached = i < 3
-                shake = 0.0 if i < 2 else 3 * prog(t, COLLAPSE - 0.45, COLLAPSE) * math.sin(70 * t + i)
-                draw_bar(c, x + 70 * grow, 620 + shake, 140 * grow, 6, alpha=a * (0.9 if i < 2 else 0.55),
-                         color=BLUE if i < 2 else (110, 116, 136))
-            if i < 3:
+                shake = 0.0 if i < 3 else 3 * prog(t, COLLAPSE - 0.45, COLLAPSE) * math.sin(70 * t + i)
+                draw_bar(c, x + 70 * grow, 620 + shake, 140 * grow, 6, alpha=a * (0.9 if i < 3 else 0.55),
+                         color=BLUE if i < 3 else (110, 116, 136))
+            if i < 4:
                 p = prog(t, lights[i], lights[i] + 0.26, e_out_cubic)
                 if p > 0:
                     draw_dot(c, x, 620, 20 * (0.7 + 0.3 * p), BLUE, a * p)
             elif t < COLLAPSE:
                 draw_dot(c, x, 620, 20, (16, 16, 19), a * prog(t, 10.3, 10.7), ring=3)
-            if i < 3 or t < COLLAPSE:
-                soft_word(c, name, MED, 28, WHITE if i < 3 else DIM, x - text_width(name, MED, 28) / 2, 690,
+            if i < 4 or t < COLLAPSE:
+                soft_word(c, name, MED, 28, WHITE if i < 4 else DIM, x - text_width(name, MED, 28) / 2, 690,
                           a * prog(t, 10.15 + i * 0.15, 10.45 + i * 0.15))
         draw_collapse(c, t, xs, a)
         miss = math.sin(math.pi * clamp(prog(t, 13.05, 13.6)))
         if miss > 0.02:
-            draw_dot(c, xs[3], 620, 20, BLUE, a * miss * 0.9)
+            draw_dot(c, xs[4], 620, 20, BLUE, a * miss * 0.9)     # it tries for Publishing, and fails
         _say(c, "Stopped halfway", LIGHT, 68, WHITE, 860, a * prog(t, COLLAPSE + 0.55, COLLAPSE + 0.9, e_out_cubic))
 
     # 3. the months arrive one by one, and none of them gets a number.
@@ -1485,7 +1484,7 @@ def draw_prelude(c, t):
             p = prog(t, 16.15 + i * 0.7, 16.5 + i * 0.7, e_out_cubic)
             if p <= 0:
                 continue
-            x = 560 + 220 * i
+            x = W / 2 + (i - 1.5) * 220                          # centred on the frame
             draw_bar(c, x, 800 + 16 * (1 - p), 90, 6, alpha=a * 0.55 * p, color=(70, 75, 92))
             soft_word(c, lab, MED, 32, DIM, x - text_width(lab, MED, 32) / 2, 860, a * p)
         _say(c, "No data yet", LIGHT, 108, DIM, 620, a * prog(t, 19.05, 19.45, e_out_cubic))

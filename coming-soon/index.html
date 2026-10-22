@@ -24,8 +24,27 @@
   p { margin-top: 20px; font-size: 17px; line-height: 1.6; color: var(--muted); }
   .film { margin-top: 40px; width: 100%; max-width: 960px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #0F1733; }
   .film video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  header { display: flex; align-items: center; justify-content: space-between; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 20px; border-radius: 10px;
+         font: 500 15px Inter, system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+  .btn-outline { border: 1px solid var(--brand); color: var(--brand); background: #fff; }
+  .btn-outline:hover { background: #EEF3FF; }
+  .btn-primary { border: 0; color: #fff; background: var(--brand); width: 100%; }
+  .btn-primary:hover { background: #0F4FE0; }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+  .contact { margin-top: 72px; width: 100%; max-width: 560px; scroll-margin-top: 24px; }
+  .contact h2 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; text-align: center; }
+  .contact > p { text-align: center; margin-top: 8px; }
+  form { margin-top: 28px; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 24px; display: grid; gap: 16px; }
+  label { display: grid; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+  input, textarea { font: 400 16px Inter, system-ui, sans-serif; color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+                    padding: 11px 12px; background: #fff; width: 100%; }
+  textarea { min-height: 120px; resize: vertical; }
+  input:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: transparent; }
+  .hp { position: absolute; left: -9999px; }
+  .status { font-size: 15px; color: var(--muted); text-align: center; min-height: 1em; }
   footer { padding: 24px 32px; font-size: 13px; color: var(--muted); text-align: center; }
-  @media (max-width: 600px) { header { padding: 20px 16px; } }
+  @media (max-width: 600px) { header { padding: 20px 16px; } .btn-outline { height: 40px; padding: 0 14px; } }
 </style>
 </head>
 <body>
@@ -38,6 +57,7 @@
       </svg>
       Spine
     </span>
+    <a class="btn btn-outline" href="#contact">Get in touch</a>
   </header>
   <main>
     <div class="wrap">
@@ -48,8 +68,39 @@
     <div class="film">
       <video src="/trailer.mp4" poster="/poster.jpg" controls playsinline preload="metadata"></video>
     </div>
+    <section class="contact" id="contact">
+      <h2>Get in touch</h2>
+      <p>Interested in Spine for your company? Send us a message.</p>
+      <form id="contact-form" action="FORM_ENDPOINT" method="POST">
+        <label>Name<input name="name" autocomplete="name" required></label>
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Message<textarea name="message" required></textarea></label>
+        <input class="hp" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <button class="btn btn-primary" type="submit">Send message</button>
+        <div class="status" id="status" role="status"></div>
+      </form>
+    </section>
   </main>
   <footer>&copy; <span id="y">2026</span> Spine</footer>
-  <script>document.getElementById("y").textContent = new Date().getFullYear();</script>
+  <script>
+    document.getElementById("y").textContent = new Date().getFullYear();
+    const form = document.getElementById("contact-form");
+    const status = document.getElementById("status");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const button = form.querySelector("button");
+      button.disabled = true;
+      status.textContent = "Sending...";
+      try {
+        const res = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error(res.status);
+        form.reset();
+        status.textContent = "Thanks, we'll be in touch soon.";
+      } catch {
+        status.textContent = "That didn't send. Please try again.";
+      }
+      button.disabled = false;
+    });
+  </script>
 </body>
 </html>

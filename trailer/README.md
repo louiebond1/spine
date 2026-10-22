@@ -1,7 +1,7 @@
 # Spine launch film: "Holds it together" (V6)
 
 Deterministic Python/Pillow/NumPy renderer for `Spine_Give_AI_a_Spine_Polished.mp4`
-(1920x1080, 30 fps, 59.7 s, H.264 High yuv420p BT.709, AAC 320k 48 kHz stereo, fast-start,
+(1920x1080, 30 fps, 64.2 s, H.264 High yuv420p BT.709, AAC 320k 48 kHz stereo, fast-start,
 about -15 LUFS, true peak below -1 dBFS).
 
 ## The idea
@@ -19,7 +19,8 @@ large buttons, one headline at a time.
 4. **"Your AI needs a spine."** Every loose piece lines up on a spine. "Spine is your AI project manager."
 5. **Help Desk.** The question is shown to the Champions; Mia claims it. Her answer reveals work already
    happening: "Yes, I'm starting one: Contract Clause Checker".
-6. **Propose, review, approve.** (V17) The name lifts out of her answer and becomes the title of one card,
+6. **Propose, review, approve.** The name lifts out of her answer and lands as the newest idea in the
+   Ideas & Projects list, beside five of the company's projects. The list holds, then hers grows into one card,
    whose stage dots then advance: Idea (Problem and Who benefits fill in, Continue to AI review), the AI
    review (four criteria, advisory, only Mia sees the scores, Submit for approval), Approval (Alex Morgan,
    an admin, presses Approve), Recruiting. The AI review is advisory and never approves anything.
@@ -56,12 +57,13 @@ the project, so none is shown.
 | 11.9 - 17.6 s | Impact goes unseen |
 | 17.6 - 23.9 s | "Your AI needs a spine." / "Spine is your AI project manager." |
 | 23.9 - 29.2 s | Help Desk: "Every question finds someone who knows." |
-| 29.2 - 33.0 s | Propose, AI review, leadership approval, on one card |
-| 33.0 - 35.6 s | Join: the team forms |
-| 35.6 - 38.6 s | Plan: a step for each person |
-| 38.6 - 46.6 s | Pulse: stalled, detected, notified, action, progress |
-| 46.6 - 50.8 s | Impact: 8 hours travel to the chart; 42 in October |
-| 50.8 - 59.7 s | The recap line and the logo |
+| 29.2 - 32.9 s | The ideas list: Mia's lands as the newest idea, then grows into its own card |
+| 32.9 - 36.5 s | Propose, AI review, leadership approval, on one card |
+| 36.5 - 40.1 s | Join: the team forms |
+| 40.1 - 43.1 s | Plan: a step for each person |
+| 43.1 - 51.1 s | Pulse: stalled, detected, notified, action, progress |
+| 51.1 - 55.3 s | Impact: 8 hours travel to the chart; 42 in October |
+| 55.3 - 64.2 s | The recap line and the logo |
 
 Timings in the code are story time; the film opens 3.4 s in (`SHIFT` in `timeline.py`, `FILM_START` in
 `audio.py`), so film time = story time - 3.4.

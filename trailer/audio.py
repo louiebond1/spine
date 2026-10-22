@@ -154,6 +154,15 @@ CUES = [
     (54.0, "swell", -26, 0.0),
     (59.55, "slam", -10, 0.0),                                    # the mark locks: the logo
 ]
+# CUES above are in logic time, like timeline.py. unwarp() moves each one to the film clock, so a sound
+# stays on its picture when timeline.warp() holds or slows a stretch. LIST_CUES are already film clock.
+from timeline import unwarp   # noqa: E402
+
+CUES = [(unwarp(t), kind, db, pan) for t, kind, db, pan in CUES]
+LIST_CUES = [(32.95 + 0.08 * k, "tick", -32, -0.5 + 0.25 * k) for k in range(5)] + [   # the ideas appear
+    (34.6, "swell", -28, 0.0), (35.6, "swell", -26, 0.0),       # the others step back; hers grows into its card
+]
+CUES += LIST_CUES
 PITCHED = (0.0, 0.0)                # no pitched tick sequence in this cut
 
 

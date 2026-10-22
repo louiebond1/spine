@@ -7,7 +7,7 @@ This file is for whoever picks up the trailer next. It covers what exists, how t
 - Repository: `louiebond1/spine`
 - Branch: `claude/spine-trailer-polish-4rpg9z`. This work is **not on `main`**.
 - Latest cut: `trailer/release/Spine_Launch_Film.mp4`
-  - 1920x1080, 30 fps, 59.7 s
+  - 1920x1080, 30 fps, 64.2 s
   - H.264 and AAC 320k
   - -15.6 LUFS, true peak -1.8 dBFS
 - Source: everything else in `trailer/`
@@ -30,14 +30,15 @@ The visual identity is a dark background with electric blue. The look is one con
 | 11.9 to 17.6 | Impact goes unseen | Empty "Hours saved" chart, "No data yet"; a line reaching it snaps |
 | 17.6 to 23.9 | The turn | "Your AI needs a spine." Every loose piece slams into line on a spine. "Spine is your AI project manager." |
 | 23.9 to 29.2 | Help Desk | "Every question finds someone who knows." The question is shown to Jamie Chen, Sarah Kim and Mia Thompson; Mia claims it and replies "Yes, I'm starting one: Contract Clause Checker" |
-| 29.2 to 31.0 | Propose | The project name lifts out of the reply and becomes the title of one large card, at stage Idea. Problem and Who benefits fill in; Mia presses "Continue to AI review"; "Anyone can propose an idea." |
-| 31.0 to 31.9 | AI review | On the same card: Feasibility, Business value, Resourcing confidence, Originality light up as the review reads them; "Advisory. Only Mia sees the scores."; Mia presses "Submit for approval"; "AI reviews the idea." No scores are shown |
-| 31.9 to 33.0 | Approval | The card's stage dot moves to Approval; "Next: Waiting for leadership approval"; Alex Morgan (an admin) arrives and presses Approve; a check and "Approved by Alex Morgan"; "Leadership approves it." The AI never approves |
-| 33.0 to 35.6 | Join | The dot moves to Recruiting; Ben, then Priya, each press the card's own "Join project" button and drop into an empty seat; each seat links to the last; 3 of 3; the dot moves to Building; "Teams form around good ideas." |
-| 35.6 to 38.6 | Plan | Building. Each person moves from their seat to their own plan step; "AI drafts the plan. The team owns it."; "Generated from project brief" |
-| 38.6 to 46.6 | Pulse, in five states | **Stalled**: "No activity for N days" counts to 12. **Detected**: heartbeat, then "Pulse · Build going quiet". **Notified**: Slack digest card, "The team gets a nudge." **Action**: Mia presses Open. **Progress**: steps tick, "Moving again", Publishing, Live |
-| 46.6 to 50.8 | Impact | "Live · 8 hours saved this month"; "+8 hours" travels to the company chart; months stack 6, 16, 30, then 42 in October; "Impact everyone can see."; "Illustrative data" |
-| 50.8 to 59.7 | Ending | "Knowledge becomes action." / "Action becomes impact." One line runs through the answered question, the Live project and the 42; they condense into the 3 bars of the Spine logo, labelled Questions, Ideas, Impact; wordmark "Spine"; "Give your company's AI a spine." |
+| 29.2 to 32.9 | The ideas | The project name lifts out of the reply and lands as the newest idea in the Ideas & Projects list, among five seeded projects ("Idea · Mia Thompson"); the list holds; "Anyone can propose an idea."; hers grows out of the list into one large card |
+| 32.9 to 33.9 | Propose | On the card, at stage Idea: Problem and Who benefits fill in; Mia presses "Continue to AI review" |
+| 33.9 to 35.1 | AI review | On the same card: Feasibility, Business value, Resourcing confidence, Originality light up as the review reads them; "Advisory. Only Mia sees the scores."; Mia presses "Submit for approval"; "AI reviews the idea." No scores are shown |
+| 35.1 to 36.5 | Approval | The card's stage dot moves to Approval; "Next: Waiting for leadership approval"; Alex Morgan (an admin) arrives and presses Approve; a check and "Approved by Alex Morgan"; "Leadership approves it." The AI never approves |
+| 36.5 to 40.1 | Join | The dot moves to Recruiting; Ben, then Priya, each press the card's own "Join project" button and drop into an empty seat; each seat links to the last; 3 of 3; the dot moves to Building; "Teams form around good ideas." |
+| 40.1 to 43.1 | Plan | Building. Each person moves from their seat to their own plan step; "AI drafts the plan. The team owns it."; "Generated from project brief" |
+| 43.1 to 51.1 | Pulse, in five states | **Stalled**: "No activity for N days" counts to 12. **Detected**: heartbeat, then "Pulse · Build going quiet". **Notified**: Slack digest card, "The team gets a nudge." **Action**: Mia presses Open. **Progress**: steps tick, "Moving again", Publishing, Live |
+| 51.1 to 55.3 | Impact | "Live · 8 hours saved this month"; "+8 hours" travels to the company chart; months stack 6, 16, 30, then 42 in October; "Impact everyone can see."; "Illustrative data" |
+| 55.3 to 64.2 | Ending | "Knowledge becomes action." / "Action becomes impact." One line runs through the answered question, the Live project and the 42; they condense into the 3 bars of the Spine logo, labelled Questions, Ideas, Impact; wordmark "Spine"; "Give your company's AI a spine." |
 
 ## Rules from the owner
 
@@ -137,6 +138,8 @@ All times in the code are **story time**. Film time = story time minus 3.4: `SHI
 - Headlines are set in `render_scene` with `headline(c, t, text, t_in, t_out)`.
 
 ### Moving a moment
+
+`timeline.py` has two clocks. Nearly every time in it is **logic time**. `warp()` maps the film clock (film time + 3.4) to logic time: it holds the world while the ideas list is on screen, plays logic 33.75 to 39.0 (propose to joining) slower, and runs everything after it 4.5 s later. `audio.py` passes its cues through `unwarp()`, so sounds follow. `score.py`, `kick_on()` and render.py's `BLUR` are written in film-clock time. To change the pacing of that stretch, change `CARD_SET`, `SLOW` or `SLOW_END`, then move the score's times after it by the same amount (keep the shift a multiple of 0.5 s so the beat grid holds) and the `BLUR` windows.
 
 When you move a moment, also move:
 

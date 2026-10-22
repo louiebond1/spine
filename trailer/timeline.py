@@ -254,7 +254,7 @@ def draw_polyline(c, pts, width, color, alpha=1.0):
 # Times are story time; the film opens SHIFT seconds in.
 
 SHIFT = 3.4
-TOTAL = 1791                 # 59.7 s
+TOTAL = 1926                 # 64.2 s
 END_PLATE = TOTAL + 1
 HANDOFF = END_PLATE
 HOURS = [6, 16, 30, 42]
@@ -265,14 +265,50 @@ LOGO_C = (767.5, 469.5)
 
 
 def kick_env(t):
-    # matches kick_on() in score.py
+    # matches kick_on() in score.py; t is film-clock story time (after warp, see below)
     if not kick_on(t):
         return 0.0
     return math.exp(-(t % BEAT) / 0.11)
 
 
 def kick_on(t):
-    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (27.5 <= t < 42.0) or (47.5 <= t < 54.2) or (60.0 <= t < 62.2)
+    return (2.0 <= t < 12.0) or (15.5 <= t < 21.0) or (27.5 <= t < 46.5) or (52.0 <= t < 58.7) or (64.5 <= t < 66.7)
+
+
+# ---------------------------------------------------------------- time warp
+#
+# Almost every time in this file is "logic time": the moment as it was first laid out. The film clock
+# ("story time" = film time + SHIFT) adds a held scene, the company's list of ideas, after Mia's answer,
+# then plays the idea's journey on its card (logic 33.75 to 39.0) more slowly. Everything after that runs
+# EXTRA seconds later on the film clock. warp() maps the film clock to logic time; unwarp() goes back, and
+# audio.py uses it so every sound stays on its picture. score.py and render.py's BLUR are in film-clock time.
+
+IDEAS_IN = 33.44                 # film clock: the world holds here while the list of ideas is on screen
+CARD_SET = 36.3                  # film clock: the new idea has grown into its own card
+SLOW = (33.75, 39.0)             # logic time played slower: propose, AI review, approval, joining
+SLOW_END = 43.5                  # film clock: where that slower stretch ends
+EXTRA = SLOW_END - SLOW[1]       # 4.5 s added to the film
+SLOW_K = (SLOW_END - CARD_SET) / (SLOW[1] - SLOW[0])
+
+
+def warp(tn):
+    if tn < IDEAS_IN:
+        return tn
+    if tn < CARD_SET:
+        return IDEAS_IN
+    if tn < SLOW_END:
+        return SLOW[0] + (tn - CARD_SET) / SLOW_K
+    return tn - EXTRA
+
+
+def unwarp(t):
+    if t < IDEAS_IN:
+        return t
+    if t < SLOW[0]:
+        return CARD_SET
+    if t < SLOW[1]:
+        return CARD_SET + (t - SLOW[0]) * SLOW_K
+    return t + EXTRA
 
 
 # ---------------------------------------------------------------- camera
@@ -751,17 +787,73 @@ NAME_LIFT = 32.6
 NAME_LAND = 33.6
 
 
-def draw_name_bridge(c, t):
-    """The name lifts out of Mia's answer and becomes the title of the idea she proposes."""
-    if not NAME_LIFT <= t < NAME_LAND + 0.05:
+IDEAS = [  # the company's ideas and projects (seed data), and the new one: (title, line)
+    ("Client Brief Generator", "Recruiting  ·  3 of 4 people"),
+    ("Meeting Summary Bot", "Recruiting  ·  1 of 3 people"),
+    ("AI Invoice Assistant", "Building"),
+    ("Supplier Risk Checker", "Waiting for approval"),
+    ("Claude Onboarding Guide", "Live"),
+    (REPLY_B, "Idea  ·  Mia Thompson"),
+]
+IDEA_W, IDEA_H, IDEA_S = 600, 240, 0.92
+IDEA_XY = [(360.0 + 600 * (i % 3), 430.0 + 290 * (i // 3)) for i in range(6)]
+GROW = (35.6, CARD_SET)          # film clock: the new idea grows out of the list into its card
+
+
+def idea_card(title, line, hi=0.0, empty=False):
+    p = Pen(IDEA_W, IDEA_H)
+    if empty:
+        p.rrect(1, 1, IDEA_W - 2, IDEA_H - 2, 14, fill=(20, 21, 26), outline=(70, 75, 92), width=2)
+        return p.done()
+    if hi > 0:
+        p.rrect(1, 1, IDEA_W - 2, IDEA_H - 2, 14, outline=BLUE, width=3, alpha=hi)
+    p.text(36, 96, title, 44, WHITE, SEMI)
+    p.text(36, 168, line, 34, BLUE if title == REPLY_B else DIM)
+    return p.done()
+
+
+def idea_title_xy():
+    x, y = IDEA_XY[5]
+    return x - IDEA_W * IDEA_S / 2 + 36 * IDEA_S, y - IDEA_H * IDEA_S / 2 + 96 * IDEA_S
+
+
+def draw_ideas(c, tn):
+    """Ideas & Projects: every idea in one place. Mia's lands as the newest, then grows into its own card."""
+    if not 32.9 <= tn < CARD_SET:
         return
-    p = prog(t, NAME_LIFT, NAME_LAND, e_io_quint)
-    x0, b0 = reply_name_pos()
-    x1, b1 = CARD_X0 + 60, CARD_Y0 + 102
-    sx, sy = ws(lerp(x0, x1, p), lerp(b0, b1, p), t)
-    size = lerp(40 * QSCALE, 72, p)
-    soft_word(c, REPLY_B, SEMI if p < 0.5 else DSEMI, 72, BLUE if p < 0.7 else WHITE, sx, sy, 1.0, 0.0,
-              size / 72 * cam(t)[2])
+    out = prog(tn, GROW[0], GROW[0] + 0.35)
+    look = prog(tn, 34.4, 34.8)          # the others step back once hers is in
+    for i, (title, line) in enumerate(IDEAS[:5]):
+        a = prog(tn, 32.95 + 0.08 * i, 33.3 + 0.08 * i, e_out_cubic) * (1 - 0.4 * look) * (1 - out)
+        x, y = IDEA_XY[i]
+        place(c, idea_card(title, line), x, y + 24 * (1 - a), IDEA_S, a)
+    x, y = IDEA_XY[5]
+    a = prog(tn, 33.35, 33.6, e_out_cubic)
+    g = prog(tn, *GROW, e_io_quint)
+    if tn < NAME_LAND:
+        place(c, idea_card("", "", empty=True), x, y, IDEA_S, a)
+        return
+    cx, cy = ws(*CARD_C, SLOW[0])
+    s0, s1 = IDEA_S * IDEA_W / CARD_W, cam(SLOW[0])[2]
+    X, Y, s = lerp(x, cx, g), lerp(y, cy, g), lerp(s0, s1, g)
+    hi = prog(tn, NAME_LAND, NAME_LAND + 0.3)
+    place(c, idea_card(REPLY_B, IDEAS[5][1], hi), X, Y, s * CARD_W / IDEA_W, 1 - prog(tn, GROW[0], GROW[0] + 0.4))
+    if g > 0:
+        place(c, card_project(SLOW[0]), X, Y, s, prog(tn, GROW[0] + 0.1, GROW[0] + 0.5))
+    glint(c, tn, *idea_title_xy(), NAME_LAND, 0.9)
+
+
+def draw_name_bridge(c, tn):
+    """The name lifts out of Mia's answer and lands as the newest idea in the list."""
+    if not NAME_LIFT <= tn < NAME_LAND:
+        return
+    p = prog(tn, NAME_LIFT, NAME_LAND, e_io_quint)
+    t = warp(tn)
+    sx0, sy0 = ws(*reply_name_pos(), t)
+    sx1, sy1 = idea_title_xy()
+    size = lerp(40 * QSCALE * cam(t)[2], 44 * IDEA_S, p)
+    soft_word(c, REPLY_B, SEMI, 44, BLUE if p < 0.7 else WHITE, lerp(sx0, sx1, p), lerp(sy0, sy1, p), 1.0, 0.0,
+              size / 44)
 
 
 # ---------------------------------------------------------------- joining
@@ -1306,10 +1398,11 @@ def draw_prelude(c, t):
 
 
 def render_scene(t_film):
-    t = t_film + SHIFT
-    n = int(round(t * FPS * 4))
+    tn = t_film + SHIFT              # the film clock
+    t = warp(tn)                     # logic time, which nearly everything below is written in
+    n = int(round(tn * FPS * 4))
     flash = 0.28 * prog(t, 22.47, 22.5, e_lin) * (1 - prog(t, 22.5, 22.9, e_out_cubic))
-    c = background(t, n, flash)
+    c = background(tn, n, flash)
     end_fade = prog(t, 62.3, 63.1)
 
     draw_chart(c, t)
@@ -1323,7 +1416,8 @@ def render_scene(t_film):
     draw_joiners(c, t)
     draw_question(c, t)
     draw_champions(c, t)
-    draw_name_bridge(c, t)
+    draw_ideas(c, tn)
+    draw_name_bridge(c, tn)
     draw_chip(c, t)
     draw_slack(c, t)
     draw_approver(c, t)
@@ -1338,7 +1432,7 @@ def render_scene(t_film):
     line_words(c, t, "Spine is your AI project manager.", LIGHT, 48, WHITE, W / 2, 900, 23.15, 26.1, "center")
     headline(c, t, "Every question finds someone who knows.", 27.5, 32.4, y=150, size=64)
     quick = dict(step=0.05, dur=0.2)
-    line_words(c, t, "Anyone can propose an idea.", LIGHT, 64, WHITE, W / 2, 150, 33.65, 34.3, "center", **quick)
+    line_words(c, tn, "Anyone can propose an idea.", LIGHT, 64, WHITE, W / 2, 150, 33.8, unwarp(34.3), "center")
     line_words(c, t, "AI reviews the idea.", LIGHT, 64, WHITE, W / 2, 150, 34.5, 35.2, "center", **quick)
     line_words(c, t, "Leadership approves it.", LIGHT, 64, WHITE, W / 2, 150, 35.4, 36.25, "center", **quick)
     headline(c, t, "Teams form around good ideas.", 36.5, 38.8, y=150, size=64)

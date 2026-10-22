@@ -17,11 +17,12 @@ import timeline as tl
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLATES = os.path.join(HERE, "assets", "plates")
 
-# Windows with fast camera or object moves get 180-degree-shutter motion blur.
+# Windows with fast camera or object moves get 180-degree-shutter motion blur. Film-clock story time
+# (film time + SHIFT), not logic time: see warp() in timeline.py.
 BLUR = [(3.3, 5.45, 3), (5.45, 5.9, 4), (9.4, 10.3, 4), (11.95, 12.4, 4), (15.3, 16.2, 4), (19.85, 20.3, 4),
-        (22.45, 22.95, 6), (26.4, 27.3, 4), (28.25, 28.95, 4), (32.6, 33.6, 4), (36.45, 37.3, 3), (37.45, 38.3, 3),
-        (39.0, 39.6, 3), (44.9, 45.4, 3), (46.6, 47.1, 3), (50.0, 50.9, 4), (50.9, 52.3, 3), (55.1, 55.9, 4),
-        (56.6, 57.4, 4), (57.9, 58.6, 3), (58.7, 59.6, 4)]
+        (22.45, 22.95, 6), (26.4, 27.3, 4), (28.25, 28.95, 4), (32.6, 33.6, 4), (35.6, 36.3, 3), (40.0, 41.17, 3),
+        (41.37, 42.54, 3), (43.5, 44.1, 3), (49.4, 49.9, 3), (51.1, 51.6, 3), (54.5, 55.4, 4), (55.4, 56.8, 3),
+        (59.6, 60.4, 4), (61.1, 61.9, 4), (62.4, 63.1, 3), (63.2, 64.1, 4)]
 
 SHUTTER = 0.5 / FPS
 

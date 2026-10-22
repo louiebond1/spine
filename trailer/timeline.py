@@ -1477,14 +1477,19 @@ def draw_prelude(c, t):
         draw_turn(c, t, 1 - prog(t, 26.15, 26.65))
 
 
-TURN_ROWS = [  # what is left of each problem: (label, centre y, length)
-    ("Questions", 430.0, 560.0),     # the question, trailing off: nobody answered
-    ("Ideas", 580.0, 620.0),         # the stage track, broken halfway
-    ("Impact", 730.0, 520.0),        # the empty months, no data
+TURN_ROWS = [  # what is left of each problem, each broken at the centre line: (label, centre y)
+    ("Questions", 450.0),            # the question, then dots: nobody answered
+    ("Ideas", 600.0),                # the stage track, snapped halfway
+    ("Impact", 750.0),               # the empty months, no data
 ]
+TURN_L = 760.0                       # length of each row
+TURN_T = 18.0                        # thickness of each row before it becomes the mark
 TURN_MS = 1.5                        # the mark is drawn larger here than in the ending: it is the moment
 TURN_LABEL = 44
-TURN_Y = 580.0
+TURN_Y = 600.0
+TURN_GREY = (150, 156, 172)
+SPINE_TOP, SPINE_BOT = 380.0, 830.0
+SPINE_RUN = (21.85, 22.4)            # the spine draws down through the three breaks, on the swell
 
 
 def _turn_x():
@@ -1499,69 +1504,106 @@ TURN_X = _turn_x()
 SPINE_X = TURN_X + (757.5 - LOGO_C[0]) * TURN_MS   # where the mark's three bars overlap: the spine runs through it
 MEND = (22.5, 22.78)                 # on the slam: each problem is mended and turns blue
 CONDENSE = (22.78, 23.3)             # the mended bars pull in and become the mark
-TURN_GREY = (110, 116, 136)
 
 
 def _mix(a, b, p):
     return tuple(int(round(lerp(a[k], b[k], p))) for k in range(3))
 
 
+def glow_line(c, x, y0, y1, sigma, color, alpha):
+    """A soft vertical glow: gaussian across, fading in at both ends."""
+    if alpha <= 0.004 or y1 - y0 < 2:
+        return
+    pad = int(sigma * 3)
+    ix, iy = int(math.floor(x)) - pad, int(math.floor(y0)) - pad
+    xs = np.arange(2 * pad + 1, dtype=np.float32) + ix - x
+    ys = np.arange(int(y1 - y0) + 2 * pad + 1, dtype=np.float32) + iy
+    across = np.exp(-xs ** 2 / (2 * sigma ** 2))
+    along = np.clip((ys - y0 + pad) / (2 * pad), 0, 1) * np.clip((y1 + pad - ys) / (2 * pad), 0, 1)
+    blend(c, ix, iy, (along[:, None] * across[None, :]).astype(np.float32) * alpha, color)
+
+
+def spine_tip(t):
+    return lerp(SPINE_TOP, SPINE_BOT, e_io_cubic(prog(t, *SPINE_RUN)))
+
+
+@lru_cache(None)
+def spine_cross(y):
+    """When the spine's tip reaches height y."""
+    t = SPINE_RUN[0]
+    while t < SPINE_RUN[1] and spine_tip(t) < y:
+        t += 0.002
+    return t
+
+
 def draw_turn(c, t, a):
     """The logo is the three problems, mended and held together. Each comes back as what was left of it,
-    a spine draws down through them, they snap whole and blue on the hit, then stack into the mark."""
+    broken at the centre. A spine draws down through the three breaks; on the hit they snap whole and
+    blue, then stack into the mark."""
     mend = e_out_expo(prog(t, *MEND, e_lin))
     q = e_io_quint(prog(t, *CONDENSE, e_lin))
     col = _mix(TURN_GREY, BLUE_DEEP, mend)
     tremble = prog(t, 21.85, 22.45) * (1 - prog(t, 22.48, 22.5))
+    cx = W / 2
+    x0 = cx - TURN_L / 2
 
-    # the spine: a line of light draws down through all three, and becomes the mark itself
-    grow = e_io_cubic(prog(t, 21.85, 22.4))
-    sa = a * grow * (1 - prog(t, CONDENSE[0] + 0.1, CONDENSE[1]))
-    if sa > 0.01:
-        top, bot = 350.0, 810.0
-        draw_bar(c, SPINE_X, top + (bot - top) * grow / 2, (bot - top) * grow + 1, 4, 90.0, sa * 0.9,
-                 color=(140, 165, 255))
+    # the spine: a line of light draws down through every break, then becomes the mark itself
+    sx = lerp(cx, SPINE_X, q)
+    tip = spine_tip(t)
+    sa = a * prog(t, SPINE_RUN[0], SPINE_RUN[0] + 0.05) * (1 - prog(t, CONDENSE[0] + 0.1, CONDENSE[1]))
+    if sa > 0.01 and tip > SPINE_TOP + 1:
+        mid, length = (SPINE_TOP + tip) / 2, tip - SPINE_TOP
+        glow_line(c, sx, SPINE_TOP, tip, 16.0, (110, 146, 255), sa * 0.5)
+        draw_bar(c, sx, mid, length, 6, 90.0, sa, color=(170, 190, 255))
+        if t < SPINE_RUN[1] + 0.1:
+            head = 1 - prog(t, SPINE_RUN[1] - 0.05, SPINE_RUN[1] + 0.1)
+            draw_dot(c, sx, tip, 40, (150, 175, 255), 0.45 * sa * head, blur=16)
+            draw_dot(c, sx, tip, 7, (255, 255, 255), sa * head)
 
-    for k, (label, y, L) in enumerate(TURN_ROWS):
+    for k, (label, y) in enumerate(TURN_ROWS):
         ra = a * prog(t, 21.1 + 0.12 * k, 21.45 + 0.12 * k, e_out_cubic)
         if ra <= 0.01:
             continue
-        x0 = TURN_X - L / 2
-        lx, ly, lL, lT = TURN_X, y, L, 10.0          # the mended bar before it moves into the mark
+        L = TURN_L
+        lx, ly, lL = cx, y, L                         # the mended bar before it moves into the mark
         if q > 0:
-            cx, cy, Lm, Tm = logo_slot(k)
-            lx = lerp(TURN_X, (cx - LOGO_C[0]) * TURN_MS + TURN_X, q)
-            ly = lerp(y, (cy - LOGO_C[1]) * TURN_MS + TURN_Y, q)
-            lL, lT = lerp(L, Lm * TURN_MS, q), lerp(10.0, Tm * TURN_MS, q)
-            draw_bar(c, lx, ly, lL, lT, alpha=ra, color=col)
-        elif k == 0:                                  # a short question, then dots: still waiting
-            head = 200.0
-            draw_bar(c, x0 + lerp(head, L, mend) / 2, y, lerp(head, L, mend), 10, alpha=ra, color=col)
+            sx_, sy_, Lm, Tm = logo_slot(k)
+            lx = lerp(cx, (sx_ - LOGO_C[0]) * TURN_MS + TURN_X, q)
+            ly = lerp(y, (sy_ - LOGO_C[1]) * TURN_MS + TURN_Y, q)
+            lL = lerp(L, Lm * TURN_MS, q)
+            draw_bar(c, lx, ly, lL, lerp(TURN_T, Tm * TURN_MS, q), alpha=ra, color=col)
+        elif k == 0:                                  # the question, then dots where the answer should be
+            head = lerp(L / 2 - 16, L, mend)
+            draw_bar(c, x0 + head / 2, y, head, TURN_T, alpha=ra, color=col)
             for j in range(7):
-                dx = x0 + head + 38 + 46 * j
-                if dx > x0 + L - 6:
-                    break
+                dx = cx + 34 + 54 * j
                 wait = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(2 * math.pi * (t * 1.2 - j * 0.12)))
-                draw_dot(c, dx, y, 5, col, ra * wait * (1 - mend))
-        elif k == 1:                                  # broken in two; the far half hangs
-            gap = 20 * (1 - mend)
-            half = (L - 20) / 2 + 10 * mend
-            shake = 2.5 * tremble * math.sin(60 * t)
-            draw_bar(c, x0 + half / 2, y, half, 10, alpha=ra, color=col)
-            drop, tilt = 26 * (1 - mend) + shake, 9 * (1 - mend)
-            draw_bar(c, x0 + half + gap + half / 2, y + drop, half, 10, rz=tilt, alpha=ra, color=col)
+                draw_dot(c, dx, y, 7, col, ra * wait * (1 - mend))
+        elif k == 1:                                  # snapped at the centre; the far half hangs from the break
+            half = L / 2 - 8 * (1 - mend)
+            draw_bar(c, x0 + half / 2, y, half, TURN_T, alpha=ra, color=col)
+            tilt = 12 * (1 - mend) + 1.2 * tremble * math.sin(60 * t)
+            th = math.radians(tilt)
+            px = cx + 8 * (1 - mend)
+            draw_bar(c, px + half / 2 * math.cos(th), y + half / 2 * math.sin(th), half, TURN_T, rz=tilt,
+                     alpha=ra, color=col)
         else:                                         # four months, each with nothing in it
-            n, seg = 4, 100.0
+            n, seg = 4, 150.0
             space = (L - n * seg) / (n - 1)
-            for j in range(n):
+            if mend > 0.9:                           # closed: one bar, no seams where the months met
+                draw_bar(c, cx, y, L, TURN_T, alpha=ra, color=col)
+            for j in range(n if mend <= 0.9 else 0):
                 left = x0 + j * (seg + space)
                 Lj = seg + (space * mend if j < n - 1 else 0.0)      # each closes the gap to the next
-                draw_bar(c, left + Lj / 2, y, Lj, 10, alpha=ra, color=col)
-        # the label rides with its bar, and stays with it in the mark
+                draw_bar(c, left + Lj / 2, y, Lj, TURN_T, alpha=ra, color=col)
+        # the label sits above its row, then rides beside its bar in the mark
         lw = text_width(label, MED, TURN_LABEL)
-        soft_word(c, label, MED, TURN_LABEL, DIM, lx - lL / 2 - 36 - lw, ly + 15, ra)
+        lab_x = lerp(x0, lx - lL / 2 - 36 - lw, q)
+        lab_y = lerp(y - 34, ly + 15, q)
+        soft_word(c, label, MED, TURN_LABEL, _mix(TURN_GREY, DIM, q), lab_x, lab_y, ra)
         if q <= 0:
-            glint(c, t, x0 + L / 2, y, MEND[0], 0.9)
+            glint(c, t, cx, y, spine_cross(y), 0.7)    # the spine reaches this break
+            glint(c, t, cx, y, MEND[0], 1.0)           # and mends it
         glint(c, t, lx, ly, CONDENSE[1] - 0.05, 0.7)
 
 

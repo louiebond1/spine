@@ -41,7 +41,13 @@ def frame(n):
         return quantise(tl.end_card(t, plate()))
     if n >= tl.HANDOFF:
         return np.asarray(Image.open(os.path.join(PLATES, f"f{n:04d}.png")).convert("RGB"))
-    sub = next((k for a, b, k in BLUR if a <= t + tl.SHIFT < b), 1)     # BLUR is in story time
+    story = t + tl.SHIFT
+    source = tl.to_v16(story)
+    if tl.SEQUENCE[0] <= story < tl.SEQUENCE[1]:
+        moving = [(32.6,33.65),(37.5,38.0),(39.2,39.9),(40.8,41.5),tl.PLAN_HANDOVER]
+        sub = 3 if any(a <= story < b for a,b in moving) else 1
+    else:
+        sub = next((k for a, b, k in BLUR if a <= source < b), 1)     # BLUR is in story time
     if sub > 1:
         acc = np.zeros((H, W, 3), np.float32)
         for k in range(sub):
@@ -83,3 +89,4 @@ if __name__ == "__main__":
             Image.fromarray(frame(n)).save(os.path.join(out, f"t{n / FPS:06.2f}.png"))
     elif mode == "video":
         encode(sys.argv[2], int(os.environ.get("WORKERS", os.cpu_count() or 4)))
+

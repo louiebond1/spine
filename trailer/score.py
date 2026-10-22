@@ -232,7 +232,20 @@ def build():
         wet = np.fft.irfft(np.fft.rfft(buf[:, ch], M) * np.fft.rfft(ir, M), M)[:N]
         out[:, ch] = buf[:, ch] * 0.85 + wet * 0.18
     out *= np.clip((DUR - np.arange(N) / SR) / 1.5, 0, 1)[:, None]
-    return out
+    # Insert an eight-beat phrase for the separated review, approval and joining.
+    # Nothing after the V16 sequence is stretched: every later transient is shifted
+    # by exactly the shared EXTRA_SECONDS, matching the picture and audio cues.
+    from sequence_timing import SCORE_INSERT, SCORE_LOOP_START, EXTRA_SECONDS
+    cut = int(round(SCORE_INSERT * SR))
+    start = int(round(SCORE_LOOP_START * SR))
+    count = int(round(EXTRA_SECONDS * SR))
+    phrase = out[start:start+count].copy()
+    fade = int(.02*SR)
+    # Edge-only crossfades prevent clicks while preserving the duration and clocks.
+    u = np.linspace(0,1,fade)[:,None]
+    phrase[:fade] = out[cut:cut+fade]*(1-u)+phrase[:fade]*u
+    phrase[-fade:] = phrase[-fade:]*(1-u)+out[cut-fade:cut]*u
+    return np.concatenate((out[:cut],phrase,out[cut:]),axis=0)
 
 
 if __name__ == "__main__":
@@ -244,3 +257,4 @@ if __name__ == "__main__":
         w.setframerate(SR)
         w.writeframes((x * 32767).astype(np.int16).tobytes())
     print("score written", sys.argv[1])
+

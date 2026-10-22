@@ -1,3 +1,7 @@
+# Current source: Collaboration Rework
+
+See REWORK_NOTES.md for the active 63.7-second rework and shared timing. The previous V17 description below is retained as history.
+
 # Spine launch film: "Holds it together" (V6)
 
 Deterministic Python/Pillow/NumPy renderer for `Spine_Give_AI_a_Spine_Polished.mp4`
@@ -93,3 +97,4 @@ python3 render.py stills 8.0 34.5 42.5      # PNG stills in out/stills (film tim
 
 All timings are absolute seconds. If you move a moment, move its sound in `audio.py` (`CUES`), its
 motion-blur window in `render.py` (`BLUR`), and keep `kick_on()` in `timeline.py` and `score.py` the same.
+

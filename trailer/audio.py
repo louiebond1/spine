@@ -154,6 +154,20 @@ CUES = [
     (54.0, "swell", -26, 0.0),
     (59.55, "slam", -10, 0.0),                                    # the mark locks: the logo
 ]
+# This is the only retiming of old sound cues. Replacement actions have their own
+# explicit cue times; unchanged cues after the old replacement boundary all shift together.
+from sequence_timing import (V16_SEQUENCE, from_v16, APPROVE_PRESS, APPROVED,
+                             BEN_PRESS, BEN_JOIN, PRIYA_PRESS, PRIYA_JOIN,
+                             TEAM_LOCK, PLAN_HANDOVER)
+CUES = [(from_v16(t), kind, db, pan) for t,kind,db,pan in CUES
+        if not V16_SEQUENCE[0] <= t < V16_SEQUENCE[1]] + [
+    (32.6,"tick_hi",-28,0), (33.6,"tap",-22,-.2),
+    (34.5,"tap",-25,.2), (34.9,"tick",-28,0),
+    (APPROVE_PRESS,"tap",-23,.25), (APPROVED,"clack",-20,0),
+    (BEN_PRESS,"tap",-24,.2), (BEN_JOIN,"clack",-18,-.2),
+    (PRIYA_PRESS,"tap",-24,.2), (PRIYA_JOIN,"clack",-18,.2),
+    (TEAM_LOCK,"land",-20,0), (PLAN_HANDOVER[0],"tap",-28,0),
+]
 PITCHED = (0.0, 0.0)                # no pitched tick sequence in this cut
 
 
@@ -226,3 +240,4 @@ def build(score_path, dst, vo_path=None):
 
 if __name__ == "__main__":
     build(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
+

@@ -1,4 +1,4 @@
-"""Spine launch film: "Holds it together" (final director's cut, 57.5 s).
+"""Spine launch film: "Holds it together" (Collaboration rework, current V17 source revised, 63.7 s).
 
 One continuous world seen through one camera. Three problems are shown, not told, then the same three
 objects are resolved in the same order, and the three resolved bars lift out of the world to become the
@@ -1359,6 +1359,256 @@ def render_scene(t_film):
     if end_fade > 0:
         c = c + (_bg_base() - c) * end_fade
     return c
+
+
+def end_card(t, plate=None):
+    return render_scene(t)
+
+
+
+# ---------------------------------------------------------------- Collaboration rework: one idea becomes a team
+# The source above is the current V17 at 4dd6b8e, descended from V16 at b0f4003. Its timing and rendering are preserved outside
+# this replacement. AI reviews; leadership approves; members join directly.
+from sequence_timing import (
+    SEQUENCE, EXTRA_SECONDS, PROPOSE, REVIEW, APPROVAL, APPROVE_PRESS, APPROVED,
+    RECRUIT, BEN_PRESS, BEN_JOIN, PRIYA_PRESS, PRIYA_JOIN, TEAM_LOCK, PLAN_HANDOVER,
+    to_v16,
+)
+
+# 59.7 seconds of V16 + four seconds for the previously conflated actions.
+TOTAL = 1791 + int(round(EXTRA_SECONDS * FPS))
+END_PLATE = TOTAL + 1
+HANDOFF = END_PLATE
+_render_source_scene = render_scene
+
+
+def hinge_place(c, img, cx, cy, yaw=0.0, alpha=1.0):
+    """Project a real two-sided surface, pivoting round its vertical centre.
+    It turns edge-on before the next functional face appears. No overlaid text.
+    """
+    if abs(yaw)<.1:
+        place(c,img,cx,cy,alpha=alpha)
+        return
+    w,h=img.width/S,img.height/S
+    angle=math.radians(yaw);focal=1900.0
+    corners=[]
+    for xx,yy in ((-w/2,-h/2),(w/2,-h/2),(w/2,h/2),(-w/2,h/2)):
+        depth=-xx*math.sin(angle)
+        q=focal/(focal-depth)
+        corners.append((cx+xx*math.cos(angle)*q,cy+yy*q))
+    x0=int(math.floor(min(x for x,y in corners)))-2;y0=int(math.floor(min(y for x,y in corners)))-2
+    x1=int(math.ceil(max(x for x,y in corners)))+2;y1=int(math.ceil(max(y for x,y in corners)))+2
+    if x1-x0<2:return
+    dst=[(x-x0,y-y0) for x,y in corners];src=[(0,0),(img.width,0),(img.width,img.height),(0,img.height)]
+    A=[];B=[]
+    for (x,y),(u,v) in zip(dst,src):
+        A.extend([[x,y,1,0,0,0,-u*x,-u*y],[0,0,0,x,y,1,-v*x,-v*y]])
+        B.extend([u,v])
+    coeff=np.linalg.solve(np.asarray(A),np.asarray(B))
+    warped=img.transform((x1-x0,y1-y0),Image.Transform.PERSPECTIVE,coeff,Image.Resampling.BICUBIC)
+    arr=np.asarray(warped,np.float32)
+    blend(c,x0,y0,arr[...,3]/255*alpha,arr[...,:3])
+
+
+def phase_yaw(t):
+    for boundary in (REVIEW[0],APPROVAL[0],RECRUIT[0]):
+        if boundary-.22<=t<boundary:
+            return 87*prog(t,boundary-.22,boundary,e_in_cubic)
+        if boundary<=t<boundary+.30:
+            return -87*(1-prog(t,boundary,boundary+.30,e_out_cubic))
+    return 0.0
+
+
+def idea_panel(t):
+    """A single physical surface persists from the proposal to the project.
+
+    Its title is never replaced. The review's four advisory criteria fold away to
+    reveal the human decision, then the same frame opens to receive contributors.
+    """
+    grow = prog(t, 32.85, 33.6, e_io_quint)
+    x, y = W / 2, lerp(780, 590, grow)
+    # Exactly the same title stays fixed through the entire transformation.
+    p = Pen(1440, 650)
+    stage = "Propose an idea" if t < REVIEW[0] else "AI review" if t < APPROVAL[0] else "Leadership approval" if t < RECRUIT[0] else "Recruiting"
+    p.text(64, 78, stage, 40, BLUE, MED)
+    if t >= NAME_LAND:
+        p.text(64, 176, REPLY_B, 76, WHITE, DSEMI)
+    p.line([(64, 218), (1376, 218)], CARD_LINE, 2)
+    if t < REVIEW[0]:
+        p.text(64, 312, "Mia Thompson", 54, WHITE, SEMI)
+        p.text(64, 372, "Legal  ·  Idea owner", 34, DIM)
+        # A real submit action, not a list of already-recruiting projects.
+        _button(p, 730, 445, 1376, 570, "Continue to AI review", primary=t >= 34.5, size=45)
+    elif t < APPROVAL[0]:
+        # AI is advisory. No approval tick is allowed on this face.
+        for k, (lab, xx, yy) in enumerate((("Feasibility", 64, 330), ("Business value", 760, 330),
+                                          ("Resourcing confidence", 64, 455), ("Originality", 760, 455))):
+            g = prog(t, REVIEW[0] + 0.10 * k, REVIEW[0] + 0.10 * k + 0.32, e_out_cubic)
+            p.text(xx, yy, lab, 40, WHITE, MED, alpha=g)
+            p.line([(xx, yy + 28), (xx + 500 * g, yy + 28)], BLUE, 6, alpha=g)
+        p.text(64, 592, "Advisory. Leadership decides.", 41, DIM, MED)
+    elif t < RECRUIT[0]:
+        p.text(64, 330, "Alex Morgan", 64, WHITE, DSEMI)
+        p.text(64, 395, "Leadership", 40, DIM)
+        if t < APPROVED:
+            _button(p, 790, 300, 1376, 460, "Approve idea", primary=t >= APPROVE_PRESS, size=72)
+        else:
+            p.rrect(790, 300, 1376, 460, 14, fill=(36, 56, 85))
+            p.text(1083, 405, "Approved", 84, WHITE, DSEMI, anchor="ms")
+            ck = prog(t, APPROVED, APPROVED + 0.25, e_out_cubic)
+            p.line([(105, 542), (130, 566), (178, 510)], BLUE, 10, alpha=ck)
+            p.text(220, 558, "The idea can now recruit a team.", 43, WHITE, MED, alpha=ck)
+    return p.done(), x, y, grow
+
+
+def _member_strip(initials, name, state, pressed=False):
+    """Full names and large actions replace the ambiguous travelling avatar lines."""
+    p = Pen(1312, 122)
+    p.rrect(1, 1, 1310, 120, 12, fill=(24, 28, 38), outline=(60, 70, 92), width=2)
+    p.circle(64, 61, 39, fill=(41, 48, 65))
+    p.text(64, 73, initials, 28, WHITE, SEMI, anchor="ms")
+    p.text(130, 83, name, 72, WHITE, DSEMI)
+    if state == "owner":
+        p.text(1226, 81, "Owner", 46, DIM, MED, anchor="rs")
+    elif state == "joined":
+        p.text(1226, 81, "Joined", 46, BLUE, MED, anchor="rs")
+        p.line([(920, 60), (934, 75), (964, 40)], BLUE, 7)
+    else:
+        _button(p, 880, 15, 1286, 106, "Join project", primary=pressed, size=60)
+    return p.done()
+
+
+def draw_recruitment(c, t, panel_alpha=1.0):
+    """The same idea is discoverable, then each person chooses Join project once.
+
+    Each press closes a physical open place in the frame. There is no request,
+    approve-member action, invitation acceptance or implied automatic matching.
+    """
+    unfold = prog(t, RECRUIT[0], RECRUIT[0] + 0.45, e_io_quint)
+    # Start inside the existing panel. It opens vertically as contributors arrive.
+    n = 1 + int(t >= BEN_JOIN) + int(t >= PRIYA_JOIN)
+    for k, (ini, name, press, joined) in enumerate((("MT", "Mia Thompson", None, None),
+                                                  ("BC", "Ben Carter", BEN_PRESS, BEN_JOIN),
+                                                  ("PS", "Priya Shah", PRIYA_PRESS, PRIYA_JOIN))):
+        y = 545 + k * 138
+        if k == 0:
+            a = unfold
+            strip = _member_strip(ini, name, "owner")
+        else:
+            appear = press - 0.65
+            a = prog(t, appear, appear + 0.30, e_out_cubic) * unfold
+            # Empty places are large and visible before anybody chooses to fill one.
+            if t < joined:
+                z = Pen(1312, 122)
+                z.rrect(1, 1, 1310, 120, 12, outline=(75, 84, 105), width=2)
+                z.text(42, 80, "Open place", 49, DIM, MED)
+                place(c, z.done(), 960, y, alpha=(1-a)*unfold)
+            strip = _member_strip(ini, name, "joined" if t >= joined else "join", press <= t < joined)
+        # On the click, the contributor seats by a short, positive mechanical latch.
+        latch = prog(t, joined - 0.1, joined + 0.2, e_out_cubic) if joined else 1.0
+        offset = 44 * (1-a) + (150 * (1-latch) if joined and t >= joined-.1 else 0)
+        place(c, strip, 960 + offset, y, alpha=a*panel_alpha)
+        if joined and t>=joined:
+            locked=prog(t,joined,joined+.35,e_out_cubic)
+            draw_bar(c,304+656*locked,y+60,1312*locked,5,alpha=panel_alpha,color=BLUE)
+        if press:
+            glint(c, t, 1375, y, press, 0.65)
+            glint(c, t, 330, y, joined, 0.7)
+    count_g = prog(t, RECRUIT[0]+0.25, RECRUIT[0]+0.55)
+    _say(c, f"{n} of 3 people", DSEMI, 76, WHITE, 1010, count_g*panel_alpha)
+    if t >= TEAM_LOCK:
+        _say(c, "Team complete", MED, 42, BLUE, 1065, prog(t, TEAM_LOCK, TEAM_LOCK+.25)*panel_alpha)
+
+
+def render_plan_handover(t):
+    """A named team member becomes the owner of a concrete task.
+    The row's frame contracts into its checkbox; the identity moves to the owner
+    position. The title and outer project surface stay continuous throughout.
+    """
+    u=prog(t,*PLAN_HANDOVER,e_io_quint)
+    source=to_v16(t)
+    c=background(source,int(round(source*FPS*4)))
+    width=int(round(lerp(1440,1470,u)));height=int(round(lerp(650,693,u)))
+    cy=lerp(590,540,u);top=cy-height/2
+    p=Pen(width,height)
+    p.text(lerp(64,63,u),lerp(176,107.1,u),REPLY_B,lerp(76,75.6,u),WHITE,DSEMI)
+    p.text(64,78,"Recruiting",40,BLUE,MED,alpha=1-prog(u,0,.25))
+    p.text(63,163.8,"Mia Thompson  ·  Legal",35.7,DIM,alpha=prog(u,.55,1))
+    p.line([(63,lerp(218,210,u)),(width-63,lerp(218,210,u))],CARD_LINE,2)
+    for k,(ini,name,step) in enumerate((("MT","Mia Thompson",PLAN[0][0]),
+                                       ("BC","Ben Carter",PLAN[1][0]),
+                                       ("PS","Priya Shah",PLAN[2][0]))):
+        start_y=545+138*k-top
+        end_base=ROWS[k]*1.05
+        yy=lerp(start_y,end_base-18.9,u)
+        left=lerp(64,63,u);ww=lerp(1312,50.4,u);hh=lerp(122,50.4,u)
+        p.rrect(left,yy-hh/2,left+ww,yy+hh/2,lerp(12,10.5,u),outline=(110,116,136),width=2)
+        p.text(194,start_y+22,name,72,WHITE,DSEMI,alpha=1-prog(u,.10,.30))
+        p.text(width-150,start_y+20,"Owner" if k==0 else "Joined",46,DIM if k==0 else BLUE,MED,
+               anchor="rs",alpha=1-prog(u,0,.25))
+        p.text(147,end_base,step,48.3,WHITE,REG,alpha=prog(u,.32,.64))
+        ix=lerp(128,1375.5,u);iy=lerp(start_y, (ROWS[k]-16)*1.05,u)
+        p.circle(ix,iy,lerp(39,37.8,u),fill=(40,54,100))
+        p.text(ix,iy+lerp(12,9.45,u),ini,lerp(28,25.2,u),WHITE,SEMI,anchor="ms")
+    if u>.55:
+        a=prog(u,.55,1)
+        xs=[(990+70*k)*1.05 for k in range(6)]
+        p.line([(xs[0],77.7),(xs[-1],77.7)],(52,56,68),4,alpha=a)
+        p.line([(xs[0],77.7),(xs[3],77.7)],BLUE,4,alpha=a)
+        for k,x in enumerate(xs):p.circle(x,77.7,12 if k<=3 else 11,fill=BLUE if k<=3 else CARD,outline=None if k<=3 else (70,75,92),width=3,alpha=a)
+        p.text(xs[3],142.8,"Building",33.6,WHITE,SEMI,anchor="ms",alpha=a)
+        p.text(63,642.6,"Next: Mia is testing real contracts",42,BLUE,MED,alpha=a)
+        p.text(width-63,642.6,"Generated from project brief",29.4,DIM,anchor="rs",alpha=a)
+    place(c,p.done(),960,cy)
+    _say(c,"3 of 3 people",DSEMI,76,WHITE,1010,1-prog(u,0,.3))
+    # The existing V16 headline continues after the handoff without restarting.
+    target=_render_source_scene(40.0-SHIFT)
+    g=prog(t,PLAN_HANDOVER[0],PLAN_HANDOVER[0]+.3)
+    c[:185]=c[:185]*(1-g)+target[:185]*g
+    return c
+
+
+def render_idea_team(t):
+    """The replacement window, in new story seconds."""
+    if t >= PLAN_HANDOVER[0]:
+        return render_plan_handover(t)
+    source = to_v16(t)
+    c = background(source, int(round(source * FPS * 4)))
+    if t < 33.4:
+        draw_question(c, t)
+        draw_road(c, t)
+    panel, x, y, grow = idea_panel(t)
+    handover = prog(t, *PLAN_HANDOVER, e_io_quint)
+    a = grow
+    # The persistent frame opens for the team, then becomes the existing V16 plan.
+    hinge_place(c,panel,x,y,phase_yaw(t),a)
+    if t < NAME_LAND:
+        u = prog(t, NAME_LIFT, NAME_LAND, e_io_quint)
+        sx0, sy0 = ws(*reply_name_pos(), t)
+        sx1, sy1 = 304.0, 441.0
+        # The original answer supplies the title. It stays large at its destination.
+        z=cam(t)[2]
+        soft_word(c, REPLY_B, SEMI, 76, WHITE, lerp(sx0,sx1,u), lerp(sy0,sy1,u),1,0,
+                  lerp(40*QSCALE*z/76,1,u))
+    if t >= RECRUIT[0]:
+        draw_recruitment(c,t,a*prog(t,RECRUIT[0]+.12,RECRUIT[0]+.4))
+    if t < PROPOSE[1]:
+        headline(c,t,"Anyone can propose an idea.",33.45,34.7,y=155,size=72)
+    elif t < APPROVAL[0]:
+        headline(c,t,"AI helps you assess it.",34.95,36.25,y=155,size=72)
+    elif t < RECRUIT[0]:
+        headline(c,t,"Leadership gives it the go-ahead.",36.55,38.05,y=155,size=66)
+        glint(c,t,1320,645,APPROVE_PRESS,.8)
+    else:
+        headline(c,t,"People choose to join.",38.4,42.0,y=155,size=80)
+    return c
+
+
+def render_scene(t_film):
+    story=t_film+SHIFT
+    if SEQUENCE[0] <= story < SEQUENCE[1]:
+        return render_idea_team(story)
+    return _render_source_scene(to_v16(story)-SHIFT)
 
 
 def end_card(t, plate=None):

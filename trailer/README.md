@@ -19,8 +19,10 @@ large buttons, one headline at a time.
 4. **"Your AI needs a spine."** Every loose piece lines up on a spine. "Spine is your AI project manager."
 5. **Help Desk.** The question is shown to the Champions; Mia claims it. Her answer reveals work already
    happening: "Yes, I'm starting one: Contract Clause Checker".
-6. **Discover.** The name lifts out of her answer and lands on its card among six of the company's
-   projects: "Anyone can discover work worth joining." It is picked out and grows into the frame.
+6. **Propose, review, approve.** (V17) The name lifts out of her answer and becomes the title of one card,
+   whose stage dots then advance: Idea (Problem and Who benefits fill in, Continue to AI review), the AI
+   review (four criteria, advisory, only Mia sees the scores, Submit for approval), Approval (Alex Morgan,
+   an admin, presses Approve), Recruiting. The AI review is advisory and never approves anything.
 7. **Join.** Ben arrives, presses Join project and takes a seat; a line links him to Mia. Then Priya.
    "2 of 3", "3 of 3 people": "Teams form around good ideas."
 8. **Plan.** The team is full, so it moves to Building. The plan is generated from the project brief and
@@ -54,8 +56,8 @@ the project, so none is shown.
 | 11.9 - 17.6 s | Impact goes unseen |
 | 17.6 - 23.9 s | "Your AI needs a spine." / "Spine is your AI project manager." |
 | 23.9 - 29.2 s | Help Desk: "Every question finds someone who knows." |
-| 29.2 - 32.9 s | Discover: the answer opens into the project |
-| 32.9 - 35.6 s | Join: the team forms |
+| 29.2 - 33.0 s | Propose, AI review, leadership approval, on one card |
+| 33.0 - 35.6 s | Join: the team forms |
 | 35.6 - 38.6 s | Plan: a step for each person |
 | 38.6 - 46.6 s | Pulse: stalled, detected, notified, action, progress |
 | 46.6 - 50.8 s | Impact: 8 hours travel to the chart; 42 in October |

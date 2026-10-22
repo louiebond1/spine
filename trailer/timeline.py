@@ -286,8 +286,7 @@ CAM = [  # (time, (centre x, centre y, zoom)) in world pixels; held between equa
     (9.4, (1060, 540, 1.0)), (10.3, (960, 1460, 1.02)),          # the waiting project, whole card under the line
     (15.3, (960, 1460, 1.02)), (16.2, (3300, 1001, 0.86)),       # the empty chart, whole card in frame
     (26.4, (3300, 1001, 0.86)), (27.3, (1250, 590, 1.0)),        # back to the stranded question
-    (32.6, (1250, 590, 1.0)), (33.6, (960, 1460, 0.86)),         # the whole discovery grid, nothing cropped
-    (35.15, (960, 1460, 0.86)), (36.3, (960, 1460, 1.05)),
+    (32.6, (1250, 590, 1.0)), (33.6, (960, 1460, 1.05)),         # the name carries the camera to its card
     (50.0, (960, 1460, 1.05)), (50.9, (3300, 1001, 0.86)),       # the hours travel to the chart
     (64.0, (3300, 1001, 0.86)),
 ]
@@ -513,7 +512,14 @@ def draw_champions(c, t):
 CARD_W, CARD_H = 1400, 660
 CARD_X0, CARD_Y0 = CARD_C[0] - CARD_W / 2, CARD_C[1] - CARD_H / 2
 STAGE_TIMES = [  # (time, stage index): Idea, Approval, Recruiting, Building, Publishing, Live
-    (0.0, 0), (10.45, 1), (10.85, 2), (38.75, 3), (48.75, 4), (49.25, 5)]
+    (0.0, 0), (35.35, 1), (36.4, 2), (38.75, 3), (48.75, 4), (49.25, 5)]
+CARD_IN = 33.45          # the card appears as the name arrives
+CONTINUE = 34.35         # Mia presses Continue to AI review
+REVIEW = (34.45, 35.1)   # the AI review reads the idea
+SUBMIT = 35.2            # Mia presses Submit for approval
+APPROVE = 35.75          # Alex, an admin, presses Approve
+PROBLEM = "Contract reviews are slow and manual"
+CRITERIA = ["Feasibility", "Business value", "Resourcing confidence", "Originality"]
 SEATS = [("MT", "Mia Thompson", None), ("BC", "Ben Carter", 37.25), ("PS", "Priya Shah", 38.25)]   # (who, seated)
 PRESS = 0.45             # each joiner presses Join project this long before taking their seat
 PLAN = [("Test with real contracts", "MT", "testing real contracts", 47.25),
@@ -557,7 +563,8 @@ def card_project(t):
     """Contract Clause Checker as it stands at time t."""
     p = Pen(CARD_W, CARD_H)
     st = stage_at(t)
-    p.text(60, 102, REPLY_B, 72, WHITE, DSEMI)
+    if not NAME_LIFT <= t < NAME_LAND:      # until then the name is still flying in
+        p.text(60, 102, REPLY_B, 72, WHITE, DSEMI)
     p.text(60, 156, "Mia Thompson  ·  Legal", 34, DIM)
     # the six stages as dots; only the current one is named
     xs = [990 + 70 * k for k in range(6)]
@@ -572,7 +579,39 @@ def card_project(t):
     lx = min(xs[st], CARD_W - 50 - text_width(lab, SEMI, 32) / 2)
     p.text(lx, 136, lab, 32, WHITE, SEMI, anchor="ms")
     p.line([(60, 200), (CARD_W - 60, 200)], CARD_LINE, 2)
-    if st == 2:      # recruiting: the count, the button anyone can press, and what it needs next
+    if st == 0 and t < REVIEW[0]:      # proposing: the idea is written down
+        n = int(len(PROBLEM) * prog(t, 33.8, 34.15))
+        p.text(60, 270, "Problem", 30, DIM, MED, alpha=prog(t, 33.7, 33.9))
+        p.text(60, 330, PROBLEM[:n], 46, WHITE)
+        p.text(60, 418, "Who benefits", 30, DIM, MED, alpha=prog(t, 33.9, 34.1))
+        p.text(60, 478, "Legal team"[:int(10 * prog(t, 34.1, 34.25))], 46, WHITE)
+        _button(p, 840, 552, 1340, 636, "Continue to AI review", primary=True, size=36,
+                alpha=prog(t, 34.1, 34.25))
+    elif st == 0:    # the AI review reads it: four criteria, advisory, seen only by its owner
+        p.text(60, 262, "AI review", 30, BLUE, SEMI)
+        for k, name in enumerate(CRITERIA):
+            x, y = 60 + 660 * (k % 2), 350 + 110 * (k // 2)
+            lit = prog(t, REVIEW[0] + 0.12 + 0.13 * k, REVIEW[0] + 0.3 + 0.13 * k)
+            p.circle(x + 12, y - 15, 9, fill=BLUE, alpha=lit)
+            p.text(x + 40, y, name, 44, WHITE if lit > 0.5 else DIM)
+        p.text(60, 612, "Advisory. Only Mia sees the scores.", 34, DIM, alpha=prog(t, REVIEW[1] - 0.1, REVIEW[1] + 0.1))
+        _button(p, 900, 552, 1340, 636, "Submit for approval", primary=True, size=36,
+                alpha=prog(t, REVIEW[1] - 0.05, REVIEW[1] + 0.1))
+    elif st == 1:    # approval: a person in leadership decides
+        done = prog(t, APPROVE, APPROVE + 0.3, e_out_cubic)
+        p.text(60, 612, "Next: Waiting for leadership approval", 40, BLUE, MED, alpha=1 - done)
+        _button(p, 760, 300, 1100, 390, "Approve", primary=True, size=40, alpha=1 - done)
+        if done > 0:
+            ck = prog(t, APPROVE, APPROVE + 0.3)
+            a1, b1, c1 = (72, 350), (136, 414), (250, 270)
+            u = min(1.0, ck / 0.4)
+            p.line([a1, (lerp(a1[0], b1[0], u), lerp(a1[1], b1[1], u))], BLUE, 18)
+            if ck > 0.4:
+                v = (ck - 0.4) / 0.6
+                p.line([b1, (lerp(b1[0], c1[0], v), lerp(b1[1], c1[1], v))], BLUE, 18)
+            p.text(300, 384, "Approved", 96, WHITE, DSEMI, alpha=done)
+            p.text(304, 456, "by Alex Morgan", 40, DIM, alpha=done)
+    elif st == 2:      # recruiting: the count, the button anyone can press, and what it needs next
         team = team_at(t)
         left = 3 - len(team)
         p.text(770, 336, f"{len(team)} of 3 people", 56, WHITE, DSEMI)
@@ -583,7 +622,7 @@ def card_project(t):
                    BLUE, MED)
     elif st >= 3:    # building and after: the plan, a step for each person
         for k, (step, who, phrase, done_t) in enumerate(PLAN):
-            g = prog(t, PLAN_IN + 0.15 * k, PLAN_IN + 0.15 * k + 0.35, e_out_cubic)
+            g = prog(t, seat_move(k)[1] - 0.1, seat_move(k)[1] + 0.25, e_out_cubic)   # written once its owner lands
             y = ROWS[k]
             done = t >= done_t
             if done:
@@ -611,26 +650,21 @@ def card_project(t):
 
 
 def card_dim(t):
-    waiting = prog(t, 12.2, 12.8) * (1 - prog(t, 33.6, 34.2))
     quiet = prog(t, QUIET[0], QUIET[0] + 0.6) * (1 - prog(t, QUIET[1], QUIET[1] + 0.3))
     slack = prog(t, SLACK_IN, SLACK_IN + 0.4) * (1 - prog(t, *SLACK_FLY))
-    hero = prog(t, 36.45, 36.7) * (1 - prog(t, 38.85, 39.15))
-    return max(0.0, 1 - 0.72 * max(waiting, quiet) - 0.55 * slack - hero)
+    return max(0.0, 1 - 0.72 * quiet - 0.55 * slack)
 
 
 def draw_card(c, t):
-    if 35.4 <= t < 39.0 or 42.1 <= t < 43.4:
+    if not CARD_IN <= t < 51.0 or 42.1 <= t < 43.4:
         return
-    if not GROW[0] <= t < 51.0 or GRID_T <= t < GROW[0]:
-        return
-    a = prog(t, 9.9, 10.4) * world_dim(t) * (1 - prog(t, 50.6, 51.0)) * card_dim(t)
-    if t < GRID_T:
-        wcard(c, t, card_project(t), *CARD_C, a)
-    else:            # grows out of its place among the other projects
-        g = prog(t, *GROW, e_io_quint)
-        x = lerp(GRID_SLOT[0], CARD_C[0], g)
-        y = lerp(GRID_SLOT[1], CARD_C[1], g)
-        wcard(c, t, card_project(t), x, y, a * prog(t, GROW[0], GROW[0] + 0.5), lerp(SLOT_W / CARD_W, 1.0, g))
+    a = prog(t, CARD_IN, CARD_IN + 0.3) * world_dim(t) * (1 - prog(t, 50.6, 51.0)) * card_dim(t)
+    wcard(c, t, card_project(t), *CARD_C, a)
+    # a light on each stage dot as the card moves on, and on each press
+    for ts, k in STAGE_TIMES[1:4]:
+        glint_w(c, t, CARD_X0 + 990 + 70 * k, CARD_Y0 + 74, ts)
+    glint_w(c, t, CARD_X0 + 1090, CARD_Y0 + 594, CONTINUE)
+    glint_w(c, t, CARD_X0 + 1120, CARD_Y0 + 594, SUBMIT)
     # a tick lands with each step done
     for k, (step, who, phrase, done_t) in enumerate(PLAN):
         glint_w(c, t, CARD_X0 + 84, CARD_Y0 + ROWS[k] - 18, done_t)
@@ -640,40 +674,37 @@ def draw_card(c, t):
     wtext(c, t, "Moving again", MED, 52, BLUE, CARD_C[0], y, a * g)
 
 
-def grow_scale(t):
-    if GROW[0] <= t < GROW[1]:
-        return lerp(SLOT_W / CARD_W, 1.0, prog(t, *GROW, e_io_quint))
-    return 1.0
-
-
-def on_card(x, y, t):
-    """A point on the card, carried with it while it grows out of the grid."""
-    if not GROW[0] <= t < GROW[1]:
-        return x, y
-    g = prog(t, *GROW, e_io_quint)
-    s = grow_scale(t)
-    cx, cy = lerp(GRID_SLOT[0], CARD_C[0], g), lerp(GRID_SLOT[1], CARD_C[1], g)
-    return cx + (x - CARD_C[0]) * s, cy + (y - CARD_C[1]) * s
+def draw_approver(c, t):
+    """Alex Morgan, an admin, arrives and presses Approve. The AI review never approves anything."""
+    if not 35.35 <= t < APPROVE + 0.5:
+        return
+    bx, by = ws(CARD_X0 + 930, CARD_Y0 + 345, t)
+    z = cam(t)[2]
+    p1 = prog(t, 35.35, APPROVE - 0.12, e_out_cubic)
+    p2 = prog(t, APPROVE - 0.12, APPROVE, e_io_cubic)
+    X = lerp(lerp(W + 120, bx + 330 * z, p1), bx + 220 * z, p2)
+    Y = lerp(lerp(by + 260 * z, by + 40 * z, p1), by + 30 * z, p2)
+    g = prog(t, 35.35, 35.5) * (1 - prog(t, APPROVE + 0.3, APPROVE + 0.5))
+    avatar_at(c, X, Y, "AM", 64 * z, g, ring=prog(t, APPROVE, APPROVE + 0.4) if t >= APPROVE else 0.0)
+    soft_word(c, "Alex Morgan", MED, 44, WHITE, X - text_width("Alex Morgan", MED, 44) * z / 2, Y + 118 * z,
+              g * (1 - prog(t, APPROVE - 0.05, APPROVE + 0.1)), 0.0, z)
+    glint(c, t, bx, by, APPROVE, 0.9)
 
 
 def draw_seats(c, t):
     """The team: Mia's seat and the empty ones; the people who join; each moving to their step."""
-    if GROW[0] <= t < 39.0:
+    if not STAGE_TIMES[2][0] <= t < PLAN_IN + 0.8:
         return
-    if not (GROW[0] + 0.3 <= t < PLAN_IN + 0.8):
-        return
-    a = prog(t, 10.85, 11.2) * world_dim(t) * card_dim(t)
-    if t >= GROW[0]:
-        a = prog(t, GROW[0] + 0.3, GROW[0] + 0.6)
-    z = cam(t)[2] * grow_scale(t)
+    a = prog(t, STAGE_TIMES[2][0], STAGE_TIMES[2][0] + 0.2)
+    z = cam(t)[2]
     team = team_at(t)
     # each new seat links to the one before it: the team connecting
     for k in (1, 2):
         j = SEATS[k][2]
         if t >= j:
             pl = e_out_cubic(prog(t, j, j + 0.3))
-            x0, y0 = ws(*on_card(*seat_pos(k - 1), t), t)
-            x1, y1 = ws(*on_card(*seat_pos(k), t), t)
+            x0, y0 = ws(*seat_pos(k - 1), t)
+            x1, y1 = ws(*seat_pos(k), t)
             fade = 1 - prog(t, PLAN_IN - 0.15, PLAN_IN + 0.1)
             draw_polyline(c, [(x0, y0), (lerp(x0, x1, pl), lerp(y0, y1, pl))], 7 * z, BLUE, a * fade)
     for k in range(3):
@@ -685,13 +716,12 @@ def draw_seats(c, t):
             if q >= 1:
                 continue
             tx, ty = row_avatar(k)
-            X, Y = ws(*on_card(lerp(sx, tx, q), lerp(sy, ty, q), t), t)
+            X, Y = ws(lerp(sx, tx, q), lerp(sy, ty, q), t)
             pop = 1.0 if j is None else e_out_cubic(prog(t, j, j + 0.2))
             avatar_at(c, X, Y, SEATS[k][0], lerp(72, 36, q) * z * (0.85 + 0.15 * pop), a,
                       ring=prog(t, j, j + 0.6) if j and j <= t < j + 0.6 else 0.0)
         elif t < PLAN_IN:
-            pulse = 0.5 + 0.5 * math.sin(6 * t) if 12.5 <= t < GRID_T else 1.0
-            avatar_at(c, *ws(*on_card(sx, sy, t), t), "", 72 * z, a * (0.5 + 0.5 * pulse), dashed=True)
+            avatar_at(c, *ws(sx, sy, t), "", 72 * z, a, dashed=True)
     # the team is full
     if t >= SEATS[2][2]:
         glint_w(c, t, *seat_pos(2), SEATS[2][2])
@@ -715,100 +745,23 @@ def draw_passers(c, t):
         wbar(c, t, SNAPS[1][1] + D / 2, LINK_Y, D, 6, alpha=world_dim(t))
 
 
-# ---------------------------------------------------------------- the bridge, and discovery
+# ---------------------------------------------------------------- the bridge
 
 NAME_LIFT = 32.6
 NAME_LAND = 33.6
-GRID_T = 32.6            # the card leaves its own place for the grid of projects
-GROW = (35.4, 36.3)      # and grows back out of it
-SLOT_W, SLOT_H = 600, 240
-GRID_X = [300.0, 960.0, 1620.0]
-GRID_Y = [1290.0, 1600.0]
-GRID_SLOT = (GRID_X[1], GRID_Y[0])
-GRID = [  # the company's ideas and projects (seed data): (row, column, title, line)
-    (0, 0, "Client Brief Generator", "Recruiting  ·  3 of 4 people"),
-    (0, 1, REPLY_B, "Recruiting  ·  1 of 3 people"),
-    (0, 2, "Meeting Summary Bot", "Recruiting  ·  1 of 3 people"),
-    (1, 0, "AI Invoice Assistant", "Building"),
-    (1, 1, "Supplier Risk Checker", "Waiting for approval"),
-    (1, 2, "Claude Onboarding Guide", "Live"),
-]
-HILITE = 34.4
-
-
-def card_compact(title, line, hi=0.0):
-    p = Pen(SLOT_W, SLOT_H)
-    if hi > 0:
-        p.rrect(1, 1, SLOT_W - 2, SLOT_H - 2, 14, outline=BLUE, width=3, alpha=hi)
-    p.text(36, 96, title, 44, WHITE, SEMI)
-    p.text(36, 168, line, 34, DIM)
-    return p.done()
-
-
-def draw_grid(c, t):
-    return
-
-
-PROP_S = 0.78
-PROP_C = (960.0, 440.0)
-
-
-def propose_title_xy():
-    left = PROP_C[0] - SLOT_W * PROP_S / 2
-    top = PROP_C[1] - SLOT_H * PROP_S / 2
-    return left + 36 * PROP_S, top + 96 * PROP_S
 
 
 def draw_name_bridge(c, t):
-    """The name lifts out of Mia's answer and lands on the idea she just proposed."""
-    if not NAME_LIFT <= t < NAME_LAND + 0.25:
+    """The name lifts out of Mia's answer and becomes the title of the idea she proposes."""
+    if not NAME_LIFT <= t < NAME_LAND + 0.05:
         return
     p = prog(t, NAME_LIFT, NAME_LAND, e_io_quint)
     x0, b0 = reply_name_pos()
-    sx0, sy0 = ws(x0, b0, t)
-    sx1, sy1 = propose_title_xy()
-    end = 44 * PROP_S
-    a = 1 - prog(t, NAME_LAND, NAME_LAND + 0.25)
-    z = cam(t)[2]
-    soft_word(c, REPLY_B, SEMI, 44, WHITE, lerp(sx0, sx1, p), lerp(sy0, sy1, p), a, 0.0,
-              lerp(max(0.5, 40 * QSCALE * z / 44), end / 44, p))
-
-
-def draw_propose(c, t):
-    """Anyone can propose an idea. The new one lands in the company's list."""
-    if not 33.45 <= t < 35.2:
-        return
-    a = prog(t, 33.45, 33.75, e_out_cubic) * (1 - prog(t, 34.9, 35.2))
-    spots = ((0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2))
-    by_slot = {(r, col): (title, line) for r, col, title, line in GRID}
-    for i, (r, col) in enumerate(spots):
-        title, line = by_slot[(r, col)]
-        x = 400 + col * 560
-        y = 440 + r * 280
-        hi = 1.0 if title == REPLY_B else 0.0
-        shown = title if title != REPLY_B or t >= NAME_LAND else ""
-        place(c, card_compact(shown, line, hi), x, y, PROP_S, a * (1 if hi else 0.75))
-
-
-def draw_approval(c, t):
-    """The idea is approved. A check lands on it. No invented scores."""
-    if not 35.05 <= t < 36.5:
-        return
-    a = prog(t, 35.05, 35.3, e_out_cubic) * (1 - prog(t, 36.25, 36.5))
-    _say(c, "Contract Clause Checker", DSEMI, 56, WHITE, 300, a)
-    _say(c, "AI review", MED, 40, BLUE, 380, a * prog(t, 35.2, 35.45))
-    ring = prog(t, 35.35, 35.7, e_out_cubic)
-    if ring > 0.02:
-        draw_dot(c, 960, 560, 78, (18, 22, 34), a, ring=10 * ring)
-    ck = prog(t, 35.55, 36.0, e_out_cubic)
-    if ck > 0.02:
-        a1, b1, c1 = (900, 570), (945, 630), (1045, 500)
-        u = min(1.0, ck / 0.45)
-        draw_polyline(c, [a1, (lerp(a1[0], b1[0], u), lerp(a1[1], b1[1], u))], 16, BLUE, a)
-        if ck > 0.45:
-            v = (ck - 0.45) / 0.55
-            draw_polyline(c, [b1, (lerp(b1[0], c1[0], v), lerp(b1[1], c1[1], v))], 16, BLUE, a)
-    _say(c, "Approved", DSEMI, 108, WHITE, 780, a * prog(t, 35.85, 36.15, e_out_cubic))
+    x1, b1 = CARD_X0 + 60, CARD_Y0 + 102
+    sx, sy = ws(lerp(x0, x1, p), lerp(b0, b1, p), t)
+    size = lerp(40 * QSCALE, 72, p)
+    soft_word(c, REPLY_B, SEMI if p < 0.5 else DSEMI, 72, BLUE if p < 0.7 else WHITE, sx, sy, 1.0, 0.0,
+              size / 72 * cam(t)[2])
 
 
 # ---------------------------------------------------------------- joining
@@ -819,11 +772,9 @@ def join_button():
 
 def draw_joiners(c, t):
     """Ben, then Priya, arrive, press Join project and take a seat."""
-    if GROW[0] <= t < 39.0:
-        return
     for k in (1, 2):
         ini, name, j = SEATS[k]
-        t0, tp = j - 1.0, j - PRESS
+        t0, tp = j - 0.8, j - PRESS
         if not t0 <= t < j:
             continue
         bx, by = join_button()
@@ -1266,44 +1217,6 @@ def post(c, t):
 
 # ---------------------------------------------------------------- the film
 
-def draw_team_hero(c, t):
-    """The idea is chosen. A line reaches an empty seat, then the person locks into it.
-    Joining is that lock. There is no separate button and no approval step."""
-    if not 36.45 <= t < 39.0:
-        return
-    a = prog(t, 36.45, 36.65, e_out_cubic) * (1 - prog(t, 38.85, 39.0))
-    _say(c, "Contract Clause Checker", DSEMI, 56, WHITE, 250, a)
-    _say(c, "Recruiting", MED, 32, BLUE, 320, a)
-    slots = (480.0, 960.0, 1440.0)
-    y = 560.0
-    r = 96.0
-    people = (("MT", "Mia"), ("BC", "Ben"), ("PS", "Priya"))
-    joins = (None, 37.25, 38.25)
-    for k, (ini, short) in enumerate(people):
-        j = joins[k]
-        if j is None or t >= j:
-            pop = 1.0 if j is None else e_out_cubic(prog(t, j, j + 0.2))
-            avatar_at(c, slots[k], y, ini, r * (0.9 + 0.1 * pop), a,
-                      ring=1.0 if j and t < j + 0.35 else 0.0)
-            soft_word(c, short, MED, 36, WHITE, slots[k] - text_width(short, MED, 36) / 2, y + 140, a)
-        else:
-            avatar_at(c, slots[k], y, "", r, a * 0.85, dashed=True)
-            arrive = j - 0.7
-            if t >= arrive:
-                p = prog(t, arrive, j, e_io_cubic)
-                side = 2100 if k == 2 else -180
-                X = lerp(side, slots[k], p)
-                avatar_at(c, X, y, ini, r * 0.92, a)
-                # the choice is the line. It reaches the seat first, then the person rides it in.
-                reach = min(1.0, p * 1.35)
-                draw_polyline(c, [(X, y), (lerp(X, slots[k], reach), y)], 8, BLUE, a * (1 - max(0, p - 0.85) / 0.15))
-                if p < 0.55:
-                    lab = "Join"
-                    soft_word(c, lab, SEMI, 36, BLUE, slots[k] - text_width(lab, SEMI, 36) / 2, y + 8, a * (1 - p / 0.55))
-    n = 1 + int(t >= 37.25) + int(t >= 38.25)
-    _say(c, f"{n} of 3", DSEMI, 64, WHITE, 860, a)
-
-
 def _say(c, text, fname, size, color, y, g):
     if g <= 0.01:
         return
@@ -1403,7 +1316,6 @@ def render_scene(t_film):
     draw_pieces(c, t)
     draw_road(c, t)
     draw_link(c, t)
-    draw_grid(c, t)
     draw_card(c, t)
     draw_seats(c, t)
     draw_passers(c, t)
@@ -1414,9 +1326,7 @@ def render_scene(t_film):
     draw_name_bridge(c, t)
     draw_chip(c, t)
     draw_slack(c, t)
-    draw_team_hero(c, t)
-    draw_propose(c, t)
-    draw_approval(c, t)
+    draw_approver(c, t)
     draw_prelude(c, t)
 
     line_words(c, t, "Questions go unanswered.", LIGHT, 84, WHITE, W / 2, 168, 3.42, 9.2, "center",
@@ -1427,9 +1337,11 @@ def render_scene(t_film):
     line_words(c, t, "a spine.", DREG, 84, BLUE, W / 2, 290, 21.45, 26.1, "center")
     line_words(c, t, "Spine is your AI project manager.", LIGHT, 48, WHITE, W / 2, 900, 23.15, 26.1, "center")
     headline(c, t, "Every question finds someone who knows.", 27.5, 32.4, y=150, size=64)
-    headline(c, t, "Anyone can propose an idea.", 33.7, 35.0, y=160, size=60)
-    headline(c, t, "AI reviews the idea.", 35.2, 36.35, y=170, size=72)
-    headline(c, t, "Teams form around good ideas.", 36.55, 38.8, y=150, size=56)
+    quick = dict(step=0.05, dur=0.2)
+    line_words(c, t, "Anyone can propose an idea.", LIGHT, 64, WHITE, W / 2, 150, 33.65, 34.3, "center", **quick)
+    line_words(c, t, "AI reviews the idea.", LIGHT, 64, WHITE, W / 2, 150, 34.5, 35.2, "center", **quick)
+    line_words(c, t, "Leadership approves it.", LIGHT, 64, WHITE, W / 2, 150, 35.4, 36.25, "center", **quick)
+    headline(c, t, "Teams form around good ideas.", 36.5, 38.8, y=150, size=64)
     headline(c, t, "AI drafts the plan. The team owns it.", 39.1, 41.8, y=160, size=68)
     draw_stall(c, t)
     headline(c, t, "Pulse spots work going quiet.", 43.45, 44.75, y=118, size=60)

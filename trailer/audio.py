@@ -133,7 +133,11 @@ CUES = [
     (28.25, "tick_hi", -25, 0.5),                                 # Mia takes it
     (28.9, "clack", -15, 0.1), (29.3, "tap", -24, -0.1),          # she claims it; her answer
     (32.6, "tick_hi", -28, 0.0), (33.6, "tap", -22, -0.2),        # the project's name lifts out and lands on its card
-    (34.4, "tick", -26, 0.0), (35.4, "swell", -26, 0.0),          # it is picked out; it grows into the frame
+    (34.35, "tap", -24, 0.3),                                     # Mia presses Continue to AI review
+] + [(34.57 + 0.13 * k, "tick", -30, 0.3 * (-1) ** (k + 1)) for k in range(4)] + [   # the review reads each criterion
+    (35.2, "tap", -24, 0.3), (35.35, "tick", -28, 0.0),           # Submit for approval; the card moves to Approval
+    (35.75, "tap", -22, 0.4), (35.9, "tick_hi", -26, 0.0),        # Alex presses Approve; Approved
+    (36.4, "tick", -30, 0.0),                                     # the card moves to Recruiting
     (36.8, "tap", -22, 0.4), (37.25, "clack", -17, 0.2),          # Ben presses Join project; takes his seat
     (37.8, "tap", -22, 0.4), (38.25, "clack", -17, 0.3),          # Priya
     (38.75, "land", -18, 0.0),                                    # the team is full: Building

@@ -1,15 +1,9 @@
 #!/usr/bin/env bash
-# Build Spine_Give_AI_a_Spine_Polished.mp4 ("Holds it together", V6) from this folder.
-# Optional: pass the approved cut (Spine_Give_AI_a_Spine.mp4) to re-extract the reused
-# fold frames (879-968) and the end-card plate (969). Otherwise the bundled ones are used.
-# The voiceover is read from assets/vo/voiceover.wav when present (see vo.py).
+# Build the current 63.7-second Collaboration Rework V2 directly from source.
 set -euo pipefail
 cd "$(dirname "$0")"
-mkdir -p out assets/plates
-
-if [ "${1:-}" != "" ]; then
-  ffmpeg -v error -y -i "$1" -vf "select='between(n\,879\,969)'" -vsync 0 -start_number 879 assets/plates/f%04d.png
-fi
+export SPINE_FONT_DIR="${SPINE_FONT_DIR:-$PWD/assets/fonts}"
+mkdir -p out
 
 python3 render.py video out/video_only.mp4
 python3 score.py out/score.wav
@@ -25,7 +19,8 @@ ffmpeg -v error -y -i out/video_only.mp4 -i out/master.wav \
   -map 0:v -map 1:a -c:v copy \
   -c:a aac -b:a 320k -ar 48000 -ac 2 \
   -movflags +faststart -shortest \
-  out/Spine_Give_AI_a_Spine_Polished.mp4
+  out/Spine_Collaboration_Rework_V2.mp4
 
 ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate,pix_fmt \
-  -of default=nw=1 out/Spine_Give_AI_a_Spine_Polished.mp4
+  -of default=nw=1 out/Spine_Collaboration_Rework_V2.mp4
+

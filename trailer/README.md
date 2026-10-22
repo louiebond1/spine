@@ -1,6 +1,6 @@
-# Current source: Collaboration Rework
+# Current source: Collaboration Rework V2
 
-See REWORK_NOTES.md for the active 63.7-second rework and shared timing. The previous V17 description below is retained as history.
+See REWORK_NOTES.md for the active 63.7-second rework and shared timing. Latest revision fixes question clipping, shows Mia accepting incoming join requests, and replaces the closing recap with a continuous six-piece fold into the logo. The explicit owner correction supersedes the historical direct-join notes. The previous V17 description below is retained as history.
 
 # Spine launch film: "Holds it together" (V6)
 

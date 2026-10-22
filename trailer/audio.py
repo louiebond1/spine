@@ -152,7 +152,7 @@ CUES = [
 ] + [(51.4, 'tickf1400', -34, -0.4), (51.412, 'tickf1461', -34, -0.38), (51.424, 'tickf1526', -34, -0.36), (51.58, 'tickf1594', -34, -0.34), (51.592, 'tickf1664', -34, -0.32), (51.604, 'tickf1738', -34, -0.3), (51.616, 'tickf1815', -34, -0.28), (51.628, 'tickf1895', -34, -0.26), (51.64, 'tickf1979', -34, -0.24), (51.652, 'tickf2067', -34, -0.22), (51.664, 'tickf2159', -34, -0.2), (51.76, 'tickf2254', -34, -0.18), (51.772, 'tickf2354', -34, -0.16), (51.784, 'tickf2458', -34, -0.14), (51.796, 'tickf2567', -34, -0.12), (51.808, 'tickf2681', -34, -0.1), (51.82, 'tickf2800', -34, -0.08), (51.832, 'tickf2923', -34, -0.06), (51.844, 'tickf3053', -34, -0.04), (51.856, 'tickf3188', -34, -0.02), (51.868, 'tickf3329', -34, 0.0), (51.88, 'tickf3477', -34, 0.02), (51.892, 'tickf3631', -34, 0.04), (51.904, 'tickf3791', -34, 0.06), (51.916, 'tickf3959', -34, 0.08), (51.928, 'tickf4135', -34, 0.1)] + [                                                        # the months stack up
     (52.25, "clack", -15, 0.4),                                   # the project's hours land on October
     (54.0, "swell", -26, 0.0),
-    (59.55, "slam", -10, 0.0),                                    # the mark locks: the logo
+    (59.55, "land", -18, 0.0),                                    # the mark locks: the logo
 ]
 # This is the only retiming of old sound cues. Replacement actions have their own
 # explicit cue times; unchanged cues after the old replacement boundary all shift together.
@@ -164,8 +164,8 @@ CUES = [(from_v16(t), kind, db, pan) for t,kind,db,pan in CUES
     (32.6,"tick_hi",-28,0), (33.6,"tap",-22,-.2),
     (34.5,"tap",-25,.2), (34.9,"tick",-28,0),
     (APPROVE_PRESS,"tap",-23,.25), (APPROVED,"clack",-20,0),
-    (BEN_PRESS,"tap",-24,.2), (BEN_JOIN,"clack",-18,-.2),
-    (PRIYA_PRESS,"tap",-24,.2), (PRIYA_JOIN,"clack",-18,.2),
+    (BEN_PRESS-.65,"tick_hi",-30,-.2), (BEN_PRESS,"tap",-24,.2), (BEN_JOIN,"clack",-18,-.2),
+    (PRIYA_PRESS-.65,"tick_hi",-30,.2), (PRIYA_PRESS,"tap",-24,.2), (PRIYA_JOIN,"clack",-18,.2),
     (TEAM_LOCK,"land",-20,0), (PLAN_HANDOVER[0],"tap",-28,0),
 ]
 PITCHED = (0.0, 0.0)                # no pitched tick sequence in this cut

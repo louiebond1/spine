@@ -410,7 +410,9 @@ def card_question(t, claimed=None):
     p.circle(64, 66, 28, fill=(38, 41, 50))
     p.text(64, 75, "BC", 20, DIM, SEMI, anchor="ms")
     p.text(110, 76, "Ben Carter  ·  Legal", 28, DIM)
-    p.text(40, 154, ASK, 46, WHITE, DSEMI)
+    # Keep 40 px padding at both ends, including the final question mark.
+    question_size = min(46, int(46 * 1020 / text_width(ASK, DSEMI, 46)))
+    p.text(40, 154, ASK, question_size, WHITE, DSEMI)
     st = "claimed" if claimed else bubble_state(t)
     if st == "claimed":
         p.text(40, 210, "Claimed by Mia Thompson", 28, BLUE, MED)
@@ -1114,33 +1116,10 @@ def draw_chip(c, t):
               1 - prog(t, lerp(t0, t1, 0.55), lerp(t0, t1, 0.7)))
 
 
-# ---------------------------------------------------------------- the end: one line through all three
+# ---------------------------------------------------------------- the end: six pieces, one identity
 
-RAIL = 54.2                       # the recap starts
-RAIL_POS = [0.0, 1600.0, 3200.0]  # the three objects, laid out along one line (rail pixels)
-RAIL_STOPS = [(54.2, 0.0), (55.1, 0.0), (55.9, 1600.0), (56.6, 1600.0), (57.4, 3200.0)]
-PULL = (57.9, 58.6)               # pull back to see all three on the line
-LANDS = [59.15, 59.35, 59.55]     # each condenses into its bar in the mark
-LABELS = ["Questions", "Ideas", "Impact"]
-RAIL_DY = 262                     # the line runs under the objects
+LANDS = [59.15, 59.35, 59.55]  # original source clock, shared with score's three notes
 WORDMARK = 59.8
-
-
-def rail_cam(t):
-    x = RAIL_STOPS[0][1]
-    for (ta, a), (tb, b) in zip(RAIL_STOPS, RAIL_STOPS[1:]):
-        if t >= ta:
-            x = lerp(a, b, prog(t, ta, tb, e_io_quint))
-    return x
-
-
-def rail_xy(k, t):
-    """Screen centre and scale of rail object k: full size while the camera travels; small, side by side,
-    once it pulls back."""
-    near = (960 + RAIL_POS[k] - rail_cam(t), 540.0, 1.0)
-    far = (960 + (RAIL_POS[k] - 1600) * 0.36, 600.0, 0.36)
-    p = prog(t, *PULL, e_io_quint)
-    return tuple(lerp(near[q], far[q], p) for q in range(3))
 
 
 def logo_slot(k):
@@ -1148,48 +1127,82 @@ def logo_slot(k):
     return (x0 + x1) / 2, yc, x1 - x0, 40.0
 
 
+# Closing structure: three resolved objects become six physical logo pieces.
+# All times below use the original source clock, like WORDMARK and LANDS.
+FINALE_REVEAL = (54.2, 55.25)
+FINALE_FOLD = (55.9, 56.85)
+FINALE_GATHER = (56.65, 58.05)
+
+
+@lru_cache(None)
+def resolution_surface(k):
+    """Essential traces of the story, drawn on one continuous three-level form.
+    These are not miniature product screens or a second tour through the app.
+    """
+    p = Pen(1280, 160)
+    p.im.paste((0, 0, 0, 0), (0, 0, p.im.width, p.im.height))
+    p.line([(0, 155), (1280, 155)], BLUE_DEEP, 5)
+    if k == 0:
+        p.line([(54, 82), (76, 104), (122, 52)], BLUE, 10)
+        p.text(166, 106, "An answer worth sharing.", 66, WHITE, DSEMI)
+    elif k == 1:
+        # Names, not a decorative constellation of tiny avatars.
+        p.text(66, 106, "Mia", 70, WHITE, DSEMI)
+        p.text(362, 106, "Ben", 70, WHITE, DSEMI)
+        p.text(658, 106, "Priya", 70, WHITE, DSEMI)
+        p.line([(244, 80), (318, 80)], BLUE, 5)
+        p.line([(540, 80), (614, 80)], BLUE, 5)
+        p.text(1200, 105, "Live", 48, BLUE, MED, anchor="rs")
+    else:
+        p.text(66, 121, "42", 126, BLUE, DSEMI)
+        p.text(280, 108, "hours saved", 68, WHITE, DSEMI)
+        p.text(1200, 104, "Illustrative", 34, DIM, REG, anchor="rs")
+    return p.done()
+
+
 def draw_end(c, t):
-    if t < RAIL:
+    """No recap rail: a three-leaf shutter folds to six halves of the identity.
+
+    Answer, team and measured result are visible together. Each surface closes
+    around its own horizontal axis, exposing a blue edge. That edge divides at
+    its central joint; six pieces weave inward and mate as the Spine mark.
+    """
+    if t < FINALE_REVEAL[0]:
         return
-    g0 = prog(t, RAIL, RAIL + 0.35, e_out_cubic)
-    # the line that runs through all three
-    line_a = g0 * (1 - prog(t, LANDS[0] - 0.45, LANDS[0] - 0.2))
-    if line_a > 0:
-        x0, y0, s0 = rail_xy(0, t)
-        x2, y2, s2 = rail_xy(2, t)
-        reach = lerp(x0, x2, prog(t, RAIL + 0.7, RAIL_STOPS[-1][0], e_io_cubic))
-        draw_bar(c, (x0 + reach) / 2, y0 + RAIL_DY * s0, reach - x0, 6, alpha=line_a, color=(110, 140, 240))
+    clear = prog(t, 54.2, 54.5, e_io_cubic)
+    c[:] = c * (1-clear) + _bg_base() * clear
     for k in range(3):
-        x, y, s = rail_xy(k, t)
-        cx, cy, L, T = logo_slot(k)
-        land = LANDS[k]
-        q = prog(t, PULL[0], land, e_io_quint)
-        g = g0 * (1 - prog(t, PULL[0], PULL[0] + 0.35))
-        if g > 0 and -800 < x < W + 800:
-            if k == 0:
-                place(c, card_question(t, claimed=True), x, y, 1.05 * s, g)
-            elif k == 1:
-                place(c, card_project(LOGGED + 0.5), x, y, 0.7 * s, g)
-            else:
-                w42 = text_width("42", DSEMI, 240)
-                soft_word(c, "42", DSEMI, 240, BLUE, x - w42 / 2 - 170 * s, y + 120 * s, g, 0.0, s)
-                soft_word(c, "hours saved", MED, 60, WHITE, x + (w42 / 2 - 140) * s, y + 40 * s, g, 0.0, s)
-                soft_word(c, "in October", REG, 60, DIM, x + (w42 / 2 - 140) * s, y + 112 * s, g, 0.0, s)
-        if t >= PULL[0]:      # the object condenses into its bar and takes its place in the mark
-            src = (x, y + RAIL_DY * s, [1100, 980, 700][k] * s, 18)
-            bx = lerp(src[0], cx, q)
-            by = lerp(src[1], cy, q)
-            draw_bar(c, bx, by, max(lerp(src[2], L, q), 18), lerp(src[3], T, q))
-        if t >= land:
-            glint(c, t, cx, cy, land, 0.8)
-            la = prog(t, land - 0.1, land + 0.3) * (1 - prog(t, 61.0, 61.4))
-            soft_word(c, LABELS[k], MED, 40, DIM, LOGO[k][0] - 40 - text_width(LABELS[k], MED, 40), cy + 14, la)
-    for k in range(3):
-        ts = WORDMARK + 0.12 * k
-        u = prog(t, ts, ts + 0.5, e_io_cubic)
-        if 0 < u < 1:
-            x0, x1, yc = LOGO[k]
-            draw_dot(c, lerp(x0, x1, u), yc, 34, (190, 205, 255), 0.35 * math.sin(math.pi * u), blur=16)
+        reveal = prog(t, 54.28 + .16*k, 54.8 + .16*k, e_out_cubic)
+        if reveal <= 0:
+            continue
+        fold = prog(t, FINALE_FOLD[0]+.12*k, FINALE_FOLD[1]+.12*k, e_io_quint)
+        gather = prog(t, FINALE_GATHER[0]+.12*k, FINALE_GATHER[1]+.12*k, e_io_quint)
+        land = prog(t, 57.2+.12*k, LANDS[k], e_io_cubic)
+        y0 = 310 + 220*k
+        y = lerp(y0+40*(1-reveal), 450+100*k, gather)
+        # A literal edge-on turn: the content vanishes through foreshortening,
+        # rather than dissolving from a card into an unrelated logo animation.
+        face_h = max(2, int(round(160*math.cos(fold*math.pi/2))))
+        if fold < .995:
+            im = resolution_surface(k).resize((2560, face_h*2),Image.Resampling.LANCZOS)
+            place(c, im, 960, y, alpha=reveal, shadow=False)
+        edge = prog(fold, .35, .9, e_out_cubic)
+        if edge > 0:
+            cx,cy,total,thick = logo_slot(k)
+            length = lerp(640, total/2, land)
+            thickness = lerp(18, thick, land)
+            for side in (-1,1):
+                # Opening the centre seam creates six pieces, not extra shapes.
+                angle = side * 24 * math.sin(math.pi*gather) * (1-land)
+                rad=math.radians(angle)
+                gap = 80*math.sin(math.pi*gather)*(1-land)
+                hinge_x=lerp(960+side*gap,cx,land)
+                hinge_y=lerp(y,cy,land)
+                xx=hinge_x+side*length/2*math.cos(rad)
+                yy=hinge_y+side*length/2*math.sin(rad)
+                draw_bar(c,xx,yy,length,thickness,rz=angle,alpha=reveal*edge,
+                         rl=1 if side<0 else 0,rr=1 if side>0 else 0)
+    # The completed mark stays still while the wordmark resolves beside it.
 
 
 # ---------------------------------------------------------------- shake and punch (only on real hits)
@@ -1368,7 +1381,7 @@ def end_card(t, plate=None):
 
 # ---------------------------------------------------------------- Collaboration rework: one idea becomes a team
 # The source above is the current V17 at 4dd6b8e, descended from V16 at b0f4003. Its timing and rendering are preserved outside
-# this replacement. AI reviews; leadership approves; members join directly.
+# this replacement. AI advises; leadership approves; Mia accepts member requests.
 from sequence_timing import (
     SEQUENCE, EXTRA_SECONDS, PROPOSE, REVIEW, APPROVAL, APPROVE_PRESS, APPROVED,
     RECRUIT, BEN_PRESS, BEN_JOIN, PRIYA_PRESS, PRIYA_JOIN, TEAM_LOCK, PLAN_HANDOVER,
@@ -1429,7 +1442,7 @@ def idea_panel(t):
     x, y = W / 2, lerp(780, 590, grow)
     # Exactly the same title stays fixed through the entire transformation.
     p = Pen(1440, 650)
-    stage = "Propose an idea" if t < REVIEW[0] else "AI review" if t < APPROVAL[0] else "Leadership approval" if t < RECRUIT[0] else "Recruiting"
+    stage = "Propose an idea" if t < REVIEW[0] else "AI review" if t < APPROVAL[0] else "Leadership approval" if t < RECRUIT[0] else "Mia’s view · Recruiting"
     p.text(64, 78, stage, 40, BLUE, MED)
     if t >= NAME_LAND:
         p.text(64, 176, REPLY_B, 76, WHITE, DSEMI)
@@ -1462,27 +1475,30 @@ def idea_panel(t):
 
 
 def _member_strip(initials, name, state, pressed=False):
-    """Full names and large actions replace the ambiguous travelling avatar lines."""
+    """Mia sees incoming requests and explicitly accepts each contributor."""
     p = Pen(1312, 122)
     p.rrect(1, 1, 1310, 120, 12, fill=(24, 28, 38), outline=(60, 70, 92), width=2)
     p.circle(64, 61, 39, fill=(41, 48, 65))
     p.text(64, 73, initials, 28, WHITE, SEMI, anchor="ms")
-    p.text(130, 83, name, 72, WHITE, DSEMI)
-    if state == "owner":
-        p.text(1226, 81, "Owner", 46, DIM, MED, anchor="rs")
-    elif state == "joined":
-        p.text(1226, 81, "Joined", 46, BLUE, MED, anchor="rs")
-        p.line([(920, 60), (934, 75), (964, 40)], BLUE, 7)
+    if state == "request":
+        p.text(130, 59, name, 58, WHITE, DSEMI)
+        p.text(130, 110, "Requested to join", 44, BLUE, MED)
+        _button(p, 965, 15, 1286, 106, "Accept", primary=pressed, size=64)
     else:
-        _button(p, 880, 15, 1286, 106, "Join project", primary=pressed, size=60)
+        p.text(130, 83, name, 72, WHITE, DSEMI)
+        if state == "owner":
+            p.text(1250, 81, "You · Owner", 42, DIM, MED, anchor="rs")
+        else:
+            p.text(1226, 81, "Joined", 46, BLUE, MED, anchor="rs")
+            p.line([(920, 60), (934, 75), (964, 40)], BLUE, 7)
     return p.done()
 
 
 def draw_recruitment(c, t, panel_alpha=1.0):
-    """The same idea is discoverable, then each person chooses Join project once.
+    """Requests arrive in Mia's project. Only her Accept action fills a place.
 
-    Each press closes a physical open place in the frame. There is no request,
-    approve-member action, invitation acceptance or implied automatic matching.
+    User correction on 22 October supersedes the earlier direct-join treatment.
+    Shared press/join times now mean Mia accepts / membership becomes visible.
     """
     unfold = prog(t, RECRUIT[0], RECRUIT[0] + 0.45, e_io_quint)
     # Start inside the existing panel. It opens vertically as contributors arrive.
@@ -1503,7 +1519,7 @@ def draw_recruitment(c, t, panel_alpha=1.0):
                 z.rrect(1, 1, 1310, 120, 12, outline=(75, 84, 105), width=2)
                 z.text(42, 80, "Open place", 49, DIM, MED)
                 place(c, z.done(), 960, y, alpha=(1-a)*unfold)
-            strip = _member_strip(ini, name, "joined" if t >= joined else "join", press <= t < joined)
+            strip = _member_strip(ini, name, "joined" if t >= joined else "request", press <= t < joined)
         # On the click, the contributor seats by a short, positive mechanical latch.
         latch = prog(t, joined - 0.1, joined + 0.2, e_out_cubic) if joined else 1.0
         offset = 44 * (1-a) + (150 * (1-latch) if joined and t >= joined-.1 else 0)
@@ -1512,7 +1528,13 @@ def draw_recruitment(c, t, panel_alpha=1.0):
             locked=prog(t,joined,joined+.35,e_out_cubic)
             draw_bar(c,304+656*locked,y+60,1312*locked,5,alpha=panel_alpha,color=BLUE)
         if press:
-            glint(c, t, 1375, y, press, 0.65)
+            # A visible pointer belongs to Mia, the current viewer.
+            cursor_a = prog(t,press-.28,press-.08)*(1-prog(t,press+.10,press+.32))
+            px=lerp(1510,1430,prog(t,press-.28,press,e_out_cubic))
+            py=y+lerp(42,0,prog(t,press-.28,press,e_out_cubic))
+            draw_polyline(c,[(px,py),(px+10,py+38),(px+19,py+26),(px+35,py+24),(px,py)],
+                          4,WHITE,cursor_a*panel_alpha)
+            glint(c, t, 1430, y, press, 0.65)
             glint(c, t, 330, y, joined, 0.7)
     count_g = prog(t, RECRUIT[0]+0.25, RECRUIT[0]+0.55)
     _say(c, f"{n} of 3 people", DSEMI, 76, WHITE, 1010, count_g*panel_alpha)
@@ -1544,7 +1566,7 @@ def render_plan_handover(t):
         left=lerp(64,63,u);ww=lerp(1312,50.4,u);hh=lerp(122,50.4,u)
         p.rrect(left,yy-hh/2,left+ww,yy+hh/2,lerp(12,10.5,u),outline=(110,116,136),width=2)
         p.text(194,start_y+22,name,72,WHITE,DSEMI,alpha=1-prog(u,.10,.30))
-        p.text(width-150,start_y+20,"Owner" if k==0 else "Joined",46,DIM if k==0 else BLUE,MED,
+        p.text(width-150,start_y+20,"You · Owner" if k==0 else "Joined",42 if k==0 else 46,DIM if k==0 else BLUE,MED,
                anchor="rs",alpha=1-prog(u,0,.25))
         p.text(147,end_base,step,48.3,WHITE,REG,alpha=prog(u,.32,.64))
         ix=lerp(128,1375.5,u);iy=lerp(start_y, (ROWS[k]-16)*1.05,u)
@@ -1600,7 +1622,7 @@ def render_idea_team(t):
         headline(c,t,"Leadership gives it the go-ahead.",36.55,38.05,y=155,size=66)
         glint(c,t,1320,645,APPROVE_PRESS,.8)
     else:
-        headline(c,t,"People choose to join.",38.4,42.0,y=155,size=80)
+        headline(c,t,"Mia brings her team together.",38.4,42.0,y=155,size=72)
     return c
 
 

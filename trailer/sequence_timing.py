@@ -14,6 +14,7 @@ APPROVAL = (36.5, 38.3)
 APPROVE_PRESS = 37.55
 APPROVED = 37.75
 RECRUIT = (38.3, 44.0)
+# PRESS means Mia presses Accept; JOIN is the confirmed membership state.
 BEN_PRESS, BEN_JOIN = 39.25, 39.65
 PRIYA_PRESS, PRIYA_JOIN = 40.85, 41.25
 TEAM_LOCK = 41.6

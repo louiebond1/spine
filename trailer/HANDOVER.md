@@ -2,9 +2,9 @@
 
 The active source is based on current V17 commit `4dd6b8eef2b1ac016c8b7f786f87c938fe95d501`, descended from the requested V16 commit `b0f4003e8af6d13099554d0ac95f0f08c7b35602`, not the historical V6 cut described below. Read `REWORK_NOTES.md` for the current sequence, exact timings, build instructions and review limits.
 
-This rework changes only the idea-to-team sequence: one persistent proposal, advisory AI feedback, an explicit leadership approval of the idea, then direct joining by Ben and Priya. There is no approval of people joining. Runtime is 63.7 seconds. The rest of V16 is retained using a shared four-second time shift. Picture, shutter windows, effects and score use `sequence_timing.py` together.
+Latest correction: the full Help Desk question fits inside its card; recruiting is shown from Mia’s view with Requested to join, her Accept action, then Joined; the final rail recap is replaced by one three-surface structure folding into six logo pieces. The joining change follows Louie’s explicit 22 October correction and supersedes the older direct-joining rule below. Runtime remains 63.7 seconds. See REWORK_NOTES.md for current timings and evidence limits. Historical notes below describe earlier versions, not the current joining treatment.
 
-The rendered delivery is `Spine_Collaboration_Rework.mp4`, supplied separately with this edit. The historical `release/Spine_Launch_Film.mp4` binary is not regenerated in this source commit. Do not assume it represents the active timeline.
+The rendered delivery is `Spine_Collaboration_Rework_V2.mp4`, supplied separately with this edit. The historical `release/Spine_Launch_Film.mp4` binary is not regenerated in this source commit. Do not assume it represents the active timeline.
 
 ## Previous production handover
 

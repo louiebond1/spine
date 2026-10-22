@@ -38,7 +38,7 @@ The visual identity is a dark background with electric blue. The look is one con
 | 40.1 to 43.1 | Plan | Building. Each person moves from their seat to their own plan step; "AI drafts the plan. The team owns it."; "Generated from project brief" |
 | 43.1 to 51.1 | Pulse, in five states | **Stalled**: "No activity for N days" counts to 12. **Detected**: heartbeat, then "Pulse · Build going quiet". **Notified**: Slack digest card, "The team gets a nudge." **Action**: Mia presses Open. **Progress**: steps tick, "Moving again", Publishing, Live |
 | 51.1 to 55.3 | Impact | "Live · 8 hours saved this month"; "+8 hours" travels to the company chart; months stack 6, 16, 30, then 42 in October; "Impact everyone can see."; "Illustrative data" |
-| 55.3 to 64.2 | Ending | "Knowledge becomes action." / "Action becomes impact." One line runs through the answered question, the Live project and the 42; they condense into the 3 bars of the Spine logo, labelled Questions, Ideas, Impact; wordmark "Spine"; "Give your company's AI a spine." |
+| 55.3 to 64.2 | Ending | The opening's three problems return, stacked: "Questions go unanswered." / "Ideas lose momentum." / "Impact goes unseen." One by one each turns into its fix, "Questions get answered." / "Ideas keep moving." / "Impact is seen.", and a blue bar draws under it. The three bars gather into the Spine logo, labelled Questions, Ideas, Impact; wordmark "Spine"; "Give your company's AI a spine." |
 
 ## Rules from the owner
 

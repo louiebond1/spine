@@ -36,9 +36,9 @@ large buttons, one headline at a time.
    company-wide chart, where the months stack up and the project's hours complete October: 42. The total
    shown is only ever a whole month (6, 16, 30, then 42); October is never shown without them.
    "Illustrative data".
-11. **The end.** One line runs through the answered question, the Live project, and the 42 ("Knowledge
-   becomes action." / "Action becomes impact."). The camera pulls back and each condenses into a bar of
-   the Spine mark, named Questions, Ideas, Impact. "Give your company's AI a spine."
+11. **The end.** The opening's three problems come back, stacked. Each turns into its fix ("Questions
+   get answered." / "Ideas keep moving." / "Impact is seen.") and gains a blue bar; the three bars gather
+   into the Spine mark, named Questions, Ideas, Impact. "Give your company's AI a spine."
 
 What is shown follows the product brief in `CLAUDE.md`: Champions claim questions and reply in a private
 thread; anyone can browse Ideas & Projects and press Join project while a project is recruiting (the
@@ -63,7 +63,7 @@ the project, so none is shown.
 | 40.1 - 43.1 s | Plan: a step for each person |
 | 43.1 - 51.1 s | Pulse: stalled, detected, notified, action, progress |
 | 51.1 - 55.3 s | Impact: 8 hours travel to the chart; 42 in October |
-| 55.3 - 64.2 s | The recap line and the logo |
+| 55.3 - 64.2 s | The three problems turn into their fixes; their bars become the logo |
 
 Timings in the code are story time; the film opens 3.4 s in (`SHIFT` in `timeline.py`, `FILM_START` in
 `audio.py`), so film time = story time - 3.4.

@@ -1208,31 +1208,19 @@ def draw_chip(c, t):
 
 # ---------------------------------------------------------------- the end: one line through all three
 
-RAIL = 54.2                       # the recap starts
-RAIL_POS = [0.0, 1600.0, 3200.0]  # the three objects, laid out along one line (rail pixels)
-RAIL_STOPS = [(54.2, 0.0), (55.1, 0.0), (55.9, 1600.0), (56.6, 1600.0), (57.4, 3200.0)]
-PULL = (57.9, 58.6)               # pull back to see all three on the line
-LANDS = [59.15, 59.35, 59.55]     # each condenses into its bar in the mark
+RAIL = 54.2                       # the ending starts (logic time)
+FIX = [  # each problem from the opening, and what Spine turns it into: (problem, fix, key word)
+    ("Questions go unanswered.", "Questions get ", "answered."),
+    ("Ideas lose momentum.", "Ideas keep ", "moving."),
+    ("Impact goes unseen.", "Impact is ", "seen."),
+]
+FIX_Y = [400.0, 560.0, 720.0]     # baselines of the three lines
+FLIPS = [55.25, 56.25, 57.25]     # each problem turns into its fix (a quarter beat off the kick)
+GATHER = 57.9                     # the words leave; the three bars head for the mark
+LANDS = [59.15, 59.35, 59.55]     # each bar takes its place in the mark
 LABELS = ["Questions", "Ideas", "Impact"]
-RAIL_DY = 262                     # the line runs under the objects
 WORDMARK = 59.8
-
-
-def rail_cam(t):
-    x = RAIL_STOPS[0][1]
-    for (ta, a), (tb, b) in zip(RAIL_STOPS, RAIL_STOPS[1:]):
-        if t >= ta:
-            x = lerp(a, b, prog(t, ta, tb, e_io_quint))
-    return x
-
-
-def rail_xy(k, t):
-    """Screen centre and scale of rail object k: full size while the camera travels; small, side by side,
-    once it pulls back."""
-    near = (960 + RAIL_POS[k] - rail_cam(t), 540.0, 1.0)
-    far = (960 + (RAIL_POS[k] - 1600) * 0.36, 600.0, 0.36)
-    p = prog(t, *PULL, e_io_quint)
-    return tuple(lerp(near[q], far[q], p) for q in range(3))
+FIX_SIZE = 80
 
 
 def logo_slot(k):
@@ -1241,40 +1229,42 @@ def logo_slot(k):
 
 
 def draw_end(c, t):
+    """The opening's three problems come back. Each turns into its fix and gains a bar; the three bars
+    become the Spine mark."""
     if t < RAIL:
         return
-    g0 = prog(t, RAIL, RAIL + 0.35, e_out_cubic)
-    # the line that runs through all three
-    line_a = g0 * (1 - prog(t, LANDS[0] - 0.45, LANDS[0] - 0.2))
-    if line_a > 0:
-        x0, y0, s0 = rail_xy(0, t)
-        x2, y2, s2 = rail_xy(2, t)
-        reach = lerp(x0, x2, prog(t, RAIL + 0.7, RAIL_STOPS[-1][0], e_io_cubic))
-        draw_bar(c, (x0 + reach) / 2, y0 + RAIL_DY * s0, reach - x0, 6, alpha=line_a, color=(110, 140, 240))
-    for k in range(3):
-        x, y, s = rail_xy(k, t)
-        cx, cy, L, T = logo_slot(k)
-        land = LANDS[k]
-        q = prog(t, PULL[0], land, e_io_quint)
-        g = g0 * (1 - prog(t, PULL[0], PULL[0] + 0.35))
-        if g > 0 and -800 < x < W + 800:
-            if k == 0:
-                place(c, card_question(t, claimed=True), x, y, 1.05 * s, g)
-            elif k == 1:
-                place(c, card_project(LOGGED + 0.5), x, y, 0.7 * s, g)
-            else:
-                w42 = text_width("42", DSEMI, 240)
-                soft_word(c, "42", DSEMI, 240, BLUE, x - w42 / 2 - 170 * s, y + 120 * s, g, 0.0, s)
-                soft_word(c, "hours saved", MED, 60, WHITE, x + (w42 / 2 - 140) * s, y + 40 * s, g, 0.0, s)
-                soft_word(c, "in October", REG, 60, DIM, x + (w42 / 2 - 140) * s, y + 112 * s, g, 0.0, s)
-        if t >= PULL[0]:      # the object condenses into its bar and takes its place in the mark
-            src = (x, y + RAIL_DY * s, [1100, 980, 700][k] * s, 18)
-            bx = lerp(src[0], cx, q)
-            by = lerp(src[1], cy, q)
-            draw_bar(c, bx, by, max(lerp(src[2], L, q), 18), lerp(src[3], T, q))
-        if t >= land:
-            glint(c, t, cx, cy, land, 0.8)
-            la = prog(t, land - 0.1, land + 0.3) * (1 - prog(t, 61.0, 61.4))
+    for k, (problem, lead, key) in enumerate(FIX):
+        y = FIX_Y[k]
+        flip = FLIPS[k]
+        leave = prog(t, GATHER, GATHER + 0.35)
+        # the problem, as the opening said it
+        g = prog(t, RAIL + 0.3 + 0.18 * k, RAIL + 0.7 + 0.18 * k, e_out_cubic)
+        out = prog(t, flip - 0.1, flip + 0.2)
+        if out < 1:
+            w = text_width(problem, LIGHT, FIX_SIZE)
+            soft_word(c, problem, LIGHT, FIX_SIZE, DIM, W / 2 - w / 2, y, g, out)
+        # its fix
+        f = prog(t, flip, flip + 0.3, e_out_cubic)
+        if f > 0 and leave < 1:
+            wl = text_width(lead, LIGHT, FIX_SIZE)
+            wk = text_width(key, DREG, FIX_SIZE)
+            x0 = W / 2 - (wl + wk) / 2
+            soft_word(c, lead, LIGHT, FIX_SIZE, WHITE, x0, y, f, leave)
+            soft_word(c, key, DREG, FIX_SIZE, BLUE, x0 + wl, y, f, leave)
+        # its bar: drawn under the fix, then carried into the mark
+        if t >= flip:
+            wfix = text_width(lead, LIGHT, FIX_SIZE) + text_width(key, DREG, FIX_SIZE)
+            grow = prog(t, flip, flip + 0.35, e_out_cubic)
+            cx, cy, L, T = logo_slot(k)
+            q = prog(t, GATHER + 0.15 * k, LANDS[k], e_io_quint)
+            bx = lerp(W / 2, cx, q)
+            by = lerp(y + 34, cy, q)
+            draw_bar(c, bx, by, max(lerp(wfix * grow, L, q), 8), lerp(8, T, q))
+            glint(c, t, W / 2 + wfix / 2, y + 34, flip, 0.8)
+        if t >= LANDS[k]:
+            cx, cy, L, T = logo_slot(k)
+            glint(c, t, cx, cy, LANDS[k], 0.8)
+            la = prog(t, LANDS[k] - 0.1, LANDS[k] + 0.3) * (1 - prog(t, 61.0, 61.4))
             soft_word(c, LABELS[k], MED, 40, DIM, LOGO[k][0] - 40 - text_width(LABELS[k], MED, 40), cy + 14, la)
     for k in range(3):
         ts = WORDMARK + 0.12 * k

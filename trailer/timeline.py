@@ -1316,7 +1316,7 @@ def draw_end(c, t):
 
 # ---------------------------------------------------------------- shake and punch (only on real hits)
 
-IMPACTS = [(COLLAPSE, 0.35), (19.9, 0.16), (22.5, 1.1), (DOCK, 0.3), (SEATS[1][2], 0.25),
+IMPACTS = [(COLLAPSE, 0.35), (19.9, 0.16), (22.5, 0.3), (DOCK, 0.3), (SEATS[1][2], 0.25),
            (SEATS[2][2], 0.25), (FLAG, 0.25), (PLAN[0][3], 0.2), (LANDS[-1], 0.9)]
 
 
@@ -1477,19 +1477,23 @@ def draw_prelude(c, t):
         draw_turn(c, t, 1 - prog(t, 26.15, 26.65))
 
 
-TURN_ROWS = [  # what is left of each problem, each broken at the centre line: (label, centre y)
-    ("Questions", 450.0),            # the question, then dots: nobody answered
-    ("Ideas", 600.0),                # the stage track, snapped halfway
-    ("Impact", 750.0),               # the empty months, no data
+TURN_ROWS = [  # what is left of each problem: (label, row y)
+    ("Questions", 420.0),            # the question, then fading dots: nobody answered
+    ("Ideas", 600.0),                # the stage track, snapped and declining
+    ("Impact", 780.0),               # the empty months, disconnected
 ]
-TURN_L = 760.0                       # length of each row
-TURN_T = 18.0                        # thickness of each row before it becomes the mark
+TURN_X0, TURN_X1 = 200.0, 840.0      # the broken rows span this; the lines bend into the mark after it
+TURN_T = 18.0                        # thickness of each line before it becomes the mark
 TURN_MS = 1.5                        # the mark is drawn larger here than in the ending: it is the moment
 TURN_LABEL = 44
 TURN_Y = 600.0
 TURN_GREY = (150, 156, 172)
-SPINE_TOP, SPINE_BOT = 380.0, 830.0
-SPINE_RUN = (21.85, 22.4)            # the spine draws down through the three breaks, on the swell
+TURN_BLUE = (82, 122, 255)           # electric blue while the lines sweep; they settle to the mark's own blue
+MARK_BLUE = (58, 87, 220)            # engine SEG_FLAT: the colour every bar of the mark is drawn in
+REPAIRED = 22.5                      # the three fronts reach the end of their rows together, on the slam
+SWEEP_V = 720.0                      # px/s: the fronts' speed across the rows (about 0.9 s from first to last)
+FOLD = 0.7                           # s: the lines decelerate into the mark after REPAIRED
+TAIL = (22.45, 23.2)                 # the far ends whip in from off screen as the lines fold into the mark
 
 
 def _turn_x():
@@ -1501,117 +1505,111 @@ def _turn_x():
 
 
 TURN_X = _turn_x()
-SPINE_X = TURN_X + (757.5 - LOGO_C[0]) * TURN_MS   # where the mark's three bars overlap: the spine runs through it
-MEND = (22.5, 22.78)                 # on the slam: each problem is mended and turns blue
-CONDENSE = (22.78, 23.3)             # the mended bars pull in and become the mark
+
+
+def turn_slot(k):
+    """Bar k of the mark on screen: left, right, centre y, thickness."""
+    x0, x1, yc = LOGO[k]
+    return ((x0 - LOGO_C[0]) * TURN_MS + TURN_X, (x1 - LOGO_C[0]) * TURN_MS + TURN_X,
+            (yc - LOGO_C[1]) * TURN_MS + TURN_Y, 40.0 * TURN_MS)
+
+
+BEND = (TURN_X1, min(turn_slot(k)[0] for k in range(3)) - 6)   # where each line bends from its row to its bar
 
 
 def _mix(a, b, p):
     return tuple(int(round(lerp(a[k], b[k], p))) for k in range(3))
 
 
-def glow_line(c, x, y0, y1, sigma, color, alpha):
-    """A soft vertical glow: gaussian across, fading in at both ends."""
-    if alpha <= 0.004 or y1 - y0 < 2:
-        return
-    pad = int(sigma * 3)
-    ix, iy = int(math.floor(x)) - pad, int(math.floor(y0)) - pad
-    xs = np.arange(2 * pad + 1, dtype=np.float32) + ix - x
-    ys = np.arange(int(y1 - y0) + 2 * pad + 1, dtype=np.float32) + iy
-    across = np.exp(-xs ** 2 / (2 * sigma ** 2))
-    along = np.clip((ys - y0 + pad) / (2 * pad), 0, 1) * np.clip((y1 + pad - ys) / (2 * pad), 0, 1)
-    blend(c, ix, iy, (along[:, None] * across[None, :]).astype(np.float32) * alpha, color)
+def turn_head(k, t):
+    """The leading end of line k: one shared front across the rows, then it eases into its bar's right end."""
+    if t <= REPAIRED:
+        return TURN_X1 - SWEEP_V * (REPAIRED - t)
+    u = clamp((t - REPAIRED) / FOLD)
+    return lerp(TURN_X1, turn_slot(k)[1], 1 - (1 - u) ** 2)      # same speed as the sweep at the hand-off
 
 
-def spine_tip(t):
-    return lerp(SPINE_TOP, SPINE_BOT, e_io_cubic(prog(t, *SPINE_RUN)))
+def turn_path_y(k, x):
+    """Line k's path: along its row, then a smooth bend down or up to its bar of the mark."""
+    y0, y1 = TURN_ROWS[k][1], turn_slot(k)[2]
+    u = clamp((x - BEND[0]) / (BEND[1] - BEND[0]))
+    return lerp(y0, y1, u * u * (3 - 2 * u))
 
 
-@lru_cache(None)
-def spine_cross(y):
-    """When the spine's tip reaches height y."""
-    t = SPINE_RUN[0]
-    while t < SPINE_RUN[1] and spine_tip(t) < y:
-        t += 0.002
-    return t
+def _clip_bar(c, xa, xb, y, h, col, alpha):
+    """A horizontal piece of a broken row, drawn only ahead of the front (x > h)."""
+    xa = max(xa, h)
+    if xb - xa > 1:
+        draw_bar(c, (xa + xb) / 2, y, xb - xa, TURN_T, alpha=alpha, color=col)
 
 
 def draw_turn(c, t, a):
-    """The logo is the three problems, mended and held together. Each comes back as what was left of it,
-    broken at the centre. A spine draws down through the three breaks; on the hit they snap whole and
-    blue, then stack into the mark."""
-    mend = e_out_expo(prog(t, *MEND, e_lin))
-    q = e_io_quint(prog(t, *CONDENSE, e_lin))
-    col = _mix(TURN_GREY, BLUE_DEEP, mend)
-    tremble = prog(t, 21.85, 22.45) * (1 - prog(t, 22.48, 22.5))
-    cx = W / 2
-    x0 = cx - TURN_L / 2
-
-    # the spine: a line of light draws down through every break, then becomes the mark itself
-    sx = lerp(cx, SPINE_X, q)
-    tip = spine_tip(t)
-    sa = a * prog(t, SPINE_RUN[0], SPINE_RUN[0] + 0.05) * (1 - prog(t, CONDENSE[0] + 0.1, CONDENSE[1]))
-    if sa > 0.01 and tip > SPINE_TOP + 1:
-        mid, length = (SPINE_TOP + tip) / 2, tip - SPINE_TOP
-        glow_line(c, sx, SPINE_TOP, tip, 16.0, (110, 146, 255), sa * 0.5)
-        draw_bar(c, sx, mid, length, 6, 90.0, sa, color=(170, 190, 255))
-        if t < SPINE_RUN[1] + 0.1:
-            head = 1 - prog(t, SPINE_RUN[1] - 0.05, SPINE_RUN[1] + 0.1)
-            draw_dot(c, sx, tip, 40, (150, 175, 255), 0.45 * sa * head, blur=16)
-            draw_dot(c, sx, tip, 7, (255, 255, 255), sa * head)
-
+    """Three electric-blue lines sweep in from the left together, repairing the three problems as they pass:
+    the unanswered question becomes continuous, the declining track straightens, the empty months join.
+    The lines keep going, bend into place and become the three bars of the Spine mark."""
+    settle = e_io_cubic(prog(t, REPAIRED + 0.1, REPAIRED + FOLD))
+    q = e_io_cubic(prog(t, REPAIRED + 0.05, REPAIRED + FOLD))
+    T = lerp(TURN_T, 40.0 * TURN_MS, settle)
+    col = _mix(TURN_BLUE, MARK_BLUE, settle)
+    xm = (TURN_X0 + TURN_X1) / 2
     for k, (label, y) in enumerate(TURN_ROWS):
-        ra = a * prog(t, 21.1 + 0.12 * k, 21.45 + 0.12 * k, e_out_cubic)
+        ra = a * prog(t, 21.05, 21.4, e_out_cubic)
         if ra <= 0.01:
             continue
-        L = TURN_L
-        lx, ly, lL = cx, y, L                         # the mended bar before it moves into the mark
-        if q > 0:
-            sx_, sy_, Lm, Tm = logo_slot(k)
-            lx = lerp(cx, (sx_ - LOGO_C[0]) * TURN_MS + TURN_X, q)
-            ly = lerp(y, (sy_ - LOGO_C[1]) * TURN_MS + TURN_Y, q)
-            lL = lerp(L, Lm * TURN_MS, q)
-            draw_bar(c, lx, ly, lL, lerp(TURN_T, Tm * TURN_MS, q), alpha=ra, color=col)
-        elif k == 0:                                  # the question, then dots where the answer should be
-            head = lerp(L / 2 - 16, L, mend)
-            draw_bar(c, x0 + head / 2, y, head, TURN_T, alpha=ra, color=col)
-            for j in range(7):
-                dx = cx + 34 + 54 * j
-                wait = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(2 * math.pi * (t * 1.2 - j * 0.12)))
-                draw_dot(c, dx, y, 7, col, ra * wait * (1 - mend))
-        elif k == 1:                                  # snapped at the centre; the far half hangs from the break
-            half = L / 2 - 8 * (1 - mend)
-            draw_bar(c, x0 + half / 2, y, half, TURN_T, alpha=ra, color=col)
-            tilt = 12 * (1 - mend) + 1.2 * tremble * math.sin(60 * t)
-            th = math.radians(tilt)
-            px = cx + 8 * (1 - mend)
-            draw_bar(c, px + half / 2 * math.cos(th), y + half / 2 * math.sin(th), half, TURN_T, rz=tilt,
-                     alpha=ra, color=col)
-        else:                                         # four months, each with nothing in it
-            n, seg = 4, 150.0
-            space = (L - n * seg) / (n - 1)
-            if mend > 0.9:                           # closed: one bar, no seams where the months met
-                draw_bar(c, cx, y, L, TURN_T, alpha=ra, color=col)
-            for j in range(n if mend <= 0.9 else 0):
-                left = x0 + j * (seg + space)
-                Lj = seg + (space * mend if j < n - 1 else 0.0)      # each closes the gap to the next
-                draw_bar(c, left + Lj / 2, y, Lj, TURN_T, alpha=ra, color=col)
-        # the label sits above its row, then rides beside its bar in the mark
+        h = turn_head(k, t)
+        sl, sr, sy, _ = turn_slot(k)
+
+        # what is still broken, ahead of the front
+        if h < TURN_X1:
+            g = TURN_GREY
+            if k == 0:                                # the question, then dots that fade: nobody answered
+                _clip_bar(c, TURN_X0, xm - 16, y, h, g, ra)
+                for j in range(7):
+                    dx = xm + 34 + 52 * j
+                    if dx > h + 8:
+                        draw_dot(c, dx, y, 7, g, ra * (0.85 - 0.11 * j))
+            elif k == 1:                              # snapped at the middle; the far half declines
+                _clip_bar(c, TURN_X0, xm - 6, y, h, g, ra)
+                th = math.radians(10.0)
+                px, half = xm + 6, (TURN_X1 - TURN_X0) / 2 - 6
+                u0 = clamp((h - px) / (half * math.cos(th)))
+                if u0 < 1:
+                    seg = half * (1 - u0)
+                    mid = u0 + (1 - u0) / 2
+                    draw_bar(c, px + half * mid * math.cos(th), y + half * mid * math.sin(th), seg, TURN_T,
+                             rz=10.0, alpha=ra, color=g)
+            else:                                     # four months, disconnected
+                n, seg = 4, 130.0
+                space = (TURN_X1 - TURN_X0 - n * seg) / (n - 1)
+                for j in range(n):
+                    left = TURN_X0 + j * (seg + space)
+                    _clip_bar(c, left, left + seg, y, h, g, ra)
+
+        # the line: from off screen left (or its whipping tail) to its front, along its path
+        if h > -T:
+            if t >= REPAIRED + FOLD and t >= TAIL[1]:
+                draw_bar(c, (sl + sr) / 2, sy, sr - sl, T, alpha=a, color=col)     # exactly the mark
+            else:
+                tail = lerp(-T - 40, sl, e_io_cubic(prog(t, *TAIL)))
+                tail = min(tail, h - 1)
+                xs = np.linspace(max(tail, -T - 40), h, max(2, int((h - tail) / 6) + 2))
+                pts = [(float(x), turn_path_y(k, x)) for x in xs]
+                draw_polyline(c, pts, T, col, a)
+                for px_, py_ in (pts[0], pts[-1]):    # round ends, like the mark's bars
+                    draw_dot(c, px_, py_, T / 2, col, a)
+
+        # the label sits above its row, then moves beside its bar in the mark
         lw = text_width(label, MED, TURN_LABEL)
-        lab_x = lerp(x0, lx - lL / 2 - 36 - lw, q)
-        lab_y = lerp(y - 34, ly + 15, q)
+        lab_x = lerp(TURN_X0, sl - 36 - lw, q)
+        lab_y = lerp(y - 34, sy + 15, q)
         soft_word(c, label, MED, TURN_LABEL, _mix(TURN_GREY, DIM, q), lab_x, lab_y, ra)
-        if q <= 0:
-            glint(c, t, cx, y, spine_cross(y), 0.7)    # the spine reaches this break
-            glint(c, t, cx, y, MEND[0], 1.0)           # and mends it
-        glint(c, t, lx, ly, CONDENSE[1] - 0.05, 0.7)
 
 
 def render_scene(t_film):
     tn = t_film + SHIFT              # the film clock
     t = warp(tn)                     # logic time, which nearly everything below is written in
     n = int(round(tn * FPS * 4))
-    flash = 0.28 * prog(t, 22.47, 22.5, e_lin) * (1 - prog(t, 22.5, 22.9, e_out_cubic))
+    flash = 0.08 * prog(t, 22.47, 22.5, e_lin) * (1 - prog(t, 22.5, 22.9, e_out_cubic))
     c = background(tn, n, flash)
     end_fade = prog(t, 62.3, 63.1)
 

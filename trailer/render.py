@@ -60,7 +60,10 @@ def encode(out_path, workers):
     cmd = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
            "-r", str(FPS), "-i", "-",
            "-vf", "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p",
-           "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-profile:v", "high", "-level", "4.1",
+           # crf 16 with aq-mode 3 keeps the dark gradient background smooth; crf 18 with default aq
+           # flattened it into visible bands and blotches
+           "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-profile:v", "high", "-level", "4.1",
+           "-x264-params", "aq-mode=3:aq-strength=1.1:deblock=-1,-1:psy-rd=1.0,0.15",
            "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
            "-g", "60", out_path]
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE)

@@ -1388,23 +1388,6 @@ def draw_prelude(c, t):
     if t >= 26.7:
         return
 
-    def mark(cx, cy, p, a):
-        """Three lines, one for each problem, pull in and become the logo."""
-        starts = ((960.0, 440.0, 980.0), (960.0, 580.0, 1180.0), (960.0, 720.0, 820.0))
-        names = ("Questions", "Ideas", "Impact")
-        for i, (x0, x1, yc) in enumerate(LOGO):
-            L = x1 - x0
-            mx = (x0 + x1) / 2 - LOGO_C[0]
-            my = yc - LOGO_C[1]
-            sx, sy, sL = starts[i]
-            x = lerp(sx, cx + mx, p)
-            y = lerp(sy, cy + my, p)
-            length = lerp(sL, L, p)
-            draw_bar(c, x, y, max(length, 8), lerp(10, 36, p), alpha=a)
-            if p < 0.72:
-                lab = names[i]
-                soft_word(c, lab, MED, 32, DIM, x - text_width(lab, MED, 32) / 2, y - 42, a * (1 - p / 0.72))
-
     # 1. Ben types his question and sends it; then it waits, a step at a time.
     if t < 10.1:
         a = 1 - prog(t, 9.45, 10.05)
@@ -1489,11 +1472,97 @@ def draw_prelude(c, t):
             soft_word(c, lab, MED, 32, DIM, x - text_width(lab, MED, 32) / 2, 860, a * p)
         _say(c, "No data yet", LIGHT, 108, DIM, 620, a * prog(t, 19.05, 19.45, e_out_cubic))
 
-    # 4. the three problem lines pull together into the mark.
+    # 4. the three problems come back broken, a spine runs through them, they are mended and become the mark.
     if 21.05 <= t < 26.7:
-        a = prog(t, 21.05, 21.3) * (1 - prog(t, 26.15, 26.65))
-        p = e_io_quint(prog(t, 21.85, 22.55))
-        mark(960, 540, p, a)
+        draw_turn(c, t, 1 - prog(t, 26.15, 26.65))
+
+
+TURN_ROWS = [  # what is left of each problem: (label, centre y, length)
+    ("Questions", 430.0, 560.0),     # the question, trailing off: nobody answered
+    ("Ideas", 580.0, 620.0),         # the stage track, broken halfway
+    ("Impact", 730.0, 520.0),        # the empty months, no data
+]
+TURN_MS = 1.5                        # the mark is drawn larger here than in the ending: it is the moment
+TURN_LABEL = 44
+TURN_Y = 580.0
+
+
+def _turn_x():
+    """Mark centre x that puts the mark and its labels centred together in the frame."""
+    left = min((x0 - LOGO_C[0]) * TURN_MS - 36 - text_width(TURN_ROWS[k][0], MED, TURN_LABEL)
+               for k, (x0, x1, yc) in enumerate(LOGO))
+    right = max((x1 - LOGO_C[0]) * TURN_MS for x0, x1, yc in LOGO)
+    return W / 2 - (left + right) / 2
+
+
+TURN_X = _turn_x()
+SPINE_X = TURN_X + (757.5 - LOGO_C[0]) * TURN_MS   # where the mark's three bars overlap: the spine runs through it
+MEND = (22.5, 22.78)                 # on the slam: each problem is mended and turns blue
+CONDENSE = (22.78, 23.3)             # the mended bars pull in and become the mark
+TURN_GREY = (110, 116, 136)
+
+
+def _mix(a, b, p):
+    return tuple(int(round(lerp(a[k], b[k], p))) for k in range(3))
+
+
+def draw_turn(c, t, a):
+    """The logo is the three problems, mended and held together. Each comes back as what was left of it,
+    a spine draws down through them, they snap whole and blue on the hit, then stack into the mark."""
+    mend = e_out_expo(prog(t, *MEND, e_lin))
+    q = e_io_quint(prog(t, *CONDENSE, e_lin))
+    col = _mix(TURN_GREY, BLUE_DEEP, mend)
+    tremble = prog(t, 21.85, 22.45) * (1 - prog(t, 22.48, 22.5))
+
+    # the spine: a line of light draws down through all three, and becomes the mark itself
+    grow = e_io_cubic(prog(t, 21.85, 22.4))
+    sa = a * grow * (1 - prog(t, CONDENSE[0] + 0.1, CONDENSE[1]))
+    if sa > 0.01:
+        top, bot = 350.0, 810.0
+        draw_bar(c, SPINE_X, top + (bot - top) * grow / 2, (bot - top) * grow + 1, 4, 90.0, sa * 0.9,
+                 color=(140, 165, 255))
+
+    for k, (label, y, L) in enumerate(TURN_ROWS):
+        ra = a * prog(t, 21.1 + 0.12 * k, 21.45 + 0.12 * k, e_out_cubic)
+        if ra <= 0.01:
+            continue
+        x0 = TURN_X - L / 2
+        lx, ly, lL, lT = TURN_X, y, L, 10.0          # the mended bar before it moves into the mark
+        if q > 0:
+            cx, cy, Lm, Tm = logo_slot(k)
+            lx = lerp(TURN_X, (cx - LOGO_C[0]) * TURN_MS + TURN_X, q)
+            ly = lerp(y, (cy - LOGO_C[1]) * TURN_MS + TURN_Y, q)
+            lL, lT = lerp(L, Lm * TURN_MS, q), lerp(10.0, Tm * TURN_MS, q)
+            draw_bar(c, lx, ly, lL, lT, alpha=ra, color=col)
+        elif k == 0:                                  # a short question, then dots: still waiting
+            head = 200.0
+            draw_bar(c, x0 + lerp(head, L, mend) / 2, y, lerp(head, L, mend), 10, alpha=ra, color=col)
+            for j in range(7):
+                dx = x0 + head + 38 + 46 * j
+                if dx > x0 + L - 6:
+                    break
+                wait = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(2 * math.pi * (t * 1.2 - j * 0.12)))
+                draw_dot(c, dx, y, 5, col, ra * wait * (1 - mend))
+        elif k == 1:                                  # broken in two; the far half hangs
+            gap = 20 * (1 - mend)
+            half = (L - 20) / 2 + 10 * mend
+            shake = 2.5 * tremble * math.sin(60 * t)
+            draw_bar(c, x0 + half / 2, y, half, 10, alpha=ra, color=col)
+            drop, tilt = 26 * (1 - mend) + shake, 9 * (1 - mend)
+            draw_bar(c, x0 + half + gap + half / 2, y + drop, half, 10, rz=tilt, alpha=ra, color=col)
+        else:                                         # four months, each with nothing in it
+            n, seg = 4, 100.0
+            space = (L - n * seg) / (n - 1)
+            for j in range(n):
+                left = x0 + j * (seg + space)
+                Lj = seg + (space * mend if j < n - 1 else 0.0)      # each closes the gap to the next
+                draw_bar(c, left + Lj / 2, y, Lj, 10, alpha=ra, color=col)
+        # the label rides with its bar, and stays with it in the mark
+        lw = text_width(label, MED, TURN_LABEL)
+        soft_word(c, label, MED, TURN_LABEL, DIM, lx - lL / 2 - 36 - lw, ly + 15, ra)
+        if q <= 0:
+            glint(c, t, x0 + L / 2, y, MEND[0], 0.9)
+        glint(c, t, lx, ly, CONDENSE[1] - 0.05, 0.7)
 
 
 def render_scene(t_film):

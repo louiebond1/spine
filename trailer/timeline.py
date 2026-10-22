@@ -283,13 +283,13 @@ CARD_C = (960.0, 1460.0)     # Contract Clause Checker, the big card (world)
 
 CAM = [  # (time, (centre x, centre y, zoom)) in world pixels; held between equal keys
     (5.5, (1060, 540, 1.0)),
-    (9.4, (1060, 540, 1.0)), (10.3, (960, 1400, 1.0)),
-    (15.3, (960, 1400, 1.0)), (16.2, (3300, 1003, 0.72)),          # the empty chart, close
-    (26.4, (3300, 1003, 0.72)), (27.3, (1250, 590, 1.0)),          # back to the stranded question
-    (32.6, (1250, 590, 1.0)), (33.6, (960, 1430, 0.9)),            # following the name to the projects
-    (35.4, (960, 1430, 0.9)), (36.3, (960, 1400, 1.0)),            # in on Contract Clause Checker
-    (50.0, (960, 1400, 1.0)), (50.9, (3300, 1003, 0.72)),          # the hours travel to the chart
-    (64.0, (3300, 1003, 0.72)),
+    (9.4, (1060, 540, 1.0)), (10.3, (960, 1460, 1.02)),          # the waiting project, whole card under the line
+    (15.3, (960, 1460, 1.02)), (16.2, (3300, 1001, 0.86)),       # the empty chart, whole card in frame
+    (26.4, (3300, 1001, 0.86)), (27.3, (1250, 590, 1.0)),        # back to the stranded question
+    (32.6, (1250, 590, 1.0)), (33.6, (960, 1460, 0.86)),         # the whole discovery grid, nothing cropped
+    (35.15, (960, 1460, 0.86)), (36.3, (960, 1460, 1.05)),
+    (50.0, (960, 1460, 1.05)), (50.9, (3300, 1001, 0.86)),       # the hours travel to the chart
+    (64.0, (3300, 1001, 0.86)),
 ]
 
 
@@ -395,10 +395,14 @@ SHOWN, CHOSEN, DOCK, REPLY_T = 27.6, 28.25, 28.9, 29.3
 def bubble_state(t):
     if t >= DOCK:
         return "claimed"
-    if t >= 8.5:
-        return "Asked 3 days ago"
-    if t >= 7.25:
+    if t >= 7.6:
+        return "Asked 2 days ago"
+    if t >= 6.5:
         return "Asked 1 day ago"
+    if t >= 5.5:
+        return "Asked 4 hours ago"
+    if t >= 4.6:
+        return "Asked 3 hours ago"
     return "Asked 2 hours ago"
 
 
@@ -433,7 +437,7 @@ def reply_name_pos():
 
 
 def draw_question(c, t):
-    if not 3.0 <= t < 33.4:
+    if not 26.6 <= t < 33.4:
         return
     a = 1 - prog(t, 32.9, 33.4)
     dimw = world_dim(t)
@@ -451,7 +455,7 @@ def draw_question(c, t):
 
 
 def draw_road(c, t):
-    if not 3.0 <= t < 33.4:
+    if not 26.6 <= t < 33.4:
         return
     a = world_dim(t) * (1 - prog(t, 32.9, 33.4))
     wbar(c, t, -1800 + (BX - 160 + 1800) / 2, ROAD_Y, BX - 160 + 1800, 4, alpha=a, color=(52, 57, 72))
@@ -610,11 +614,14 @@ def card_dim(t):
     waiting = prog(t, 12.2, 12.8) * (1 - prog(t, 33.6, 34.2))
     quiet = prog(t, QUIET[0], QUIET[0] + 0.6) * (1 - prog(t, QUIET[1], QUIET[1] + 0.3))
     slack = prog(t, SLACK_IN, SLACK_IN + 0.4) * (1 - prog(t, *SLACK_FLY))
-    return 1 - 0.45 * max(waiting, quiet) - 0.3 * slack
+    hero = prog(t, 36.45, 36.7) * (1 - prog(t, 38.85, 39.15))
+    return max(0.0, 1 - 0.72 * max(waiting, quiet) - 0.55 * slack - hero)
 
 
 def draw_card(c, t):
-    if not 9.9 <= t < 51.0 or GRID_T <= t < GROW[0]:
+    if 35.4 <= t < 39.0 or 42.1 <= t < 43.4:
+        return
+    if not GROW[0] <= t < 51.0 or GRID_T <= t < GROW[0]:
         return
     a = prog(t, 9.9, 10.4) * world_dim(t) * (1 - prog(t, 50.6, 51.0)) * card_dim(t)
     if t < GRID_T:
@@ -651,7 +658,9 @@ def on_card(x, y, t):
 
 def draw_seats(c, t):
     """The team: Mia's seat and the empty ones; the people who join; each moving to their step."""
-    if not (10.85 <= t < GRID_T or GROW[0] + 0.3 <= t < PLAN_IN + 0.8):
+    if GROW[0] <= t < 39.0:
+        return
+    if not (GROW[0] + 0.3 <= t < PLAN_IN + 0.8):
         return
     a = prog(t, 10.85, 11.2) * world_dim(t) * card_dim(t)
     if t >= GROW[0]:
@@ -694,9 +703,7 @@ LINK_Y = CARD_Y0 + CARD_H + 40
 
 
 def draw_passers(c, t):
-    """People pass by the waiting idea without seeing it (Ben and Priya among them)."""
-    if not 11.2 <= t < 15.6:
-        return
+    return
     a = prog(t, 11.2, 11.6) * (1 - prog(t, 15.0, 15.5))
     for k, ini in enumerate(PASSERS):
         x = -300 + 360 * (t - 11.2) + 430 * k
@@ -739,36 +746,69 @@ def card_compact(title, line, hi=0.0):
 
 
 def draw_grid(c, t):
-    if not GRID_T + 0.3 <= t < GROW[1]:
-        return
-    a = prog(t, GRID_T + 0.3, GRID_T + 0.9)
-    hi = prog(t, HILITE, HILITE + 0.3)
-    g = prog(t, *GROW, e_io_quint)
-    for r, col, title, line in GRID:
-        x, y = GRID_X[col], GRID_Y[r]
-        if title == REPLY_B:
-            s = lerp(1.0, CARD_W / SLOT_W, g)
-            img = card_compact(title if t >= NAME_LAND + 0.1 else "", line, hi)
-            wcard(c, t, img, lerp(x, CARD_C[0], g), lerp(y, CARD_C[1], g), a * (1 - prog(t, GROW[0], GROW[0] + 0.5)),
-                  s)
-        else:
-            wcard(c, t, card_compact(title, line), x, y, a * (1 - 0.45 * hi) * (1 - prog(t, GROW[0], GROW[0] + 0.4)))
+    return
+
+
+PROP_S = 0.78
+PROP_C = (960.0, 440.0)
+
+
+def propose_title_xy():
+    left = PROP_C[0] - SLOT_W * PROP_S / 2
+    top = PROP_C[1] - SLOT_H * PROP_S / 2
+    return left + 36 * PROP_S, top + 96 * PROP_S
 
 
 def draw_name_bridge(c, t):
-    """The project's name lifts out of Mia's answer and lands as the title of its card among the others."""
-    if not NAME_LIFT <= t < NAME_LAND + 0.45:
+    """The name lifts out of Mia's answer and lands on the idea she just proposed."""
+    if not NAME_LIFT <= t < NAME_LAND + 0.25:
         return
     p = prog(t, NAME_LIFT, NAME_LAND, e_io_quint)
     x0, b0 = reply_name_pos()
-    x1 = GRID_SLOT[0] - SLOT_W / 2 + 36
-    b1 = GRID_SLOT[1] - SLOT_H / 2 + 96
-    x, base = lerp(x0, x1, p), lerp(b0, b1, p)
-    size = lerp(40 * QSCALE, 44, p)
+    sx0, sy0 = ws(x0, b0, t)
+    sx1, sy1 = propose_title_xy()
+    end = 44 * PROP_S
+    a = 1 - prog(t, NAME_LAND, NAME_LAND + 0.25)
     z = cam(t)[2]
-    sx, sy = ws(x, base, t)
-    a = 1 - prog(t, NAME_LAND + 0.15, NAME_LAND + 0.45)
-    soft_word(c, REPLY_B, MED if p < 0.5 else SEMI, 44, BLUE if p < 0.8 else WHITE, sx, sy, a, 0.0, size / 44 * z)
+    soft_word(c, REPLY_B, SEMI, 44, WHITE, lerp(sx0, sx1, p), lerp(sy0, sy1, p), a, 0.0,
+              lerp(max(0.5, 40 * QSCALE * z / 44), end / 44, p))
+
+
+def draw_propose(c, t):
+    """Anyone can propose an idea. The new one lands in the company's list."""
+    if not 33.45 <= t < 35.2:
+        return
+    a = prog(t, 33.45, 33.75, e_out_cubic) * (1 - prog(t, 34.9, 35.2))
+    spots = ((0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2))
+    by_slot = {(r, col): (title, line) for r, col, title, line in GRID}
+    for i, (r, col) in enumerate(spots):
+        title, line = by_slot[(r, col)]
+        x = 400 + col * 560
+        y = 440 + r * 280
+        hi = 1.0 if title == REPLY_B else 0.0
+        shown = title if title != REPLY_B or t >= NAME_LAND else ""
+        place(c, card_compact(shown, line, hi), x, y, PROP_S, a * (1 if hi else 0.75))
+
+
+def draw_approval(c, t):
+    """The idea is approved. A check lands on it. No invented scores."""
+    if not 35.05 <= t < 36.5:
+        return
+    a = prog(t, 35.05, 35.3, e_out_cubic) * (1 - prog(t, 36.25, 36.5))
+    _say(c, "Contract Clause Checker", DSEMI, 56, WHITE, 300, a)
+    _say(c, "AI review", MED, 40, BLUE, 380, a * prog(t, 35.2, 35.45))
+    ring = prog(t, 35.35, 35.7, e_out_cubic)
+    if ring > 0.02:
+        draw_dot(c, 960, 560, 78, (18, 22, 34), a, ring=10 * ring)
+    ck = prog(t, 35.55, 36.0, e_out_cubic)
+    if ck > 0.02:
+        a1, b1, c1 = (900, 570), (945, 630), (1045, 500)
+        u = min(1.0, ck / 0.45)
+        draw_polyline(c, [a1, (lerp(a1[0], b1[0], u), lerp(a1[1], b1[1], u))], 16, BLUE, a)
+        if ck > 0.45:
+            v = (ck - 0.45) / 0.55
+            draw_polyline(c, [b1, (lerp(b1[0], c1[0], v), lerp(b1[1], c1[1], v))], 16, BLUE, a)
+    _say(c, "Approved", DSEMI, 108, WHITE, 780, a * prog(t, 35.85, 36.15, e_out_cubic))
 
 
 # ---------------------------------------------------------------- joining
@@ -779,6 +819,8 @@ def join_button():
 
 def draw_joiners(c, t):
     """Ben, then Priya, arrive, press Join project and take a seat."""
+    if GROW[0] <= t < 39.0:
+        return
     for k in (1, 2):
         ini, name, j = SEATS[k]
         t0, tp = j - 1.0, j - PRESS
@@ -814,7 +856,7 @@ def draw_pulse(c, t):
     pts = [ws(x0, y, t), ws(head - 40, y, t)] + [ws(head + du, y + dv, t) for du, dv in blip]
     draw_polyline(c, pts, 5.0, (150, 175, 255), a)
     if t >= FLAG:     # flagged: a ring round the card, and what Pulse found
-        f = prog(t, FLAG, FLAG + 0.4, e_out_cubic)
+        f = prog(t, FLAG, FLAG + 0.4, e_out_cubic) * (1 - prog(t, SLACK_IN, SLACK_IN + 0.35))
         fade = 1 - prog(t, SLACK_FLY[0], SLACK_FLY[1])
         sx0, sy0 = ws(x0 - 16, CARD_Y0 - 16, t)
         sx1, sy1 = ws(x1 + 16, CARD_Y0 + CARD_H + 16, t)
@@ -855,7 +897,7 @@ def draw_slack(c, t):
     tx, ty = ws(CARD_X0 + 84, CARD_Y0 + ROWS[0] - 18, t)
     x = lerp(lerp(W + SLACK_W / 2 + 60, SLACK_XY[0], p_in), tx, q)
     y = lerp(SLACK_XY[1], ty, q)
-    place(c, card_slack(t), x, y, lerp(1.0, 0.05, q), 1 - prog(t, SLACK_FLY[1] - 0.12, SLACK_FLY[1]))
+    place(c, card_slack(t), x, y, lerp(1.28, 0.05, q), 1 - prog(t, SLACK_FLY[1] - 0.12, SLACK_FLY[1]))
     # Mia arrives and presses Open
     if 45.6 <= t < SLACK_FLY[0] + 0.15:
         bx, by = open_button_screen()
@@ -870,14 +912,13 @@ def draw_slack(c, t):
 
 
 def draw_stall(c, t):
-    """Stalled: the days without activity count up where the headline sits."""
-    if not QUIET[0] <= t < 43.4:
+    """The build has stopped. Said on its own, before Pulse arrives."""
+    if not 42.1 <= t < 43.45:
         return
-    n = 1 + int(11 * prog(t, 42.25, 43.0))
-    s = f"No activity for {n} day{'s' if n > 1 else ''}"
-    g = prog(t, QUIET[0], QUIET[0] + 0.3, e_out_cubic) * (1 - prog(t, 43.1, 43.4))
-    w12 = text_width("No activity for 12 days", LIGHT, 76)
-    soft_word(c, s, LIGHT, 76, QUIET_C, W / 2 - w12 / 2, 190, g)
+    n = 1 + int(11 * prog(t, 42.3, 43.05))
+    g = prog(t, 42.1, 42.35, e_out_cubic) * (1 - prog(t, 43.2, 43.45))
+    _say(c, "Stalled.", DSEMI, 120, WHITE, 470, g)
+    _say(c, f"No activity for {n} day{'s' if n > 1 else ''}", LIGHT, 56, DIM, 620, g * prog(t, 42.3, 42.5))
 
 
 # ---------------------------------------------------------------- 3. the company's activity, and the hours
@@ -1003,9 +1044,15 @@ def piece_state(i, t):
 
 
 def draw_pieces(c, t):
-    if t >= 54.4:
+    if t < HOURS_IN or t >= 54.4:
         return
+    assembling = 22.15 <= t < DISPERSE[0]
     for i in range(N_FIELD + 6):
+        # Ambient dashes are noise. Pieces only exist while they lock into the spine,
+        # or later as the hours on the chart.
+        if i < N_FIELD and not assembling:
+            if t < HOURS_IN or i >= N_UNITS or is_ccc(i) or t < unit_t0(i) - 0.02:
+                continue
         x, y, rz, L, T, a = piece_state(i, t)
         if a > 0.01:
             wbar(c, t, x, y, L, T, rz, a)
@@ -1036,21 +1083,20 @@ def debris_alpha(j, t):
 
 
 def draw_link(c, t):
-    if 19.5 <= t < 19.9:
-        D = (2840 - 2300) * e_out_expo(prog(t, 19.5, 19.8, e_lin))
-        wbar(c, t, 2300 + D / 2, 1050, D, 6, alpha=world_dim(t))
+    return
 
 
 def hours_shown(t):
-    """(month index, hours) currently shown: the month most recently completed. October only counts once the
-    project's hours have landed, so the total shown is always a whole month (never October without them)."""
+    """The only total on the chart is 42, and only once October is complete.
+    Earlier months stay as bars. Showing 6, 16 or 30 over a bar that is already
+    taller is a lie, and 34 (October before this project's 8) is never shown."""
     if t >= OCT_DONE:
         return 3, HOURS[3]
-    k = max([m for m in range(3) if t >= month_done(m)], default=-1)
-    return (k, HOURS[k]) if k >= 0 else (-1, 0)
+    return -1, 0
 
 
-OCT_DONE = CHIP_LAND + 0.25        # the 42 lands on its own beat
+OCT_FILL = HOURS_IN + 0.54             # the first October unit leaves
+OCT_DONE = CHIP_LAND + 0.15            # the lighter 8 has landed: the total may say 42
 
 
 def card_chart(t):
@@ -1068,7 +1114,7 @@ def card_chart(t):
 
 
 def draw_chart(c, t):
-    if not 15.6 <= t < 54.4:
+    if not 49.9 <= t < 54.4:
         return
     a = prog(t, 15.7, 16.2) * world_dim(t) * (1 - prog(t, 21.6, 22.2) * (1 - prog(t, 50.0, 50.5))) \
         * (1 - prog(t, 54.0, 54.4))
@@ -1086,8 +1132,8 @@ def draw_chart(c, t):
     else:
         wbar(c, t, CHART[0], BASE_Y + 4, 760, 4, alpha=a, color=(70, 75, 92))
     for k in range(4):
-        kk, _ = hours_shown(t)
-        wtext(c, t, MONTHS[k], MED, 40, WHITE if kk == k else DIM, COL_X[k], BASE_Y + 70, a)
+        hot = (k == 3 and t >= OCT_DONE) or (k < 3 and month_done(k) <= t < OCT_FILL)
+        wtext(c, t, MONTHS[k], MED, 40, WHITE if hot else DIM, COL_X[k], BASE_Y + 70, a)
     # the project's own hours, landing on October in a lighter blue, with its name
     if t >= 50.0:
         for u in range(CCC_UNITS):
@@ -1099,9 +1145,6 @@ def draw_chart(c, t):
             syw = lerp(src[1], BASE_Y - 14 - 22 * j, p)
             if t >= CHIP_LAND - 0.5 + 0.05 * u:
                 wbar(c, t, sxw, syw, 120, 12, alpha=(1 - prog(t, 54.0, 54.4)), color=(150, 175, 255))
-        g = prog(t, CHIP_LAND + 0.2, CHIP_LAND + 0.5) * (1 - prog(t, 53.6, 54.0))
-        wtext(c, t, REPLY_B + "  +8", MED, 40, (150, 175, 255), COL_X[3] - 80, BASE_Y - 14 - 22 * 21 - 24, g,
-              "right")
 
 
 def draw_chip(c, t):
@@ -1169,8 +1212,8 @@ def draw_end(c, t):
         x, y, s = rail_xy(k, t)
         cx, cy, L, T = logo_slot(k)
         land = LANDS[k]
-        q = prog(t, land - 0.45, land, e_io_quint)
-        g = g0 * (1 - prog(t, land - 0.45, land - 0.25))
+        q = prog(t, PULL[0], land, e_io_quint)
+        g = g0 * (1 - prog(t, PULL[0], PULL[0] + 0.35))
         if g > 0 and -800 < x < W + 800:
             if k == 0:
                 place(c, card_question(t, claimed=True), x, y, 1.05 * s, g)
@@ -1181,7 +1224,7 @@ def draw_end(c, t):
                 soft_word(c, "42", DSEMI, 240, BLUE, x - w42 / 2 - 170 * s, y + 120 * s, g, 0.0, s)
                 soft_word(c, "hours saved", MED, 60, WHITE, x + (w42 / 2 - 140) * s, y + 40 * s, g, 0.0, s)
                 soft_word(c, "in October", REG, 60, DIM, x + (w42 / 2 - 140) * s, y + 112 * s, g, 0.0, s)
-        if t >= land - 0.45:      # it condenses into its bar and takes its place in the mark
+        if t >= PULL[0]:      # the object condenses into its bar and takes its place in the mark
             src = (x, y + RAIL_DY * s, [1100, 980, 700][k] * s, 18)
             bx = lerp(src[0], cx, q)
             by = lerp(src[1], cy, q)
@@ -1200,7 +1243,7 @@ def draw_end(c, t):
 
 # ---------------------------------------------------------------- shake and punch (only on real hits)
 
-IMPACTS = [(5.5, 0.45), (12.0, 0.4), (19.9, 0.3), (22.5, 1.4), (DOCK, 0.3), (SEATS[1][2], 0.25),
+IMPACTS = [(5.5, 0.18), (12.0, 0.12), (19.9, 0.16), (22.5, 1.1), (DOCK, 0.3), (SEATS[1][2], 0.25),
            (SEATS[2][2], 0.25), (FLAG, 0.25), (PLAN[0][3], 0.2), (LANDS[-1], 0.9)]
 
 
@@ -1222,6 +1265,132 @@ def post(c, t):
 
 
 # ---------------------------------------------------------------- the film
+
+def draw_team_hero(c, t):
+    """The idea is chosen. A line reaches an empty seat, then the person locks into it.
+    Joining is that lock. There is no separate button and no approval step."""
+    if not 36.45 <= t < 39.0:
+        return
+    a = prog(t, 36.45, 36.65, e_out_cubic) * (1 - prog(t, 38.85, 39.0))
+    _say(c, "Contract Clause Checker", DSEMI, 56, WHITE, 250, a)
+    _say(c, "Recruiting", MED, 32, BLUE, 320, a)
+    slots = (480.0, 960.0, 1440.0)
+    y = 560.0
+    r = 96.0
+    people = (("MT", "Mia"), ("BC", "Ben"), ("PS", "Priya"))
+    joins = (None, 37.25, 38.25)
+    for k, (ini, short) in enumerate(people):
+        j = joins[k]
+        if j is None or t >= j:
+            pop = 1.0 if j is None else e_out_cubic(prog(t, j, j + 0.2))
+            avatar_at(c, slots[k], y, ini, r * (0.9 + 0.1 * pop), a,
+                      ring=1.0 if j and t < j + 0.35 else 0.0)
+            soft_word(c, short, MED, 36, WHITE, slots[k] - text_width(short, MED, 36) / 2, y + 140, a)
+        else:
+            avatar_at(c, slots[k], y, "", r, a * 0.85, dashed=True)
+            arrive = j - 0.7
+            if t >= arrive:
+                p = prog(t, arrive, j, e_io_cubic)
+                side = 2100 if k == 2 else -180
+                X = lerp(side, slots[k], p)
+                avatar_at(c, X, y, ini, r * 0.92, a)
+                # the choice is the line. It reaches the seat first, then the person rides it in.
+                reach = min(1.0, p * 1.35)
+                draw_polyline(c, [(X, y), (lerp(X, slots[k], reach), y)], 8, BLUE, a * (1 - max(0, p - 0.85) / 0.15))
+                if p < 0.55:
+                    lab = "Join"
+                    soft_word(c, lab, SEMI, 36, BLUE, slots[k] - text_width(lab, SEMI, 36) / 2, y + 8, a * (1 - p / 0.55))
+    n = 1 + int(t >= 37.25) + int(t >= 38.25)
+    _say(c, f"{n} of 3", DSEMI, 64, WHITE, 860, a)
+
+
+def _say(c, text, fname, size, color, y, g):
+    if g <= 0.01:
+        return
+    soft_word(c, text, fname, size, color, W / 2 - text_width(text, fname, size) / 2, y, g)
+
+
+def draw_prelude(c, t):
+    """The three problems, in the same still language as the ending. One object. No roads,
+    no passing people, no field of bars. Hands off before the question becomes the idea."""
+    if t >= 26.7:
+        return
+
+    def mark(cx, cy, p, a):
+        """Three lines, one for each problem, pull in and become the logo."""
+        starts = ((960.0, 440.0, 980.0), (960.0, 580.0, 1180.0), (960.0, 720.0, 820.0))
+        names = ("Questions", "Ideas", "Impact")
+        for i, (x0, x1, yc) in enumerate(LOGO):
+            L = x1 - x0
+            mx = (x0 + x1) / 2 - LOGO_C[0]
+            my = yc - LOGO_C[1]
+            sx, sy, sL = starts[i]
+            x = lerp(sx, cx + mx, p)
+            y = lerp(sy, cy + my, p)
+            length = lerp(sL, L, p)
+            draw_bar(c, x, y, max(length, 8), lerp(10, 36, p), alpha=a)
+            if p < 0.72:
+                lab = names[i]
+                soft_word(c, lab, MED, 32, DIM, x - text_width(lab, MED, 32) / 2, y - 42, a * (1 - p / 0.72))
+
+    # 1. the question ages in steps, so the wait is visible.
+    if t < 10.1:
+        a = prog(t, 3.25, 3.55, e_out_cubic) * (1 - prog(t, 9.45, 10.05))
+        _say(c, "Has anyone automated", DSEMI, 64, WHITE, 430, a * prog(t, 3.3, 3.6))
+        _say(c, "contract reviews before?", DSEMI, 64, WHITE, 520, a * prog(t, 3.5, 3.85))
+        _say(c, "Ben Carter", MED, 36, DIM, 610, a * prog(t, 3.7, 4.0))
+        age = bubble_state(t)
+        fresh = 0.0
+        for m in (4.6, 5.5, 6.5, 7.6):
+            fresh = max(fresh, 1 - prog(t, m, m + 0.2))
+        _say(c, age, LIGHT, 72, WHITE if fresh > 0.2 else DIM, 760, a * prog(t, 3.7, 4.05))
+
+    # 2. the stages run Idea to Live, then stop at Building. Not one long Building bar.
+    if 9.55 <= t < 15.7:
+        a = prog(t, 9.55, 10.0, e_out_cubic) * (1 - prog(t, 15.15, 15.65))
+        _say(c, "Contract Clause Checker", DSEMI, 56, WHITE, 390, a * prog(t, 9.6, 9.95))
+        xs = [200 + i * 280 for i in range(6)]
+        lights = (10.25, 11.15, 12.05)
+        for i, name in enumerate(STAGES):
+            x = xs[i]
+            if i < 5:
+                grow = prog(t, 10.05 + i * 0.7, 10.55 + i * 0.7, e_out_cubic)
+                reached = i < 3
+                draw_bar(c, x + 70 * grow, 620, 140 * grow, 4, alpha=a * (0.9 if reached else 0.3),
+                         color=BLUE if i < 2 else (70, 75, 92))
+            if i < 3:
+                p = prog(t, lights[i], lights[i] + 0.26, e_out_cubic)
+                if p > 0:
+                    draw_dot(c, x, 620, 20 * (0.7 + 0.3 * p), BLUE, a * p)
+            else:
+                draw_dot(c, x, 620, 20, (16, 16, 19), a * prog(t, 10.3, 10.7), ring=3)
+            soft_word(c, name, MED, 28, WHITE if i < 3 else DIM, x - text_width(name, MED, 28) / 2, 690,
+                      a * prog(t, 10.15 + i * 0.15, 10.45 + i * 0.15))
+        miss = math.sin(math.pi * clamp(prog(t, 13.05, 13.6)))
+        if miss > 0.02:
+            draw_dot(c, xs[3], 620, 20, BLUE, a * miss * 0.9)
+        _say(c, "Stopped halfway", LIGHT, 68, WHITE, 860, a * prog(t, 13.4, 13.75, e_out_cubic))
+
+    # 3. the months arrive one by one, and none of them gets a number.
+    if 15.45 <= t < 21.15:
+        a = prog(t, 15.45, 15.95, e_out_cubic) * (1 - prog(t, 20.7, 21.15))
+        _say(c, "Hours saved", MED, 40, WHITE, 430, a * prog(t, 15.6, 15.95))
+        labels = ("Jul", "Aug", "Sep", "Oct")
+        for i, lab in enumerate(labels):
+            p = prog(t, 16.15 + i * 0.7, 16.5 + i * 0.7, e_out_cubic)
+            if p <= 0:
+                continue
+            x = 560 + 220 * i
+            draw_bar(c, x, 800 + 16 * (1 - p), 90, 6, alpha=a * 0.55 * p, color=(70, 75, 92))
+            soft_word(c, lab, MED, 32, DIM, x - text_width(lab, MED, 32) / 2, 860, a * p)
+        _say(c, "No data yet", LIGHT, 108, DIM, 620, a * prog(t, 19.05, 19.45, e_out_cubic))
+
+    # 4. the three problem lines pull together into the mark.
+    if 21.05 <= t < 26.7:
+        a = prog(t, 21.05, 21.3) * (1 - prog(t, 26.15, 26.65))
+        p = e_io_quint(prog(t, 21.85, 22.55))
+        mark(960, 540, p, a)
+
 
 def render_scene(t_film):
     t = t_film + SHIFT
@@ -1245,26 +1414,29 @@ def render_scene(t_film):
     draw_name_bridge(c, t)
     draw_chip(c, t)
     draw_slack(c, t)
+    draw_team_hero(c, t)
+    draw_propose(c, t)
+    draw_approval(c, t)
+    draw_prelude(c, t)
 
-    headline(c, t, "Questions go unanswered.", 6.0, 9.2)
-    headline(c, t, "Ideas lose momentum.", 12.4, 15.1)
-    headline(c, t, "Impact goes unseen.", 16.4, 20.8)
-    line_words(c, t, "Your AI needs", LIGHT, 104, WHITE, W / 2, 500, 21.0, 22.4, "center")
-    line_words(c, t, "a spine.", DREG, 104, BLUE, W / 2, 620, 21.5, 22.4, "center")
-    line_words(c, t, "Spine is your", LIGHT, 92, WHITE, 720, 500, 23.5, 26.25, "left")
-    line_words(c, t, "AI project manager.", DREG, 92, BLUE, 720, 616, 23.85, 26.25, "left")
-    headline(c, t, "Every question finds someone who knows.", 27.5, 32.4, size=76)
-    headline(c, t, "Anyone can discover work worth joining.", 33.7, 35.5, size=76)
-    headline(c, t, "Teams form around good ideas.", 36.3, 38.8, size=76)
-    headline(c, t, "AI drafts the plan. The team owns it.", 39.1, 41.8, size=76)
+    line_words(c, t, "Questions go unanswered.", LIGHT, 84, WHITE, W / 2, 168, 3.42, 9.2, "center",
+               step=0.045, dur=0.16)
+    headline(c, t, "Ideas lose momentum.", 10.3, 15.15, y=168, size=72)
+    headline(c, t, "Impact goes unseen.", 16.2, 20.7, y=168, size=80)
+    line_words(c, t, "Your AI needs", LIGHT, 84, WHITE, W / 2, 200, 21.15, 26.1, "center")
+    line_words(c, t, "a spine.", DREG, 84, BLUE, W / 2, 290, 21.45, 26.1, "center")
+    line_words(c, t, "Spine is your AI project manager.", LIGHT, 48, WHITE, W / 2, 900, 23.15, 26.1, "center")
+    headline(c, t, "Every question finds someone who knows.", 27.5, 32.4, y=150, size=64)
+    headline(c, t, "Anyone can propose an idea.", 33.7, 35.0, y=160, size=60)
+    headline(c, t, "AI reviews the idea.", 35.2, 36.35, y=170, size=72)
+    headline(c, t, "Teams form around good ideas.", 36.55, 38.8, y=150, size=56)
+    headline(c, t, "AI drafts the plan. The team owns it.", 39.1, 41.8, y=160, size=68)
     draw_stall(c, t)
-    headline(c, t, "Pulse spots work going quiet.", 43.45, 44.75, size=76)
-    headline(c, t, "The team gets a nudge.", 44.95, 46.5, size=76)
-    headline(c, t, "People pick it back up.", 46.65, 49.5, size=76)
-    headline(c, t, "Impact everyone can see.", 50.9, 53.9, size=76)
-    line_words(c, t, "Illustrative data", REG, 24, DIM, W - 60, H - 48, 50.9, 53.9, "right", step=0.0, dur=0.4)
-    headline(c, t, "Knowledge becomes action.", 54.3, 56.5, size=76)
-    headline(c, t, "Action becomes impact.", 56.6, 58.8, size=76)
+    headline(c, t, "Pulse spots work going quiet.", 43.45, 44.75, y=118, size=60)
+    headline(c, t, "The team gets a nudge.", 44.95, 46.5, y=150, size=72)
+    headline(c, t, "People pick it back up.", 46.65, 49.5, y=160, size=72)
+    headline(c, t, "Impact everyone can see.", 50.9, 53.9, y=140, size=72)
+    line_words(c, t, "Illustrative data", REG, 28, DIM, W - 56, H - 44, 50.9, 53.9, "right", step=0.0, dur=0.3)
 
     draw_end(c, t)
     g = prog(t, WORDMARK, WORDMARK + 0.5, e_out_cubic)
